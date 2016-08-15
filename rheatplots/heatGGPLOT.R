@@ -5,22 +5,26 @@ library(scales)
 # load in fake data to test
 df <- read.csv(file="wq_data_along_fake_reach.csv", header=TRUE)
 
+# variables
+dateField <- "Date"
+distanceField <- "Distance"
+wqVariable <- "WQ_var3"
+title <- "Varible - Demo transect"
+
+
+
 # format date field 
-df$Date <- as.Date(df$Date, "%m/%d/%Y")
+df[,dateField] <- as.Date(df[,dateField], "%m/%d/%Y")
 
 # plot using ggplot with geom_tile
-p <- ggplot(df, aes(Date, Distance, fill=WQ_var3)) + 
+p <- ggplot(df, aes_string(dateField, distanceField, fill=wqVariable)) + 
   geom_tile(width=31) + # makes widths equal to 31 days 
   scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) + # set color gradient
-  ggtitle("Demo transect")
-
-p <- p + scale_x_date(breaks=df$Date, labels=date_format("%b - %Y")) # format of x axis dates Mon - YEAR
-
-# change theme simple with no axis or tick marks
-p <- p +
-    guides(fill = guide_colorbar(ticks = FALSE)) +# no tick marks
-    theme_bw() + 
-    theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+  ggtitle(title) +
+  scale_x_date(breaks=df[,dateField], labels=date_format("%b - %Y")) + # format of x axis dates Mon - YEAR
+  guides(fill = guide_colorbar(ticks = FALSE)) + # no tick marks
+  theme_bw() +  # change theme simple with no axis or tick marks
+  theme(panel.border = element_blank(), panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),axis.title.y=element_blank(),
           axis.text.y=element_blank(),
           axis.ticks.y=element_blank(),
