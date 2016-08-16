@@ -3,6 +3,10 @@
 ## About  
 R script using ggplot2 to generate water quality heatplots along monthly sampled transects.
 
+## Dependencies
+- ggplot2
+- scales
+
 ## Data format
 
 Input data should have:
