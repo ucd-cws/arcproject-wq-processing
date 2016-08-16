@@ -3,18 +3,21 @@ library(ggplot2)
 library(scales) 
 
 # load in fake data to test
-df <- read.csv(file="wq_data_along_fake_reach.csv", header=TRUE)
+df <- read.csv(file="Arc_BKwqtCHL_example.csv", header=TRUE)
+
 
 # variables
 dateField <- "Date"
 distanceField <- "Distance"
-wqVariable <- "WQ_var3"
-title <- "Varible - Demo transect"
-
-
+wqVariable <- "CHL"
+title <- "BK - CHL"
 
 # format date field 
 df[,dateField] <- as.Date(df[,dateField], "%m/%d/%Y")
+
+#remove any NA from file
+df <- df[complete.cases(df),]
+
 
 # plot using ggplot with geom_tile
 p <- ggplot(df, aes_string(dateField, distanceField, fill=wqVariable)) + 

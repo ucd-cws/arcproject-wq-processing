@@ -6,9 +6,9 @@ R script using ggplot2 to generate water quality heatplots along monthly sampled
 ## Data format
 
 Input data should have:
-	- month (date format should be "01/01/2000")
-	- distance along transect
-	- variable for heatmap
+- month (date format should be "01/01/2000")
+- distance along transect
+- variable for heatmap
 
 
 ## Example data format
@@ -24,12 +24,29 @@ Input data should have:
 
 
 ## Images
-
 Trying to match something like:
-
 ![original](heatmap_goal_example.png)
 
-
 What this script produces:
+![demo](BK_CHL_example.png)
 
-![demo](demo.png)
+
+## Usage
+
+See ```heatmap_function_example.R``` for full example.
+
+
+```
+source(heatplot.R)
+
+plot <- wq_heatplot(df, dateField, distanceField, wqVariable, title)
+
+where:
+df = R dataframe
+dateField = name of the field in dataframe that holds the dates (M/D/YYYY)
+distanceField = name of field that represents distance along transect
+wqVariable = name of field with water quality data
+title = text string to use as title of graph
+
+
+```
