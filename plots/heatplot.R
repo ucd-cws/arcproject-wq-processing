@@ -6,6 +6,8 @@ wq_heatplot <- function(df, dateField, distanceField, wqVariable, title ){
       # format date field 
       df[,dateField] <- as.Date(df[,dateField], "%m/%d/%Y")
       
+      unique_dates <- unique(df[,dateField]) # get list of unique dates to use as breaks
+      
       #remove any NA from file
       df <- df[complete.cases(df),]
       
@@ -14,7 +16,7 @@ wq_heatplot <- function(df, dateField, distanceField, wqVariable, title ){
         geom_tile(width=31) + # makes widths equal to 31 days 
         scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) + # set color gradient
         ggtitle(title) +
-        scale_x_date(breaks=df[,dateField], labels=date_format("%b - %Y")) + # format of x axis dates Mon - YEAR
+        scale_x_date(breaks=unique_dates, date_labels="%b - %Y")+ # format of x axis dates Mon - YEAR
         guides(fill = guide_colorbar(ticks = FALSE)) + # no tick marks
         theme_bw() +  # change theme simple with no axis or tick marks
         theme(panel.border = element_blank(), panel.grid.major = element_blank(),
