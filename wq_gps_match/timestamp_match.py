@@ -23,7 +23,7 @@ def wq_from_csv(csv_from_miniSonde):
 	wq = wq.dropna(axis=1, how="all")
 
 	# change Date_Time to be ISO8603 (ie no slashes in date)
-	wq['Date_Time'] = pandas.to_datetime(wq['Date_Time'], format='%m/%d/%Y %I:%M:%S')
+	wq['Date_Time'] = pandas.to_datetime(wq['Date_Time'], format='%m/%d/%Y %H:%M:%S')
 
 	return wq
 
@@ -115,14 +115,11 @@ def write_shp(filename, dataframe, write_index=True):
 
 	w = shapefile.Writer(shapefile.POINT)
 	for xy in geometry:
-		print(xy)
 		w.point(xy[0], xy[1])
 
 	# add fields for dbf
 	for k, column in enumerate(df.columns):
 		column = str(column)  # unicode strings freak out pyshp, so remove u'..'
-		print(column)
-		print(df.dtypes[k])
 		if np.issubdtype(df.dtypes[k], np.number): #TODO this dosn't work correctly becuase it's a py obj
 			# detect and convert integer-only columns
 			if (df[column] % 1 == 0).all():
@@ -153,6 +150,21 @@ def copyPRJ(in_shp, out_shp):
 	out_base = os.path.splitext(out_shp)[0]
 	dst = out_base + '.prj'
 	copyfile(src, dst)
+
+
+def match_metrics(water_quality_csv, GPS_points):
+	# process water quality
+	wq_df = wq_from_csv(water_quality_csv)
+
+	# process gps data
+	shp_d = shp2dataframe(GPS_points)
+
+	# join by timestamp
+	matches = JoinByTimeStamp(wq_df, shp_d)[0]
+	matches = replaceIllegalFieldnames(matches)
+
+	percent = JoinMatchPercent(wq_df, matches)
+	return percent
 
 
 def main(water_quality_csv, GPS_points, output_shapefile):
