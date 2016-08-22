@@ -32,19 +32,13 @@ class LoadSHP(unittest.TestCase):
 class CheckDates(unittest.TestCase):
 
 	def setUp(self):
-		self.shp = os.path.join("examples", "Arc_040413_GPS", "040413_PosnPnt.shp")
-		self.csv = os.path.join("examples", "Arc_040413_WQ", "Arc_040413_wqt_bk.csv")
-		self.shpdates = timestamp_match.shp2dataframe(self.shp)["Date"].tolist()
-		self.csvdates = timestamp_match.wq_from_csv(self.csv)["Date_Time"].tolist()
+		self.date = [2013, 4, 4]
+		self.time = '08:18:47am'
+		self.date_time = timestamp_match.TimestampFromDateTime(self.date, self.time)
 		pass
 
-	def test_shp_ISO8601(self):
-		for dt in self.shpdates:
-			self.assertEqual(dt.strftime("%Y-%m-%dT%H:%M:%S"), dt.isoformat())
-
-	def test_csv_ISO8601(self):
-		for dt in self.csvdates:
-			self.assertEqual(dt.strftime("%Y-%m-%dT%H:%M:%S"), dt.isoformat())
+	def test_ISO8601(self):
+		self.assertEqual(self.date_time.strftime("%Y-%m-%dT%H:%M:%S"), self.date_time.isoformat())
 
 
 class CheckJoin(unittest.TestCase):

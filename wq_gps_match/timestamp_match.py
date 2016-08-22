@@ -6,6 +6,7 @@ import numpy as np
 from datetime import datetime
 from shutil import copyfile
 
+
 # load a water quality file
 def wq_from_csv(csv_from_miniSonde):
 	"""
@@ -14,7 +15,7 @@ def wq_from_csv(csv_from_miniSonde):
 	"""
 
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	wq = pandas.read_csv(csv_from_miniSonde, header=9, parse_dates=[[0, 1]])
+	wq = pandas.read_csv(csv_from_miniSonde, header=9, parse_dates=[[0, 1]], na_values='#')
 
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
@@ -28,28 +29,42 @@ def wq_from_csv(csv_from_miniSonde):
 	return wq
 
 
-def dateFromRecord(record):
+def TimestampFromDateTime(date, time):
 	"""
-	:param record: date in format of [[2013, 4, 4], '08:18:47am']
+	:param: date in format of [2013, 4, 4], time '08:18:47am'
 	:return: datetime object
 	"""
-	date = '{0} {1} {2} {3}'.format(record[0][0], record[0][1], record[0][2], record[1])
+	date = '{0} {1} {2} {3}'.format(date[0], date[1], date[2], time)
 	date_object = datetime.strptime(date, '%Y %m %d %I:%M:%S%p')
 	return date_object
 
 
-# geopandas is a pain to install on windows so let's try to use pyshp to turn dbf into dataframe
+def addCombinedDateTime(df, datefieldname, timefieldname):
+	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[datefieldname], row[timefieldname]), axis=1)
+	return
+
 
 def shp2dataframe(fname):
 	"""
 	Makes a Pandas DataFrame from a shapefile.dbf with XY coords
 	"""
 	r = shapefile.Reader(fname)  # opens shapefile reader
+	fields = r.fields
+
+	# get list of fields names - fields in format of (GPS_Date, D, 8, 0)
+	fieldnames = []
+	for field in fields:
+		fieldnames.append(field[0])
+
+	# pop off "DeletionFlag"
+	fieldnames.remove('DeletionFlag')
+	# add XY
+	fieldnames.append('XY')
+
 	data = []
 	for sr in r.shapeRecords():
-		dt = dateFromRecord(sr.record)
-		data.append([dt] + sr.shape.points)
-	df = pandas.DataFrame(data, columns=["Date", "XY"])
+		data.append(sr.record + sr.shape.points)
+	df = pandas.DataFrame(data, columns=fieldnames)
 	return df
 
 
@@ -61,7 +76,7 @@ def JoinByTimeStamp(wq_df, shp_df):
 	:return: data frame with water quality data and gps corordinates
 	"""
 	# use left join to match gps data to water quality
-	mergedDF = pandas.merge(wq_df, shp_df, how="left", left_on="Date_Time", right_on="Date")
+	mergedDF = pandas.merge(wq_df, shp_df, how="left", left_on="Date_Time", right_on="Date_Time")
 
 	# the rows that are matches!
 	matchDF = mergedDF[mergedDF["XY"].notnull()]
@@ -72,25 +87,13 @@ def JoinByTimeStamp(wq_df, shp_df):
 	return matchDF, notmatchDF
 
 
-def nrows(df):
-	# number of rows in a pandas data frame
-	n = df.shape[0]
-	return n
-
-
 def JoinMatchPercent(original, joined):
-	percent_match = float(nrows(joined)) / float(nrows(original)) * 100
+	percent_match = float(joined.shape[0]) / float(original.shape[0]) * 100
 	return percent_match
-
-
-def JoinDiff(original, joined):
-	diff = nrows(original) - nrows(joined)
-	return diff
 
 
 def replaceIllegalFieldnames(df):
 	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'}) # TODO make this catch other potential errors
-
 	return df
 
 
@@ -167,6 +170,19 @@ def match_metrics(water_quality_csv, GPS_points):
 	return percent
 
 
+def df2database(data):
+	# appends data to SQL database
+	# THIS is JUST PSEUDOCODE right now
+	data.to_sql(table_name, connection, flavor='sqlite', if_exists='append')
+	return
+
+
+def addsourcefield(dataframe, fieldName, source):
+	base = os.path.basename(source)
+	dataframe[fieldName] = base
+	return
+
+
 def main(water_quality_csv, GPS_points, output_shapefile):
 	"""
 	:param water_quality_csv:
@@ -196,6 +212,5 @@ def main(water_quality_csv, GPS_points, output_shapefile):
 
 	# copy projection from source
 	copyPRJ(GPS_points, output_shapefile)
-
 
 
