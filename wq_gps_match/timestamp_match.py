@@ -29,21 +29,6 @@ def wq_from_csv(csv_from_miniSonde):
 	return wq
 
 
-def TimestampFromDateTime(date, time):
-	"""
-	:param: date in format of [2013, 4, 4], time '08:18:47am'
-	:return: datetime object
-	"""
-	date = '{0} {1} {2} {3}'.format(date[0], date[1], date[2], time)
-	date_object = datetime.strptime(date, '%Y %m %d %I:%M:%S%p')
-	return date_object
-
-
-def addCombinedDateTime(df, datefieldname, timefieldname):
-	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[datefieldname], row[timefieldname]), axis=1)
-	return
-
-
 def shp2dataframe(fname):
 	"""
 	Makes a Pandas DataFrame from a shapefile.dbf with XY coords
@@ -66,6 +51,27 @@ def shp2dataframe(fname):
 		data.append(sr.record + sr.shape.points)
 	df = pandas.DataFrame(data, columns=fieldnames)
 	return df
+
+
+def TimestampFromDateTime(date, time):
+	"""
+	:param: date in format of [2013, 4, 4], time '08:18:47am'
+	:return: datetime object
+	"""
+	date = '{0} {1} {2} {3}'.format(date[0], date[1], date[2], time)
+	date_object = datetime.strptime(date, '%Y %m %d %I:%M:%S%p')
+	return date_object
+
+
+def addCombinedDateTime(df, datefieldname, timefieldname):
+	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[datefieldname], row[timefieldname]), axis=1)
+	return
+
+
+def replaceIllegalFieldnames(df):
+	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'}) # TODO make this catch other potential errors
+	return df
+
 
 
 def JoinByTimeStamp(wq_df, shp_df):
@@ -92,9 +98,41 @@ def JoinMatchPercent(original, joined):
 	return percent_match
 
 
-def replaceIllegalFieldnames(df):
-	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'}) # TODO make this catch other potential errors
-	return df
+def addsourcefield(dataframe, fieldName, source):
+	base = os.path.basename(source)
+	dataframe[fieldName] = base
+	return
+
+
+def transect_join_timestamp(waterquality_csv, transect_shapefile_points):
+
+	# water quality
+	wq = wq_from_csv(waterquality_csv)
+
+	# replace illegal fieldnames
+	wq = replaceIllegalFieldnames(wq)
+
+	# add source for water quality file
+	addsourcefield(wq, "WQ_SOURCE", waterquality_csv)
+
+	# shapefile for transect
+	pts = shp2dataframe(transect_shapefile_points)
+
+	# add date_time field
+	addCombinedDateTime(pts, "GPS_Date", "GPS_Time")
+
+	# add GPS file source
+	addsourcefield(pts, "GPS_source", transect_shapefile_points)
+
+	# join using time stamps w/ exact match
+	joined_data = JoinByTimeStamp(wq, pts)
+
+	matches = joined_data[0]
+
+	return matches
+
+
+
 
 
 def write_shp(filename, dataframe, write_index=True):
@@ -111,9 +149,7 @@ def write_shp(filename, dataframe, write_index=True):
 	Returns:
 		Nothing.
 	"""
-
 	df = dataframe.copy()
-
 	geometry = df.pop('XY')
 
 	w = shapefile.Writer(shapefile.POINT)
@@ -122,18 +158,20 @@ def write_shp(filename, dataframe, write_index=True):
 
 	# add fields for dbf
 	for k, column in enumerate(df.columns):
+		print(column)
 		column = str(column)  # unicode strings freak out pyshp, so remove u'..'
-		if np.issubdtype(df.dtypes[k], np.number): #TODO this dosn't work correctly becuase it's a py obj
-			# detect and convert integer-only columns
-			if (df[column] % 1 == 0).all():
-				df[column] = df[column].astype(np.integer)
 
-			# now create the appropriate fieldtype
-			if np.issubdtype(df.dtypes[k], np.floating):
-				w.field(column, 'N', decimal=5)
-			else:
-				w.field(column, 'I', decimal=0)
-		elif np.issubdtype(df.dtypes[k], np.object): # quick work around to force all columns in shp to be float
+
+		# TODO ugg messy way to convert types
+		numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL", "CHL_VOLTS"]
+
+		for field in numberfields:
+			df[field] = df[field].astype(np.float)
+
+		# print out the column type
+		#print(df.dtypes[k])
+
+		if np.issubdtype(df.dtypes[k], np.number): #TODO this dosn't work correctly becuase it's a py obj
 			w.field(column, 'N', decimal=5)
 		else:
 			w.field(column)
@@ -155,31 +193,10 @@ def copyPRJ(in_shp, out_shp):
 	copyfile(src, dst)
 
 
-def match_metrics(water_quality_csv, GPS_points):
-	# process water quality
-	wq_df = wq_from_csv(water_quality_csv)
-
-	# process gps data
-	shp_d = shp2dataframe(GPS_points)
-
-	# join by timestamp
-	matches = JoinByTimeStamp(wq_df, shp_d)[0]
-	matches = replaceIllegalFieldnames(matches)
-
-	percent = JoinMatchPercent(wq_df, matches)
-	return percent
-
-
 def df2database(data):
 	# appends data to SQL database
 	# THIS is JUST PSEUDOCODE right now
 	data.to_sql(table_name, connection, flavor='sqlite', if_exists='append')
-	return
-
-
-def addsourcefield(dataframe, fieldName, source):
-	base = os.path.basename(source)
-	dataframe[fieldName] = base
 	return
 
 
@@ -192,17 +209,10 @@ def main(water_quality_csv, GPS_points, output_shapefile):
 	"""
 
 	# process water quality
-	print("Processing Water Quality")
+	matches = transect_join_timestamp(water_quality_csv, GPS_points)
+
+	# water quality as dataframe to report percent matched
 	wq_df = wq_from_csv(water_quality_csv)
-
-	print("Processing GPS data")
-	# process gps data
-	shp_d = shp2dataframe(GPS_points)
-
-	print("Matching....")
-	# join by timestamp
-	matches = JoinByTimeStamp(wq_df, shp_d)[0]
-	matches = replaceIllegalFieldnames(matches)
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq_df, matches)))
 
