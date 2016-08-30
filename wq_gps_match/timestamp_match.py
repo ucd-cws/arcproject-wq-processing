@@ -3,19 +3,19 @@ import pandas
 import shapefile
 import os
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from shutil import copyfile
 
 
 # load a water quality file
-def wq_from_csv(csv_from_miniSonde):
+def wq_from_csv(csv_from_sonde):
 	"""
-	:param csv_from_miniSonde: raw data file containing water quality data
+	:param csv_from_Sonde: raw data file containing water quality data
 	:return: water quality as pandas dataframe
 	"""
 
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	wq = pandas.read_csv(csv_from_miniSonde, header=9, parse_dates=[[0, 1]], na_values='#')
+	wq = pandas.read_csv(csv_from_sonde, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
@@ -50,6 +50,12 @@ def shp2dataframe(fname):
 	for sr in r.shapeRecords():
 		data.append(sr.record + sr.shape.points)
 	df = pandas.DataFrame(data, columns=fieldnames)
+
+	# TODO check for duplicated rows in the data frame (see March 2014)
+	# NOTE: df.drop_duplicates() won't work with cells that are list-like
+	# See - https://github.com/pydata/pandas/issues/12693
+	# something like df = df.drop_duplicates(["Date_Time"], keep='first')
+
 	return df
 
 
@@ -72,6 +78,12 @@ def replaceIllegalFieldnames(df):
 	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'}) # TODO make this catch other potential errors
 	return df
 
+
+def dstadjustment(df, offset_hours):
+	df2 = df.copy() # make a copy of data so original is not overwritten
+	dstshift = lambda x: x + timedelta(hours=offset_hours)
+	df2['Date_Time'] = df2['Date_Time'].map(dstshift)
+	return df2
 
 
 def JoinByTimeStamp(wq_df, shp_df):
@@ -132,7 +144,42 @@ def transect_join_timestamp(waterquality_csv, transect_shapefile_points):
 	return matches
 
 
+def wq_append_fromlist(list_of_csv_files):
+	master_wq_df = pandas.DataFrame()
+	for csv in list_of_csv_files:
+		try:
+			pwq = wq_from_csv(csv)
+			# add source column
+			addsourcefield(pwq, "WQSOURCE", csv)
+			# append to master wq
+			master_wq_df = master_wq_df.append(pwq)
 
+		except:
+			print("Unable to process: {}".format(csv))
+
+	return master_wq_df
+
+
+def gps_append_fromlist(list_gps_files):
+	master_pts = pandas.DataFrame()
+	for gps in list_gps_files:
+		try:
+			# shapefile for transect
+			pts = shp2dataframe(gps)
+
+			# add date_time field
+			addCombinedDateTime(pts, "GPS_Date", "GPS_Time")
+
+			# add GPS file source
+			addsourcefield(pts, "GPS_source", gps)
+
+			# append to master wq
+			master_pts = master_pts.append(pts)
+
+		except:
+			print("Unable to process: {}".format(gps))
+
+	return master_pts
 
 
 def write_shp(filename, dataframe, write_index=True):
@@ -158,12 +205,12 @@ def write_shp(filename, dataframe, write_index=True):
 
 	# add fields for dbf
 	for k, column in enumerate(df.columns):
-		print(column)
+		#print(column)
 		column = str(column)  # unicode strings freak out pyshp, so remove u'..'
 
 
 		# TODO ugg messy way to convert types
-		numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL", "CHL_VOLTS"]
+		numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL"]
 
 		for field in numberfields:
 			df[field] = df[field].astype(np.float)
