@@ -51,10 +51,8 @@ def shp2dataframe(fname):
 		data.append(sr.record + sr.shape.points)
 	df = pandas.DataFrame(data, columns=fieldnames)
 
-	# TODO check for duplicated rows in the data frame (see March 2014)
-	# NOTE: df.drop_duplicates() won't work with cells that are list-like
-	# See - https://github.com/pydata/pandas/issues/12693
-	# something like df = df.drop_duplicates(["Date_Time"], keep='first')
+	# drop duplicated rows in the data frame
+	df = df.drop_duplicates(["Date_Time"], keep='first')
 
 	return df
 
@@ -80,7 +78,7 @@ def replaceIllegalFieldnames(df):
 
 
 def dstadjustment(df, offset_hours):
-	df2 = df.copy() # make a copy of data so original is not overwritten
+	df2 = df.copy()  # make a copy of data so original is not overwritten
 	dstshift = lambda x: x + timedelta(hours=offset_hours)
 	df2['Date_Time'] = df2['Date_Time'].map(dstshift)
 	return df2
