@@ -1,7 +1,8 @@
 import timestamp_match
 import glob
 import os
-import csv
+import pandas
+#import csv # TODO both pandas and CSV packages called to_csv  - causing issues!!!
 
 AP_data_folder = r"\\s1.cws.ucdavis.edu\projects\ArcProject\ArcProjectData"
 
@@ -14,6 +15,8 @@ for d in data_folders_glob:
 		date_folders.append(d)
 
 output = r"\examples\results"
+
+date_folders = [r"\\s1.cws.ucdavis.edu\projects\ArcProject\ArcProjectData\Jan_2014"]
 
 results_csv = []
 try:
@@ -70,17 +73,31 @@ try:
 
 				matches = joined_data[0]
 
+				notamatch = joined_data[1]
+
 				percent = timestamp_match.JoinMatchPercent(wq, matches)
 
 				print("PERCENT MATCHED for folder: {}".format(percent))
 
-				# save merged to shapefile
-				# save match to to shp
-				#out = os.path.join(output, folder_name + '.shp')
-				#timestamp_match.write_shp(out, matches)
+				#save out the not a matches
+				try:
+					print("Notamatch: {}".format(notamatch.shape))
+					nonmatch_outname = folder_name + '_NOTMATCHABLE.csv'
 
-				# copy projection from source
-				#timestamp_match.copyPRJ(gps_list[0], out)
+					notamatch.to_csv("jan2014.csv")
+					notamatch.to_csv(os.path.join(output, nonmatch_outname))
+
+					# save merged to shapefile
+					# save match to to shp
+					# out = os.path.join(output, folder_name + '.shp')
+					# timestamp_match.write_shp(out, matches)
+
+					# copy projection from source
+					# timestamp_match.copyPRJ(gps_list[0], out)
+
+
+				except:
+					print("Unable to save matches as shapefile or non-matches as csv")
 
 				results_csv.append([folder_name, len(wq_transect_list), len(gps_list), percent, highest_percent_offset])
 		except:
@@ -89,7 +106,7 @@ try:
 except:
 	print("ERROR: unable to finish")
 
-
+"""
 with open('WaterQuality_Folder_matches.csv', 'wb') as csvfile:
 	w = csv.writer(csvfile)
 	w.writerow(["Folder", "NUM_WQ", "NUM_GPS", "MATCH", "DSTOFFSET"])
@@ -97,3 +114,4 @@ with open('WaterQuality_Folder_matches.csv', 'wb') as csvfile:
 	for r in results_csv:
 		w.writerow(r)
 
+"""
