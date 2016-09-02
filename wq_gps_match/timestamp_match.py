@@ -23,8 +23,15 @@ def wq_from_csv(csv_from_sonde):
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
 
+	# add column with source
+	addsourcefield(wq, "WQ_SOURCE", csv_from_sonde)
+
 	# change Date_Time to be ISO8603 (ie no slashes in date)
-	wq['Date_Time'] = pandas.to_datetime(wq['Date_Time'], format='%m/%d/%Y %H:%M:%S')
+	try:
+		wq['Date_Time'] = pandas.to_datetime(wq['Date_Time']) #, format='%m/%d/%Y %H:%M:%S')
+
+	except ValueError:
+		print("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
 
 	return wq
 
@@ -51,6 +58,11 @@ def shp2dataframe(fname):
 		data.append(sr.record + sr.shape.points)
 	df = pandas.DataFrame(data, columns=fieldnames)
 
+	addsourcefield(df, "GPS_SOURCE", fname)
+
+	# combine GPS date and GPS time fields into a single column
+	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
+
 	# drop duplicated rows in the data frame
 	df = df.drop_duplicates(["Date_Time"], keep='first')
 
@@ -65,11 +77,6 @@ def TimestampFromDateTime(date, time):
 	date = '{0} {1} {2} {3}'.format(date[0], date[1], date[2], time)
 	date_object = datetime.strptime(date, '%Y %m %d %I:%M:%S%p')
 	return date_object
-
-
-def addCombinedDateTime(df, datefieldname, timefieldname):
-	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[datefieldname], row[timefieldname]), axis=1)
-	return
 
 
 def replaceIllegalFieldnames(df):
@@ -122,17 +129,8 @@ def transect_join_timestamp(waterquality_csv, transect_shapefile_points):
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
 
-	# add source for water quality file
-	addsourcefield(wq, "WQ_SOURCE", waterquality_csv)
-
 	# shapefile for transect
 	pts = shp2dataframe(transect_shapefile_points)
-
-	# add date_time field
-	addCombinedDateTime(pts, "GPS_Date", "GPS_Time")
-
-	# add GPS file source
-	addsourcefield(pts, "GPS_source", transect_shapefile_points)
 
 	# join using time stamps w/ exact match
 	joined_data = JoinByTimeStamp(wq, pts)
@@ -147,8 +145,6 @@ def wq_append_fromlist(list_of_csv_files):
 	for csv in list_of_csv_files:
 		try:
 			pwq = wq_from_csv(csv)
-			# add source column
-			addsourcefield(pwq, "WQSOURCE", csv)
 			# append to master wq
 			master_wq_df = master_wq_df.append(pwq)
 
@@ -164,12 +160,6 @@ def gps_append_fromlist(list_gps_files):
 		try:
 			# shapefile for transect
 			pts = shp2dataframe(gps)
-
-			# add date_time field
-			addCombinedDateTime(pts, "GPS_Date", "GPS_Time")
-
-			# add GPS file source
-			addsourcefield(pts, "GPS_source", gps)
 
 			# append to master wq
 			master_pts = master_pts.append(pts)
