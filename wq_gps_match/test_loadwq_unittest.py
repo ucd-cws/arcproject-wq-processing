@@ -8,27 +8,34 @@ import pandas
 class LoadWQ(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("examples", "Arc_040413_WQ", "Arc_040413_wqt_bk.csv")
+		self.data = os.path.join("examples", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 		pass
 
 	def test_data_headers(self):
-		self.assertEqual(
-			list(timestamp_match.wq_from_csv(self.data).columns.values),
-			['Date_Time', 'Temp', 'pH', 'SpCond', 'DO%', 'DO', 'DEP25', 'PAR', 'RPAR', 'TurbSC', 'CHL', 'CHL.1'])
+		headers = timestamp_match.wq_from_csv(self.data).columns.values
+
+		for head in headers:
+			self.assertIn(head, ['Date_Time', 'Temp', 'pH', 'SpCond', 'DO%', 'DO', 'DEP25',
+			                     'PAR', 'RPAR', 'TurbSC', 'CHL', 'CHL.1', 'Sal', 'WQ_SOURCE'])
 
 	def test_data_length(self):
-		self.assertEqual(timestamp_match.wq_from_csv(self.data).shape, (2128, 12))
+		self.assertEqual(timestamp_match.wq_from_csv(self.data).shape, (977, 12))
 
 
 class LoadSHP(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("examples", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.data = os.path.join("examples", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.shpdf = timestamp_match.shp2dataframe(self.data)
 		pass
 
 	def test_length(self):
-		self.assertEqual(timestamp_match.shp2dataframe(self.data).shape, (15976, 2))
+		self.assertEqual(self.shpdf.shape, (15976, 5))
 
+	def test_headers(self):
+		headers = self.shpdf.columns.values
+		for head in headers:
+			self.assertIn(head, ['Date_Time', 'GPS_SOURCE', 'GPS_Date', 'GPS_Time', 'XY'])
 
 class CheckDates(unittest.TestCase):
 
