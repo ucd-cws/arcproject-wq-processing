@@ -171,6 +171,7 @@ def gps_append_fromlist(list_gps_files):
 
 
 def write_shp(filename, dataframe, write_index=True):
+	# type: (object, object, object) -> object
 	"""Write dataframe w/ geometry to shapefile.
 
 	from https://github.com/ojdo/python-tools/blob/master/pandashp.py
