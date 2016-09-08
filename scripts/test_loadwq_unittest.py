@@ -1,14 +1,14 @@
-import unittest
 import os
+import unittest
 from datetime import datetime
-from wq_gps_match import timestamp_match
+from scripts import timestamp_match
 import pandas
 
 
 class LoadWQ(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("examples", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 		pass
 
 	def test_data_headers(self):
@@ -25,7 +25,7 @@ class LoadWQ(unittest.TestCase):
 class LoadSHP(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("examples", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
 		self.shpdf = timestamp_match.shp2dataframe(self.data)
 		pass
 
@@ -67,7 +67,7 @@ class CheckDates(unittest.TestCase):
 class CheckJoin(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("examples", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.data = os.path.join("testfiles", "Arc_040413_GPS", "040413_PosnPnt.shp")
 		pass
 
 

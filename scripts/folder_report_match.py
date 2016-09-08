@@ -1,12 +1,14 @@
-import timestamp_match
 import glob
 import os
+
 import pandas
+
+import timestamp_match
 
 # these will be argv at some point?
 export_shp = True
 AP_data_folder = r"\\s1.cws.ucdavis.edu\projects\ArcProject\ArcProjectData"
-output = r"examples\results"
+output = r"testfiles\results"
 
 # get current working directory
 dir_path = os.path.dirname(os.path.realpath(__file__))
