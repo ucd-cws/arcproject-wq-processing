@@ -1,10 +1,8 @@
 # match shp and water quality data by timestamp
-import pandas
-import shapefile
+import pandas as pd
 import os
-import numpy as np
 from datetime import datetime, timedelta
-from shutil import copyfile
+import geopandas as gpd
 
 
 # load a water quality file
@@ -15,7 +13,7 @@ def wq_from_csv(csv_from_sonde):
 	"""
 
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	wq = pandas.read_csv(csv_from_sonde, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(csv_from_sonde, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
@@ -23,12 +21,15 @@ def wq_from_csv(csv_from_sonde):
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
 
+	# replace illegal fieldnames
+	wq = replaceIllegalFieldnames(wq)
+
 	# add column with source
 	addsourcefield(wq, "WQ_SOURCE", csv_from_sonde)
 
 	# change Date_Time to be ISO8603 (ie no slashes in date)
 	try:
-		wq['Date_Time'] = pandas.to_datetime(wq['Date_Time']) #, format='%m/%d/%Y %H:%M:%S')
+		wq['Date_Time'] = pd.to_datetime(wq['Date_Time']) #, format='%m/%d/%Y %H:%M:%S')
 
 	except ValueError:
 		print("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
@@ -36,47 +37,26 @@ def wq_from_csv(csv_from_sonde):
 	return wq
 
 
-def shp2dataframe(fname):
+def TimestampFromDateTime(date, time):
 	"""
-	Makes a Pandas DataFrame from a shapefile.dbf with XY coords
+	:param: date in format of [2013, 4, 4], time '08:18:47am'
+	:return: datetime object
 	"""
-	r = shapefile.Reader(fname)  # opens shapefile reader
-	fields = r.fields
+	dt = date + 't' + time
+	date_object = datetime.strptime(dt, '%Y-%m-%dt%I:%M:%S%p')
+	return date_object
 
-	# get list of fields names - fields in format of (GPS_Date, D, 8, 0)
-	fieldnames = []
-	for field in fields:
-		fieldnames.append(field[0])
 
-	# pop off "DeletionFlag"
-	fieldnames.remove('DeletionFlag')
-	# add XY
-	fieldnames.append('XY')
-
-	data = []
-	for sr in r.shapeRecords():
-		data.append(sr.record + sr.shape.points)
-	df = pandas.DataFrame(data, columns=fieldnames)
-
-	addsourcefield(df, "GPS_SOURCE", fname)
+def shp2gpd(shapefile):
+	df = gpd.read_file(shapefile)
+	addsourcefield(df, "GPS_SOURCE", shapefile)
 
 	# combine GPS date and GPS time fields into a single column
 	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
 
 	# drop duplicated rows in the data frame
 	df = df.drop_duplicates(["Date_Time"], keep='first')
-
 	return df
-
-
-def TimestampFromDateTime(date, time):
-	"""
-	:param: date in format of [2013, 4, 4], time '08:18:47am'
-	:return: datetime object
-	"""
-	date = '{0} {1} {2} {3}'.format(date[0], date[1], date[2], time)
-	date_object = datetime.strptime(date, '%Y %m %d %I:%M:%S%p')
-	return date_object
 
 
 def replaceIllegalFieldnames(df):
@@ -91,23 +71,34 @@ def dstadjustment(df, offset_hours):
 	return df2
 
 
+def addsourcefield(dataframe, fieldName, source):
+	base = os.path.basename(source)
+	dataframe[fieldName] = base
+	return
+
+
 def JoinByTimeStamp(wq_df, shp_df):
 	"""
-	Joins two pandas dataframes using the Date Time fields
-	:param wq_df: water quality data frame - destination (inner join)
-	:param shp_df: dataframe from the shapefile - ie xy coordinates
-	:return: data frame with water quality data and gps corordinates
+	Joins geopandas dataframe with the water quality attributes using the Date Time fields
+	:param wq_df: water quality data frame
+	:param shp_df: geo dataframe from the shapefile
+	:return: geopandas dataframe with water quality data and gps coordinates
 	"""
-	# use left join to match gps data to water quality
-	mergedDF = pandas.merge(wq_df, shp_df, how="left", left_on="Date_Time", right_on="Date_Time")
+	# geopandas dataframe should be on left for the join in order for the output to be a gpd
+	#mergedDF = pandas.merge(wq_df, shp_df, how="left", left_on="Date_Time", right_on="Date_Time")
+	joined = shp_df.merge(wq_df, how="outer", on="Date_Time")
+	return joined
 
-	# the rows that are matches!
-	matchDF = mergedDF[mergedDF["XY"].notnull()]
 
-	# the rows with missing data
-	notmatchDF = mergedDF[mergedDF["XY"].isnull()]
+def splitunmatched(joined_data):
+	# returns all joined data that has a match (ie inner join),
+	# the unmatched transect points (outer left) and unmatched water quality (outer right) points as separate dataframes
 
-	return matchDF, notmatchDF
+	match = joined_data.dropna(axis='index')
+	no_geo = joined_data[joined_data["GPS_SOURCE"].isnull()]
+	no_wq = joined_data[joined_data["WQ_SOURCE"].isnull()]
+
+	return match, no_geo, no_wq
 
 
 def JoinMatchPercent(original, joined):
@@ -115,33 +106,8 @@ def JoinMatchPercent(original, joined):
 	return percent_match
 
 
-def addsourcefield(dataframe, fieldName, source):
-	base = os.path.basename(source)
-	dataframe[fieldName] = base
-	return
-
-
-def transect_join_timestamp(waterquality_csv, transect_shapefile_points):
-
-	# water quality
-	wq = wq_from_csv(waterquality_csv)
-
-	# replace illegal fieldnames
-	wq = replaceIllegalFieldnames(wq)
-
-	# shapefile for transect
-	pts = shp2dataframe(transect_shapefile_points)
-
-	# join using time stamps w/ exact match
-	joined_data = JoinByTimeStamp(wq, pts)
-
-	matches = joined_data[0]
-
-	return matches
-
-
 def wq_append_fromlist(list_of_csv_files):
-	master_wq_df = pandas.DataFrame()
+	master_wq_df = pd.DataFrame()
 	for csv in list_of_csv_files:
 		try:
 			pwq = wq_from_csv(csv)
@@ -155,11 +121,11 @@ def wq_append_fromlist(list_of_csv_files):
 
 
 def gps_append_fromlist(list_gps_files):
-	master_pts = pandas.DataFrame()
+	master_pts = pd.DataFrame()
 	for gps in list_gps_files:
 		try:
 			# shapefile for transect
-			pts = shp2dataframe(gps)
+			pts = shp2gpd(gps)
 
 			# append to master wq
 			master_pts = master_pts.append(pts)
@@ -170,69 +136,26 @@ def gps_append_fromlist(list_gps_files):
 	return master_pts
 
 
-def write_shp(filename, dataframe, write_index=True):
-	# type: (object, object, object) -> object
-	"""Write dataframe w/ geometry to shapefile.
-
-	from https://github.com/ojdo/python-tools/blob/master/pandashp.py
-
-	Args:
-		filename: ESRI shapefile name to be written (without .shp extension)
-		dataframe: a pandas DataFrame with column geometry and homogenous
-				   shape types (Point, LineString, or Polygon)
-		write_index: add index as column to attribute tabel (default: true)
-
-	Returns:
-		Nothing.
-	"""
-	df = dataframe.copy()
-	geometry = df.pop('XY')
-
-	w = shapefile.Writer(shapefile.POINT)
-	for xy in geometry:
-		w.point(xy[0], xy[1])
-
-	# add fields for dbf
-	for k, column in enumerate(df.columns):
-		#print(column)
-		column = str(column)  # unicode strings freak out pyshp, so remove u'..'
-
-
-		# TODO ugg messy way to convert types
-		numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL"]
-
-		for field in numberfields:
-			df[field] = df[field].astype(np.float)
-
-		# print out the column type
-		#print(df.dtypes[k])
-
-		if np.issubdtype(df.dtypes[k], np.number): #TODO this dosn't work correctly becuase it's a py obj
-			w.field(column, 'N', decimal=5)
-		else:
-			w.field(column)
-
-	# add records to dbf
-	for record in df.itertuples():
-		w.record(*record[1:])  # drop first tuple element (=index)
-
-	w.save(filename)
-
-
-def copyPRJ(in_shp, out_shp):
-	# copies source .prj to output .prj
-	# TODO might be a much better way to do this with pyproj
-	in_base = os.path.splitext(in_shp)[0]
-	src = in_base + '.prj'
-	out_base = os.path.splitext(out_shp)[0]
-	dst = out_base + '.prj'
-	copyfile(src, dst)
-
-
 def df2database(data):
 	# appends data to SQL database
 	# THIS is JUST PSEUDOCODE right now
 	data.to_sql(table_name, connection, flavor='sqlite', if_exists='append')
+	return
+
+
+def geodf2shp(geodf, output_filename):
+	# change timestamp values to strings
+	geodf['Date_Time'] = geodf['Date_Time'].astype(str)
+
+	# TODO ugg messy way to convert types
+	numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL"] # Why is DO missing?
+
+	for field in numberfields:
+		geodf[field] = geodf[field].astype(float)
+
+	#print(geodf.dtypes)
+
+	geodf.to_file(output_filename, driver="ESRI Shapefile")
 	return
 
 
@@ -244,19 +167,19 @@ def main(water_quality_csv, GPS_points, output_shapefile):
 	:return: shapefile with water quality data matched by time stamps
 	"""
 
-	# process water quality
-	matches = transect_join_timestamp(water_quality_csv, GPS_points)
+	# water quality
+	wq = wq_from_csv(water_quality_csv)
 
-	# water quality as dataframe to report percent matched
-	wq_df = wq_from_csv(water_quality_csv)
+	# shapefile for transect
+	pts = shp2gpd(GPS_points)
 
-	print("Percent Matched: {}".format(JoinMatchPercent(wq_df, matches)))
+	# join using time stamps w/ exact match
+	joined_data = JoinByTimeStamp(wq, pts)
+	matches = splitunmatched(joined_data)[0]
 
-	print("Saving matches to shapefile")
-	# save matches to shapefile
-	write_shp(output_shapefile, matches)
+	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	# copy projection from source
-	copyPRJ(GPS_points, output_shapefile)
+	geodf2shp(matches, output_shapefile)
 
+	return
 

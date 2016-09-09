@@ -1,5 +1,5 @@
 import arcpy
-
+#from scripts import wqt_timestamp_match
 
 class Toolbox(object):
     def __init__(self):
@@ -9,19 +9,44 @@ class Toolbox(object):
         self.alias = ""
 
         # List of tool classes associated with this toolbox
-        self.tools = [Tool]
+        self.tools = [JoinTimestamp]
 
 
-class Tool(object):
+class JoinTimestamp(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "Tool"
+        self.label = "Join on Timestamp"
         self.description = ""
         self.canRunInBackground = False
 
     def getParameterInfo(self):
         """Define parameter definitions"""
-        params = None
+
+        # parameter info for selecting multiple csv water quality files
+        csvs = arcpy.Parameter(
+	        displayName="Transect Water Quality Data",
+	        name="csv_files",
+	        datatype="DEFile",
+	        multiValue=True,
+	        direction="Input"
+        )
+
+        # shapefile for the transects GPS breadcrumbs
+        bc = arcpy.Parameter(
+	        displayName="Transect Shapefile",
+	        name="shp_file",
+	        datatype="DEFeatureClass",
+	        direction="Input"
+        )
+
+        out = arcpy.Parameter(
+	        displayName="Joined Output",
+	        name="Output",
+	        datatype="DEFeatureClass",
+	        direction="Output"
+        )
+
+        params = [csvs, bc, out]
         return params
 
     def isLicensed(self):
