@@ -115,7 +115,7 @@ def splitunmatched(joined_data):
 	# returns all joined data that has a match (ie inner join),
 	# the unmatched transect points (outer left) and unmatched water quality (outer right) points as separate dataframes
 
-	match = joined_data.dropna(axis='index')
+	match = joined_data.dropna(subset=["GPS_SOURCE", "WQ_SOURCE"], how='any')
 	no_geo = joined_data[joined_data["GPS_SOURCE"].isnull()]
 	no_wq = joined_data[joined_data["WQ_SOURCE"].isnull()]
 
@@ -140,14 +140,14 @@ def wq_append_fromlist(list_of_wq_files):
 	:return: single dataframe with all the inputs
 	"""
 	master_wq_df = pd.DataFrame()
-	for file in list_of_wq_files:
+	for wq in list_of_wq_files:
 		try:
-			pwq = wq_from_file(file)
+			pwq = wq_from_file(wq)
 			# append to master wq
 			master_wq_df = master_wq_df.append(pwq)
 
 		except:
-			print("Unable to process: {}".format(file))
+			print("Unable to process: {}".format(wq))
 
 	return master_wq_df
 
