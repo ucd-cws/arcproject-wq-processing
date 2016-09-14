@@ -6,14 +6,13 @@ import geopandas as gpd
 
 
 # load a water quality file
-def wq_from_csv(csv_from_sonde):
+def wq_from_file(water_quality_raw_data):
 	"""
-	:param csv_from_Sonde: raw data file containing water quality data
+	:param water_quality_raw_data: raw data file containing water quality data
 	:return: water quality as pandas dataframe
 	"""
-
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	wq = pd.read_csv(csv_from_sonde, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
@@ -25,7 +24,7 @@ def wq_from_csv(csv_from_sonde):
 	wq = replaceIllegalFieldnames(wq)
 
 	# add column with source
-	addsourcefield(wq, "WQ_SOURCE", csv_from_sonde)
+	addsourcefield(wq, "WQ_SOURCE", water_quality_raw_data)
 
 	# change Date_Time to be ISO8603 (ie no slashes in date)
 	try:
@@ -39,7 +38,9 @@ def wq_from_csv(csv_from_sonde):
 
 def TimestampFromDateTime(date, time):
 	"""
-	:param: date in format of [2013, 4, 4], time '08:18:47am'
+	Returns python datetime object
+	:param date: a date in format of %Y-%m-%d
+	:param time: a time in format of %I:%M:%S%p
 	:return: datetime object
 	"""
 	dt = date + 't' + time
@@ -48,6 +49,11 @@ def TimestampFromDateTime(date, time):
 
 
 def shp2gpd(shapefile):
+	"""
+	Converts shp into a geopandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
+	:param shapefile: input shapefile
+	:return: geopandas data frame
+	"""
 	df = gpd.read_file(shapefile)
 	addsourcefield(df, "GPS_SOURCE", shapefile)
 
@@ -60,6 +66,11 @@ def shp2gpd(shapefile):
 
 
 def replaceIllegalFieldnames(df):
+	"""
+	Renames fieldnames
+	:param df: dataframe with bad fieldnames
+	:return: dataframe with replaced fieldnames
+	"""
 	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'}) # TODO make this catch other potential errors
 	return df
 
@@ -72,6 +83,13 @@ def dstadjustment(df, offset_hours):
 
 
 def addsourcefield(dataframe, fieldName, source):
+	"""
+	Adds a new column to a dataframe and fills in the values from the basename of the source path
+	:param dataframe: destination dataframe to modify
+	:param fieldName: name of the new field that is to be added
+	:param source: the full path of the data source
+	:return: dataframe with a new column filled in with the source info
+	"""
 	base = os.path.basename(source)
 	dataframe[fieldName] = base
 	return
@@ -79,18 +97,21 @@ def addsourcefield(dataframe, fieldName, source):
 
 def JoinByTimeStamp(wq_df, shp_df):
 	"""
-	Joins geopandas dataframe with the water quality attributes using the Date Time fields
+	Joins geopandas dataframe with the water quality attributes using common Date Time fields
 	:param wq_df: water quality data frame
 	:param shp_df: geo dataframe from the shapefile
 	:return: geopandas dataframe with water quality data and gps coordinates
 	"""
-	# geopandas dataframe should be on left for the join in order for the output to be a gpd
-	#mergedDF = pandas.merge(wq_df, shp_df, how="left", left_on="Date_Time", right_on="Date_Time")
 	joined = shp_df.merge(wq_df, how="outer", on="Date_Time")
 	return joined
 
 
 def splitunmatched(joined_data):
+	"""
+	Takes the joined dataframe amd splits into 3 dataframes with no NAs, no geo match, no wq match
+	:param joined_data: result from JoinByTimeStamp()
+	:return: 3 dataframes - all matches, wq rows with no gps data, and gps rows with no wq data
+	"""
 	# returns all joined data that has a match (ie inner join),
 	# the unmatched transect points (outer left) and unmatched water quality (outer right) points as separate dataframes
 
@@ -102,25 +123,41 @@ def splitunmatched(joined_data):
 
 
 def JoinMatchPercent(original, joined):
+	"""
+	Calculates how well the joined data matches the original
+	:param original: water quality dataframe
+	:param joined: water quality + GPS matches as dataframe
+	:return: percentage of number of rows in match divided by number of rows in original
+	"""
 	percent_match = float(joined.shape[0]) / float(original.shape[0]) * 100
 	return percent_match
 
 
-def wq_append_fromlist(list_of_csv_files):
+def wq_append_fromlist(list_of_wq_files):
+	"""
+	Takes a list of water quality files and appends them to a single dataframe
+	:param list_of_wq_files: list of raw water quality files paths
+	:return: single dataframe with all the inputs
+	"""
 	master_wq_df = pd.DataFrame()
-	for csv in list_of_csv_files:
+	for file in list_of_wq_files:
 		try:
-			pwq = wq_from_csv(csv)
+			pwq = wq_from_file(file)
 			# append to master wq
 			master_wq_df = master_wq_df.append(pwq)
 
 		except:
-			print("Unable to process: {}".format(csv))
+			print("Unable to process: {}".format(file))
 
 	return master_wq_df
 
 
 def gps_append_fromlist(list_gps_files):
+	"""
+	Merges multiple gps files into single geopandas dataframe
+	:param list_gps_files: list of paths for gps files
+	:return: single geopandas dataframe for all the input files
+	"""
 	master_pts = pd.DataFrame()
 	for gps in list_gps_files:
 		try:
@@ -144,6 +181,12 @@ def df2database(data):
 
 
 def geodf2shp(geodf, output_filename):
+	"""
+	Saves geopandas dataframe to shapefile
+	:param geodf: geopandas dataframe with water quality attributes
+	:param output_filename: location for output shapefile
+	:return:
+	"""
 	# change timestamp values to strings
 	geodf['Date_Time'] = geodf['Date_Time'].astype(str)
 
@@ -168,7 +211,7 @@ def main(water_quality_csv, GPS_points, output_shapefile):
 	"""
 
 	# water quality
-	wq = wq_from_csv(water_quality_csv)
+	wq = wq_from_file(water_quality_csv)
 
 	# shapefile for transect
 	pts = shp2gpd(GPS_points)
