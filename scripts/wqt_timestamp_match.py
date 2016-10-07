@@ -173,7 +173,7 @@ def gps_append_fromlist(list_gps_files):
 	return master_pts
 
 
-def df2database(data):
+def df2database(data, connection, table_name):
 	# appends data to SQL database
 	# THIS is JUST PSEUDOCODE right now
 	data.to_sql(table_name, connection, flavor='sqlite', if_exists='append')
