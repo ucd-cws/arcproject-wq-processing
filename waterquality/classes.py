@@ -57,6 +57,9 @@ class WaterQualityFile(Base):
 
 
 class WaterQuality(Base):
+	"""
+		Each instance of this class is an observation in the database
+	"""
 	__tablename__ = 'water_quality'
 
 	id = Column(Integer, primary_key=True)
