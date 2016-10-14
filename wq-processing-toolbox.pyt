@@ -4,8 +4,7 @@ from scripts import wqt_timestamp_match
 
 class Toolbox(object):
 	def __init__(self):
-		"""Define the toolbox (the name of the toolbox is the name of the
-		.pyt file)."""
+		"""Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
 		self.label = "ArcWQ"
 		self.alias = ""
 

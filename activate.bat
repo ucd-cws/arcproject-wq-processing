@@ -1,0 +1,1 @@
+C:\Users\dsx.AD3\VirtualEnv2.7\arcproject\Scripts\activate
