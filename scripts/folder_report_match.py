@@ -13,7 +13,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 
 
 # data saved in folders named Mon_YEAR
-data_folders_glob = glob.glob(os.path.join(AP_data_folder, "*_201[0-9]"))
+data_folders_glob = glob.glob(os.path.join(AP_data_folder, "*_20[0-9][0-9]"))  # Nick changed it to match two numbers at end so it'll work past 2019
 date_folders = []
 for d in data_folders_glob:
 	if os.path.isdir(d) == True:
@@ -45,6 +45,8 @@ for folder in date_folders:
 
 			offsets = {}
 
+			# determine if one of them was adjusted for DST in either direction by testing variants and selecting the one
+			# that matches the most records
 			for i in [-1, -0.5, 0, 0.5, 1]:
 				# offset water quality
 				off = wqt_timestamp_match.dstadjustment(wq, i)
@@ -60,6 +62,7 @@ for folder in date_folders:
 				offsets[i] = percent_match
 
 			# best match for the offsets
+			# providing the offsets.get method to the key parameter means it will look up the values in the dict when determining the max values
 			highest_percent_offset = max(offsets, key=offsets.get)
 
 

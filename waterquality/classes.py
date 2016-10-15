@@ -65,7 +65,7 @@ class WaterQuality(Base):
 	id = Column(Integer, primary_key=True)
 
 	# might need to move this to the "file" level - check data tables
-	site_id = Column(Integer, ForeignKey('sites_.id'))
+	site_id = Column(Integer, ForeignKey('sites.id'))
 	site = relationship("Site", back_populates="records")
 
 	water_quality_file_id = Column(Integer, ForeignKey('water_quality_files.id'))
@@ -87,5 +87,7 @@ class WaterQuality(Base):
 
 
 class Site(Base):
+	__tablename__ = "sites"
+
 	id = Column(Integer, primary_key=True)
 	name = Column(String)

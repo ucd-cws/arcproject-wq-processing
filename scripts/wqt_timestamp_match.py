@@ -1,5 +1,6 @@
 # match shp and water quality data by timestamp
 import pandas as pd
+import arcpy
 import os
 from datetime import datetime, timedelta
 import geopandas as gpd
@@ -31,9 +32,28 @@ def wq_from_file(water_quality_raw_data):
 		wq['Date_Time'] = pd.to_datetime(wq['Date_Time']) #, format='%m/%d/%Y %H:%M:%S')
 
 	except ValueError:
-		print("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
+		# still having it raise a new ValueError since that will stop execution, but provide this simpler message
+		raise ValueError("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
 
 	return wq
+
+
+def feature_class_to_pandas_data_frame(feature_class, field_list):
+	"""
+	Adapted from http://joelmccune.com/arcgis-to-pandas-data-frame/
+	Load data into a Pandas Data Frame for subsequent analysis.
+	:param feature_class: Input ArcGIS Feature Class.
+	:param field_list: Fields for input.
+	:return: Pandas DataFrame object.
+	"""
+	return pd.DataFrame(
+		arcpy.da.FeatureClassToNumPyArray(
+			in_table=feature_class,
+			field_names=field_list,
+			skip_nulls=False,
+			null_value=-99999
+		)
+	)
 
 
 def TimestampFromDateTime(date, time):
