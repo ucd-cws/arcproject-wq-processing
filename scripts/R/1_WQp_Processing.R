@@ -155,24 +155,29 @@ setwd("~/arcproject-wq-processing/scripts/R")
 
 wqt <- read.csv("test_data/Arc_Sep2014_WQt_Import.csv", header=TRUE, stringsAsFactors=FALSE)
 wqtf <- wqt[which(wqt$Sal > 0 & wqt$CHL < 2.000e+06 & wqt$TurbSC<3000),]
-
 wqtf091514_gn10 <- subset(wqtf,wqt$Date=="9/15/2014")
 wqtf091514_gn1 <- subset(wqtf,wqt$Date=="9/15/2014")
 wqtf091514_gn100 <- subset(wqtf,wqt$Date=="9/15/2014")
-wq_gn100 <- read.csv("X:/ArcProject/Arc_Heatmaps/Arc_Raw_Data_Files/Daily_Gain_Files/Gain100_trunc/Arc_091514_wqp_gn100_trunc.csv", header=TRUE, stringsAsFactors=FALSE) ###OPEN DAILY GAIN 100 file
-wq_gn10 <- read.csv("X:/ArcProject/Arc_Heatmaps/Arc_Raw_Data_Files/Daily_Gain_Files/Gain10_trunc/Arc_091514_wqp_gn10_trunc.csv", header=TRUE, stringsAsFactors=FALSE) ###OPEN DAILY GAIN 10 file 
-wq_gn1 <- read.csv("X:/ArcProject/Arc_Heatmaps/Arc_Raw_Data_Files/Daily_Gain_Files/Gain1_trunc/Arc_091514_wqp_gn1_trunc.csv", header=TRUE, stringsAsFactors=FALSE) ###OPEN DAILY GAIN 1 file 
+
+wq_gn100 <- read.csv("test_data/Arc_091514_wqp_gn100_trunc.csv", header=TRUE, stringsAsFactors=FALSE) ###OPEN DAILY GAIN 100 file
+wq_gn10 <- read.csv("test_data/Arc_091514_wqp_gn10_trunc.csv", header=TRUE, stringsAsFactors=FALSE) ###OPEN DAILY GAIN 10 file 
+wq_gn1 <- read.csv("test_data/Arc_091514_wqp_gn1_trunc.csv", header=TRUE, stringsAsFactors=FALSE) ###OPEN DAILY GAIN 1 file 
+
+
+
 wq_gn10$SiteID <- paste(wq_gn10$Site,wq_gn10$Date,sep="_")
 wqf_gn10 <- wq_gn10[which(wq_gn10$DEP25 < 1 & wq_gn10$Sal > 0 & wq_gn10$CHL < 2.000e+06 & wq_gn10$CHL > 0 & wq_gn10$TurbSC<3000),]                              
 wqchlagg_gn10 <-aggregate(wqf_gn10, by=list(wqf_gn10$SiteID),FUN=mean, na.rm=FALSE,stringsAsFactors=FALSE) ##added stringsAsFactors=FALSE
 colnames(wqchlagg_gn10)[colnames(wqchlagg_gn10) == "SiteID"] <- "NA"
 colnames(wqchlagg_gn10)[colnames(wqchlagg_gn10) == "Group.1"] <- "SiteID"
-chlalab <- read.csv("X:/ArcProject/Arc_Heatmaps/Arc_Raw_Data_Files/Lab_Values/Arc_Project_chl_values_July14_Dec14.csv",stringsAsFactors=FALSE)
+
+chlalab <- read.csv("test_data/Arc_Project_chl_values_July14_Dec14.csv",stringsAsFactors=FALSE)
 wqchl_gn10 <- merge(wqchlagg_gn10,chlalab,by="SiteID")
 colnames(wqchl_gn10)[colnames(wqchl_gn10) == "Chlorophyll.a"] <- "CHL2"
 write.table(wqchl_gn10, "X:/ArcProject/Arc_Heatmaps/Arc_Intermediate_Files/Arc_091514_gn10_wqchl.csv")  ##got rid of separator
 wqchl_gn10 <- read.csv("X:/ArcProject/Arc_Heatmaps/Arc_Intermediate_Files/Arc_091514_gn10_wqchl.csv", header=TRUE,sep=" ", row.names=1)  ## made separator " " instead of "/t"
-jpeg(file="X:/ArcProject/Arc_Heatmaps/DailyScatterPlots/091514_gn10.jpg")
+
+jpeg(file="091514_gn10.jpg")
 chlrgrsn_gn10 <- lm(wqchl_gn10$CHL2~wqchl_gn10$CHL)
 coeffs_gn10 <- coefficients(chlrgrsn_gn10); coeffs_gn10
 a_gn10 <- signif(coef(chlrgrsn_gn10)[1], digits = 3)
@@ -181,6 +186,8 @@ r2_coeffs_gn10 <- paste("r^2 = ",summary(chlrgrsn_gn10, digits = 3)$r.squared," 
 plot(wqchl_gn10$CHL,wqchl_gn10$CHL2,main="Arc_091514_gn10", ylab="Lab_chl",xlab="Field_chl", sub=r2_coeffs_gn10)
 abline(chlrgrsn_gn10)
 dev.off()
+
+
 write.csv(coeffs_gn10, "X:/ArcProject/Arc_Heatmaps/Arc_Intermediate_Files/Arc_091514_gn10_coeffs.csv")
 write.csv(summary(chlrgrsn_gn10)$r.squared, "X:/ArcProject/Arc_Heatmaps/Arc_Intermediate_Files/Arc_091514_gn10_r2.csv")
 wq_gn10$NewCHL <- paste(NewCHL=coeffs_gn10[1] + coeffs_gn10[2]*wq_gn10$CHL)
