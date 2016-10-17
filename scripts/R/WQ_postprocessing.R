@@ -1,6 +1,6 @@
 # WQ_postprecessing.R
 # Attempt to replicate the Arc Project's legacy code to
-# correct chlorophyll values and generate heatplots.
+# correct chlorophyll values.
 
 ############################################################
 
@@ -109,30 +109,33 @@ save_joined_lab_gain <- function(joined_lab_gain_file, output_location){
 # lines 61-75
 # linear model and graph regression equation
 
-daily_scatter_graph <- function(joined_chl_df, lm_out, output_graph, title){
-  jpeg(file=output_graph)
-  # equation for graph? 
-  eq <- paste("r^2 = ",lm_out$r2," ,y = ",lm_out$b,"x + ",lm_out$a, sep="")
-  
-  plot(joined_chl_df$CHL,joined_chl_df$CHL2,main=title, ylab="Lab_chl",xlab="Field_chl", sub=eq)
-  abline(lm_out$lm)
-  dev.off()
-}
-
 chl_lab_regression <- function(joined_chl_df){
   
   # linear model for chl values
   chl_lm <- lm(joined_chl_df$CHL2~joined_chl_df$CHL)
   
+  return(chl_lm)
+}
+
+daily_scatter_graph <- function(joined_chl_df, lm_out, output_graph, title){
+  jpeg(file=output_graph)
+  
+  # output from linear model
   # coefficients of linear model 
-  chl_lm_coeff <- coefficients(chl_lm)
+  chl_lm_coeff <- coefficients(lm_out)
   a <- signif(chl_lm_coeff[1], digits = 3)
   b <- signif(chl_lm_coeff[2], digits = 3)
-  summary <- summary(chl_lm, digits=3)
+  summary <- summary(lm_out, digits=3)
   r2 <- summary$r.squared
   
-  newList <- list("lm" = chl_lm, "coeff" = chl_lm_coeff, "a" = a, "b" = b, "r2" = r2)
-  return(newList)
+  
+  # equation for graph? 
+  eq <- paste("R^2", " = ", r2," , y = ",b,"x + ",a, sep="")
+  
+  
+  plot(joined_chl_df$CHL,joined_chl_df$CHL2,main=title, ylab="Lab_chl",xlab="Field_chl", sub=eq)
+  abline(lm_out)
+  dev.off()
 }
 
 save_lm_to_csv <- function(){
@@ -142,5 +145,12 @@ save_lm_to_csv <- function(){
 # lines 77-83
 
 #apply regression equation to transect data for that date
+#wq_gn1$NewCHL <- paste(NewCHL=coeffs_gn1[1] + coeffs_gn1[2]*wq_gn1$CHL)
 
-
+apply_regression <- function(wq_transect, lm, column_name){
+  coeff <- coefficients(lm)
+  coeff_a <- unname(coeff[1])
+  coeff_b <- unname(coeff[2])
+  wq_transect[column_name]<- coeff_a + coeff_b*wq_transect$CHL
+  return(wq_transect)
+} 

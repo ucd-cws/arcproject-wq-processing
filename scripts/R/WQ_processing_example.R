@@ -31,3 +31,7 @@ reg <- chl_lab_regression(joined_gain10)
 
 #graph 
 daily_scatter_graph(joined_gain10, reg, "test_gain10.jpg", "Gain 10")
+
+
+# apply regression
+test <- apply(array, margin, ...)
