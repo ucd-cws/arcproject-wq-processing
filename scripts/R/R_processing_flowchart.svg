@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 16.0.3, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="792px" height="612px" viewBox="0 0 792 612" enable-background="new 0 0 792 612" xml:space="preserve">
+<g>
+	<rect x="57" y="79.5" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 63.689 100.02)"><tspan x="0" y="0" font-family="'MyriadPro-Regular'" font-size="12">All profiles for a specific </tspan><tspan x="1.878" y="14.4" font-family="'MyriadPro-Regular'" font-size="12">gain (g1, g10) for a day</tspan></text>
+	<rect x="57" y="64" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="57" y="188" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 67.4385 208.52)" font-family="'MyriadPro-Regular'" font-size="12">Add site_date column</text>
+	<rect x="57" y="172.5" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="57" y="297" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 69.353 317.5195)"><tspan x="0" y="0" font-family="'MyriadPro-Regular'" font-size="12">Remove all rows with </tspan><tspan x="9.479" y="14.4" font-family="'MyriadPro-Regular'" font-size="12">depths below 1m</tspan></text>
+	<rect x="57" y="281.5" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="57" y="406.75" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 70.3911 427.2695)"><tspan x="0" y="0" font-family="'MyriadPro-Regular'" font-size="12">Average of profile by </tspan><tspan x="30.011" y="14.4" font-family="'MyriadPro-Regular'" font-size="12">site/date</tspan></text>
+	<rect x="57" y="391.25" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="122.5" y1="143" x2="122.5" y2="165.824"/>
+		<g>
+			<polygon points="117.514,164.365 122.5,173 127.486,164.365 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="122.5" y1="251" x2="122.5" y2="273.824"/>
+		<g>
+			<polygon points="117.514,272.365 122.5,281 127.486,272.365 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="122.5" y1="360" x2="122.5" y2="382.824"/>
+		<g>
+			<polygon points="117.514,381.365 122.5,390 127.486,381.365 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<rect x="296.5" y="79" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 327.627 99.52)" font-family="'MyriadPro-Regular'" font-size="12">Chl lab values</text>
+	<rect x="296.5" y="63.5" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="296.5" y="406.25" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 302.4453 426.7695)"><tspan x="0" y="0" font-family="'MyriadPro-Regular'" font-size="12">Join profile avg with lab </tspan><tspan x="7.638" y="14.4" font-family="'MyriadPro-Regular'" font-size="12">value using site/date </tspan><tspan x="22.349" y="28.801" font-family="'MyriadPro-Regular'" font-size="12">common fields</tspan></text>
+	<rect x="296.5" y="390.75" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="296.5" y="515" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 296.8652 535.5195)"><tspan x="0" y="0" font-family="'MyriadPro-Regular'" font-size="12">Linear regression compar</tspan><tspan x="126.585" y="0" font-family="'MyriadPro-Regular'" font-size="12">-</tspan><tspan x="14.394" y="14.4" font-family="'MyriadPro-Regular'" font-size="12">ing Chl from lab and </tspan><tspan x="48.905" y="28.801" font-family="'MyriadPro-Regular'" font-size="12">profile</tspan></text>
+	<rect x="296.5" y="499.5" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="513.5" y="520" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 520.7715 540.5195)"><tspan x="0" y="0" font-family="'MyriadPro-Regular'" font-size="12">Apply regression to the </tspan><tspan x="8.129" y="14.4" font-family="'MyriadPro-Regular'" font-size="12">entire day Chl water </tspan><tspan x="19.523" y="28.801" font-family="'MyriadPro-Regular'" font-size="12">quality transect</tspan></text>
+	<rect x="513.5" y="504.5" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="513.5" y="79.5" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 523.1406 100.02)"><tspan x="0" y="0" font-family="'MyriadPro-Regular'" font-size="12">Water quality monthly </tspan><tspan x="35.634" y="14.4" font-family="'MyriadPro-Regular'" font-size="12">transect</tspan></text>
+	<rect x="513.5" y="64" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<rect x="513.5" y="188.5" fill="none" width="131" height="63"/>
+	<text transform="matrix(1 0 0 1 533.2441 209.02)" font-family="'MyriadPro-Regular'" font-size="12">Select a single day</text>
+	<rect x="513.5" y="173" fill="none" stroke="#000000" stroke-miterlimit="10" width="131" height="78.5"/>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="579" y1="143" x2="579" y2="165.824"/>
+		<g>
+			<polygon points="574.014,164.365 579,173 583.986,164.365 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="362" y1="142.5" x2="362" y2="382.324"/>
+		<g>
+			<polygon points="357.014,380.865 362,389.5 366.986,380.865 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="362" y1="469.25" x2="362" y2="492.074"/>
+		<g>
+			<polygon points="357.014,490.615 362,499.25 366.986,490.615 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="579" y1="251" x2="579" y2="497.324"/>
+		<g>
+			<polygon points="574.014,495.865 579,504.5 583.986,495.865 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="188" y1="430.5" x2="289.324" y2="430.5"/>
+		<g>
+			<polygon points="287.865,435.486 296.5,430.5 287.865,425.514 			"/>
+		</g>
+	</g>
+</g>
+<g>
+	<g>
+		<line fill="none" stroke="#000000" stroke-miterlimit="10" x1="427.5" y1="543.75" x2="506.324" y2="543.75"/>
+		<g>
+			<polygon points="504.865,548.736 513.5,543.75 504.865,538.764 			"/>
+		</g>
+	</g>
+</g>
+</svg>
