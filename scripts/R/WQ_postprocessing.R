@@ -112,7 +112,7 @@ save_joined_lab_gain <- function(joined_lab_gain_file, output_location){
 chl_lab_regression <- function(joined_chl_df){
   
   # linear model for chl values
-  chl_lm <- lm(joined_chl_df$CHL2~joined_chl_df$CHL)
+  chl_lm <- lm(joined_chl_df$CHL2~joined_chl_df$CHL) # CHL2 = lab, CHL=vert gain profile
   
   return(chl_lm)
 }
