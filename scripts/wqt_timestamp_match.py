@@ -3,7 +3,7 @@ import pandas as pd
 import arcpy
 import os
 from datetime import datetime, timedelta
-import geopandas as gpd
+#import geopandas as gpd
 
 
 # load a water quality file
@@ -68,14 +68,23 @@ def TimestampFromDateTime(date, time):
 	return date_object
 
 
-def shp2gpd(shapefile):
+def wqtshp2pd(shapefile):
 	"""
-	Converts shp into a geopandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
+	Add XY coords, converts wq transect shp into a pandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
 	:param shapefile: input shapefile
 	:return: geopandas data frame
 	"""
-	df = gpd.read_file(shapefile)
+
+	# add XY points (POINT_X and POINT_Y to shapefile attribute table
+	arcpy.AddXY_management(shapefile) # CHECK - does this add xy to the original file everytime?
+
+	# convert attribute table to pandas dataframe
+	df = feature_class_to_pandas_data_frame(shapefile, ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"])
+
 	addsourcefield(df, "GPS_SOURCE", shapefile)
+
+	# cast Date field to str instead of timestamp
+	df["GPS_Date"] = df["GPS_Date"].astype(str)
 
 	# combine GPS date and GPS time fields into a single column
 	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
@@ -182,7 +191,7 @@ def gps_append_fromlist(list_gps_files):
 	for gps in list_gps_files:
 		try:
 			# shapefile for transect
-			pts = shp2gpd(gps)
+			pts = wqtshp2pd(gps)
 
 			# append to master wq
 			master_pts = master_pts.append(pts)
@@ -200,33 +209,32 @@ def df2database(data, connection, table_name):
 	return
 
 
-def geodf2shp(geodf, output_filename):
-	"""
-	Saves geopandas dataframe to shapefile
-	:param geodf: geopandas dataframe with water quality attributes
-	:param output_filename: location for output shapefile
-	:return:
-	"""
-	# change timestamp values to strings
-	geodf['Date_Time'] = geodf['Date_Time'].astype(str)
+# def geodf2shp(geodf, output_filename):
+# 	"""
+# 	Saves geopandas dataframe to shapefile
+# 	:param geodf: geopandas dataframe with water quality attributes
+# 	:param output_filename: location for output shapefile
+# 	:return:
+# 	"""
+# 	# change timestamp values to strings
+# 	geodf['Date_Time'] = geodf['Date_Time'].astype(str)
+#
+# 	# TODO ugg messy way to convert types
+# 	numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL"] # Why is DO missing?
+#
+# 	for field in numberfields:
+# 		geodf[field] = geodf[field].astype(float)
+#
+# 	#print(geodf.dtypes)
+#
+# 	geodf.to_file(output_filename, driver="ESRI Shapefile")
+# 	return
 
-	# TODO ugg messy way to convert types
-	numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL"] # Why is DO missing?
 
-	for field in numberfields:
-		geodf[field] = geodf[field].astype(float)
-
-	#print(geodf.dtypes)
-
-	geodf.to_file(output_filename, driver="ESRI Shapefile")
-	return
-
-
-def main(water_quality_csv, GPS_points, output_shapefile):
+def main(water_quality_csv, GPS_points):
 	"""
 	:param water_quality_csv:
 	:param GPS_points:
-	:param output_shapefile:
 	:return: shapefile with water quality data matched by time stamps
 	"""
 
@@ -234,7 +242,7 @@ def main(water_quality_csv, GPS_points, output_shapefile):
 	wq = wq_from_file(water_quality_csv)
 
 	# shapefile for transect
-	pts = shp2gpd(GPS_points)
+	pts = wqtshp2pd(GPS_points)
 
 	# join using time stamps w/ exact match
 	joined_data = JoinByTimeStamp(wq, pts)
@@ -242,7 +250,7 @@ def main(water_quality_csv, GPS_points, output_shapefile):
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	geodf2shp(matches, output_shapefile)
+	#geodf2shp(matches, output_shapefile)
 
 	return
 
