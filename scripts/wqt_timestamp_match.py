@@ -75,22 +75,37 @@ def wqtshp2pd(shapefile):
 	:return: geopandas data frame
 	"""
 
-	# add XY points (POINT_X and POINT_Y to shapefile attribute table
-	arcpy.AddXY_management(shapefile) # CHECK - does this add xy to the original file everytime?
+	# make a temporary copy of the shapefile to add xy data without altering original file
+	arcpy.MakeFeatureLayer_management(shapefile, "wqt_xy")
+
+
+	# check if XY coords exist
+	fields = arcpy.ListFields("wqt_xy", 'POINT_')
+
+	if len(fields) != 2:
+		# add XY points (POINT_X and POINT_Y to shapefile attribute table
+		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
+
 
 	# convert attribute table to pandas dataframe
-	df = feature_class_to_pandas_data_frame(shapefile, ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"])
+	df = feature_class_to_pandas_data_frame("wqt_xy", ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"])
 
 	addsourcefield(df, "GPS_SOURCE", shapefile)
 
+	arcpy.AddMessage(df.head())
+
 	# cast Date field to str instead of timestamp
-	df["GPS_Date"] = df["GPS_Date"].astype(str)
+	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str) # arcgis adds some artifical times
 
 	# combine GPS date and GPS time fields into a single column
 	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
 
 	# drop duplicated rows in the data frame
-	df = df.drop_duplicates(["Date_Time"], keep='first')
+	#df = df.drop_duplicates(["Date_Time"], 'first')
+
+	# delete temporary feature layer
+	arcpy.Delete_management("wqt_xy")
+
 	return df
 
 
@@ -131,7 +146,7 @@ def JoinByTimeStamp(wq_df, shp_df):
 	:param shp_df: geo dataframe from the shapefile
 	:return: geopandas dataframe with water quality data and gps coordinates
 	"""
-	joined = shp_df.merge(wq_df, how="outer", on="Date_Time")
+	joined = pd.merge(shp_df, wq_df, how="outer", on="Date_Time")
 	return joined
 
 
