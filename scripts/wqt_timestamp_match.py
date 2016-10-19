@@ -3,6 +3,7 @@ import pandas as pd
 import arcpy
 import os
 from datetime import datetime, timedelta
+import numpy as np
 #import geopandas as gpd
 
 
@@ -221,6 +222,33 @@ def df2database(data, connection, table_name):
 	# appends data to SQL database
 	# THIS is JUST PSEUDOCODE right now
 	data.to_sql(table_name, connection, flavor='sqlite', if_exists='append')
+	return
+
+
+def pd2np(pandas_dataframe):
+	"""
+	Converts a pandas dataframe into a numpy structured array with field names and NumPy dtypes.
+	:param pandas_dataframe:
+	:return: numpy array to convet to feature class
+	"""
+	x = np.array(np.rec.fromrecords(pandas_dataframe.values))
+	names = pandas_dataframe.dtypes.index.tolist()
+	x.dtype.names = tuple(names)
+	return x
+
+
+def np2feature(np_array, output_feature):
+	"""
+	uses arcpy to convert numpy array into a feature
+	:param np_array:
+	:param output_feature:
+	:return:
+	"""
+
+	arcpy.da.NumPyArrayToFeatureClass(np_array, output_feature, ("POINT_X", "POINT_Y"))
+
+	# todo set projection info?
+
 	return
 
 
