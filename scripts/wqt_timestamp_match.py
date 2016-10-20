@@ -4,6 +4,7 @@ import arcpy
 import os
 from datetime import datetime, timedelta
 import geopandas as gpd
+from waterquality import classes
 
 
 # load a water quality file
@@ -193,10 +194,22 @@ def gps_append_fromlist(list_gps_files):
 	return master_pts
 
 
-def df2database(data, connection, table_name):
-	# appends data to SQL database
-	# THIS is JUST PSEUDOCODE right now
-	data.to_sql(table_name, connection, flavor='sqlite', if_exists='append')
+def wq_df2database(data):
+
+	# TODO: Need to pass in a field map and make a default - allows variations on the data table to be handled
+
+	classes.connect_db(classes.db_location)
+	session = classes.db_session(classes.db_engine)
+
+	for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
+		wq = classes.WaterQuality()  # instantiates a new object
+		for key in vars(row).keys():  # converts named_tuple to a Dict-like and gets the keys
+			if key == "Index":  # skips the Index key
+				continue
+			setattr(wq, key, getattr(row, key))  # for each value, it sets the object's value to match
+		session.add(wq)  # and adds the object for creation in the DB
+
+	session.commit()  # saves all new objects
 	return
 
 

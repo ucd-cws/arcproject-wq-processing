@@ -1,1 +1,1 @@
-C:\Users\dsx.AD3\VirtualEnv2.7\arcproject\Scripts\activate
+C:\Users\dsx.AD3\arcprojectv2\Scripts\activate
