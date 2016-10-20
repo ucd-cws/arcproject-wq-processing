@@ -15,16 +15,17 @@ Base = declarative_base()
 Session = None
 
 
-def connect_db(database=db_location):
+def _connect_db(database=db_location):
 	"""
 		Just a helper function that sets up the database engine
 	:return:
 	"""
 	global db_engine
-	db_engine = sqlalchemy.create_engine('sqlite:///{}'.format(database))
+	if not db_engine:
+		db_engine = sqlalchemy.create_engine('sqlite:///{}'.format(database))
 
 
-def db_session(engine=db_engine):
+def _db_session(engine=db_engine):
 	"""
 		provides a Session to the database - can be run for each thing that needs a new session.
 	:param engine:
@@ -37,6 +38,12 @@ def db_session(engine=db_engine):
 		Session.configure(bind=engine)
 
 	return Session()
+
+
+def get_new_session():
+	_connect_db(database=db_location)
+	return _db_session(engine=db_engine)
+
 
 water_quality_header_map = {
 	"Temp": "temp",

@@ -194,13 +194,13 @@ def gps_append_fromlist(list_gps_files):
 	return master_pts
 
 
-def wq_df2database(data):
+def wq_df2database(data, field_map):
 
 	# TODO: Need to pass in a field map and make a default - allows variations on the data table to be handled
 	# TODO: Handle case of attribute that trying to set not existing on the object
-	
-	classes.connect_db(classes.db_location)
-	session = classes.db_session(classes.db_engine)
+	# TODO: needs to retrieve the site object from the database, or get one passed in.
+
+	session = classes.get_new_session()
 
 	for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
 		wq = classes.WaterQuality()  # instantiates a new object
