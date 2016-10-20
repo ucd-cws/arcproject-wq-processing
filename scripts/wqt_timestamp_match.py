@@ -4,7 +4,6 @@ import arcpy
 import os
 from datetime import datetime, timedelta
 import numpy as np
-#import geopandas as gpd
 
 
 # load a water quality file
@@ -79,7 +78,6 @@ def wqtshp2pd(shapefile):
 	# make a temporary copy of the shapefile to add xy data without altering original file
 	arcpy.MakeFeatureLayer_management(shapefile, "wqt_xy")
 
-
 	# check if XY coords exist
 	fields = arcpy.ListFields("wqt_xy", 'POINT_')
 
@@ -87,13 +85,10 @@ def wqtshp2pd(shapefile):
 		# add XY points (POINT_X and POINT_Y to shapefile attribute table
 		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
 
-
 	# convert attribute table to pandas dataframe
 	df = feature_class_to_pandas_data_frame("wqt_xy", ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"])
 
 	addsourcefield(df, "GPS_SOURCE", shapefile)
-
-	arcpy.AddMessage(df.head())
 
 	# cast Date field to str instead of timestamp
 	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str) # arcgis adds some artifical times
@@ -225,75 +220,68 @@ def df2database(data, connection, table_name):
 	return
 
 
-def pd2np(pandas_dataframe):
+# TODO: account for different fields (ie create this automatically)
+field_type_dict = {'GPS_Time': 'S10', 'Date_Time': '<M8[us]', 'PAR': '<f', 'Temp': '<f', 'Sal': '<f', 'DEP25': '<f', 'CHL': '<f', 'TurbSC': '<f', 'RPAR': '<f', 'SpCond': '<f', 'POINT_X': '<f8', 'POINT_Y': '<f8', 'GPS_Date': 'S10', 'pH': '<f', 'WQ_SOURCE': 'S21', 'GPS_SOURCE': 'S18', 'CHL_VOLTS': '<f'}
+
+
+def pd2np(pandas_dataframe, field_dtypes):
 	"""
 	Converts a pandas dataframe into a numpy structured array with field names and NumPy dtypes.
 	:param pandas_dataframe:
+	:param field_dtypes: python dictoniary with field name and desired numpy data type to cast
 	:return: numpy array to convet to feature class
 	"""
 	x = np.array(np.rec.fromrecords(pandas_dataframe.values))
 	names = pandas_dataframe.dtypes.index.tolist()
 	x.dtype.names = tuple(names)
+
+	# casts fields to new dtype (wq variables to float, date_time field to esri supported format
+	x = x.astype(field_dtypes.items()) # arcpy np to fc only supports specific datatypes (date '<M8[us]'
+
 	return x
 
 
-def np2feature(np_array, output_feature):
+def np2feature(np_array, output_feature, spatial_ref):
 	"""
-	uses arcpy to convert numpy array into a feature
-	:param np_array:
-	:param output_feature:
+	uses arcpy to convert numpy structured array into a feature class
+	:param np_array: structured numpy array with XY fields to convert
+	:param output_feature: location to save the output feature
+	:param spatial_ref: defined spatial reference for the output feature class
 	:return:
 	"""
-
-	arcpy.da.NumPyArrayToFeatureClass(np_array, output_feature, ("POINT_X", "POINT_Y"))
-
-	# todo set projection info?
-
+	# set projection info using spatial_ref = arcpy.Describe(input).spatialReference
+	arcpy.da.NumPyArrayToFeatureClass(np_array, output_feature, ("POINT_X", "POINT_Y"), spatial_ref)
 	return
 
 
-# def geodf2shp(geodf, output_filename):
-# 	"""
-# 	Saves geopandas dataframe to shapefile
-# 	:param geodf: geopandas dataframe with water quality attributes
-# 	:param output_filename: location for output shapefile
-# 	:return:
-# 	"""
-# 	# change timestamp values to strings
-# 	geodf['Date_Time'] = geodf['Date_Time'].astype(str)
-#
-# 	# TODO ugg messy way to convert types
-# 	numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL"] # Why is DO missing?
-#
-# 	for field in numberfields:
-# 		geodf[field] = geodf[field].astype(float)
-#
-# 	#print(geodf.dtypes)
-#
-# 	geodf.to_file(output_filename, driver="ESRI Shapefile")
-# 	return
-
-
-def main(water_quality_csv, GPS_points):
+def main(water_quality_files, transect_gps, output_feature):
 	"""
-	:param water_quality_csv:
-	:param GPS_points:
+	:param water_quality_files: list of water quality files collected during the transects
+	:param transect_gps: gps shapefile of transect tract
+	:param output_feature: location to save the water quality shapefile
 	:return: shapefile with water quality data matched by time stamps
 	"""
 
 	# water quality
-	wq = wq_from_file(water_quality_csv)
+	wq = wq_append_fromlist(water_quality_files)
 
 	# shapefile for transect
-	pts = wqtshp2pd(GPS_points)
+	pts = wqtshp2pd(transect_gps)
 
-	# join using time stamps w/ exact match
+	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)
 	matches = splitunmatched(joined_data)[0]
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	#geodf2shp(matches, output_shapefile)
+	# Define a spatial reference for the output feature class by copying the input
+	spatial_ref = arcpy.Describe(transect_gps).spatialReference
+
+	# convert pandas dataframe to structured numpy array
+	match_np = pd2np(matches, field_dtypes=field_type_dict)
+
+	# convert structured array to output feature class
+	np2feature(match_np, output_feature, spatial_ref)
 
 	return
 

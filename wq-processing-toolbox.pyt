@@ -88,7 +88,7 @@ class checkmatch(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Percent Match - Water Quality data with Transect"
-		self.description = ""
+		self.description = "Reports the percent match for multiple water quality dataset with transect shapefile"
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -153,8 +153,8 @@ class checkmatch(object):
 class wqt2shp(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Matches Water Quality data with Transect using timestamps"
-		self.description = ""
+		self.label = "Join WQT to SHP"
+		self.description = "Matches Water Quality data with Transect using timestamps"
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -204,21 +204,14 @@ class wqt2shp(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
+
+		# get the parameters
 		param1 = parameters[0].valueAsText
-		wq_transect_list = param1.split(";")
-
-		pts = str(parameters[1].valueAsText)
-		shp_df = wqt_timestamp_match.wqtshp2pd(pts)
-
+		wq_transect_list = param1.split(";") # the multi input needs to be split
+		gps_pts = str(parameters[1].valueAsText)
 		output_feature = parameters[2].valueAsText
 
-		wq_df = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
-		ts_join = wqt_timestamp_match.JoinByTimeStamp(wq_df, shp_df)
-		ts_results = wqt_timestamp_match.splitunmatched(ts_join)
-		matched_results = ts_results[0]
-
-		match_np = wqt_timestamp_match.pd2np(matched_results)
-
-		arcpy.da.NumPyArrayToFeatureClass(match_np, output_feature, ("POINT_X", "POINT_Y"))
+		# see wqt_timestamp_match for functions
+		wqt_timestamp_match.main(wq_transect_list, gps_pts, output_feature)
 
 		return
