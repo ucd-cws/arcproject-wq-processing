@@ -3,12 +3,9 @@ import pandas as pd
 import arcpy
 import os
 from datetime import datetime, timedelta
-<<<<<<< HEAD
-import geopandas as gpd
+
 from waterquality import classes
-=======
 import numpy as np
->>>>>>> master
 
 
 # load a water quality file
