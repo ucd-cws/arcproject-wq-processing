@@ -197,7 +197,8 @@ def gps_append_fromlist(list_gps_files):
 def wq_df2database(data):
 
 	# TODO: Need to pass in a field map and make a default - allows variations on the data table to be handled
-
+	# TODO: Handle case of attribute that trying to set not existing on the object
+	
 	classes.connect_db(classes.db_location)
 	session = classes.db_session(classes.db_engine)
 
