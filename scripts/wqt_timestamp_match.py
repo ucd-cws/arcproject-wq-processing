@@ -88,12 +88,13 @@ def wqtshp2pd(shapefile):
 		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
 
 	# convert attribute table to pandas dataframe
-	df = feature_class_to_pandas_data_frame("wqt_xy", ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"])
+	df = feature_class_to_pandas_data_frame("wqt_xy", ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"]) # TODO "*" returns all fields
+
 
 	addsourcefield(df, "GPS_SOURCE", shapefile)
 
 	# cast Date field to str instead of timestamp
-	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str) # arcgis adds some artifical times
+	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
 
 	# combine GPS date and GPS time fields into a single column
 	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)

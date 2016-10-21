@@ -73,7 +73,7 @@ def main(gain_file, site_id, gain_setting):
 	# get start and end sampling datetimes from the original gain dataframe
 	start_time = gain_df["Date_Time"][1]  # first row of the data frame
 	length = len(gain_df.index)  # total length of the data frame
-	end_time = gain_df["Date_Time"][length] # use length of df because df[-1] doesn't work
+	end_time = gain_df["Date_Time"][length]  # use length of df because df[-1] doesn't work
 	avg_1m['Start_Time'] = start_time  # add start time to the avg df
 	avg_1m['End_Time'] = end_time  # add end time to the avg df
 
