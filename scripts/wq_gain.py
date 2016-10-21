@@ -2,7 +2,6 @@ import os
 import wqt_timestamp_match as wqt
 
 
-
 def convert_wq_dtypes(df): # TODO check to see if the wq_from_file function can do this
 	"""
 	Converts all the strings in dataframe into numeric (pd.to_numeric introduced in 0.17 so can't use that)
@@ -80,12 +79,3 @@ def main(gain_file, site_id, gain_setting):
 	avg_1m['Gain'] = gain_setting
 
 	return avg_1m
-
-# set wd to Arcproject-wq-processing folder
-wd = os.path.abspath(os.path.join(os.path.dirname(os.path.dirname("__file__"))))
-
-# example gain file
-wq_file = os.path.join(wd, "tests", "testfiles", "Arc_040413\\Arc_040413_WQ\\Arc_040413_wqp_cc1.csv")
-
-ex = main(wq_file, "CC", "G1")
-print(ex.head())
