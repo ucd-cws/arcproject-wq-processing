@@ -70,9 +70,12 @@ def main(gain_file, site_id, gain_setting):
 	# average the water quality variables that are in the top meter of the water column
 	avg_1m = avg_vert_profile(dep_1m)
 
-	# get date from the first row of the dataframe
-	date = gain_df["Date_Time"][1]
-	avg_1m['Date_Time'] = date # add the date to the result df
+	# get start and end sampling datetimes from the original gain dataframe
+	start_time = gain_df["Date_Time"][1]  # first row of the data frame
+	length = len(gain_df.index)  # total length of the data frame
+	end_time = gain_df["Date_Time"][length] # use length of df because df[-1] doesn't work
+	avg_1m['Start_Time'] = start_time  # add start time to the avg df
+	avg_1m['End_Time'] = end_time  # add end time to the avg df
 
 	# add site, gain setting information
 	avg_1m['Site'] = site_id
