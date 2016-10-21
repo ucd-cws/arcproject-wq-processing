@@ -50,13 +50,14 @@ water_quality_header_map = {
 	"pH": "ph",
 	"SpCond": "sp_cond",
 	"Sal": "salinity",
-	"DO%": "dissolved_oxygen_percent",
+	"DO_PCT": "dissolved_oxygen_percent",
 	"DO": "dissolved_oxygen",
 	"DEP25": "dep_25",
 	"PAR": "par",
 	"RPAR": "rpar",
 	"TurbSC": "turbidity_sc",
 	"CHL": "chl",
+	"CHL_VOLTS": "chl_volts"
 	# TODO: Missing other CHL
 }
 
@@ -79,10 +80,20 @@ class Site(Base):
 
 	id = Column(Integer, primary_key=True)
 	name = Column(String)
+	code = Column(String)
 
 	# vertical_profiles = relationship("VerticalProfile", backref="site")
 	# water_quality_records = relationship("WaterQuality", backref="site")
 
+
+class ProfileSite(Base):
+	__tablename__ = "profile_sites"
+
+	id = Column(Integer, primary_key=True)
+
+	site_id = Column(Integer, ForeignKey("sites.id"))
+	site = relationship(Site,
+						backref="profile_sites")
 
 class VerticalProfile(Base):
 	__tablename__ = "vertical_profiles"
@@ -90,10 +101,10 @@ class VerticalProfile(Base):
 	id = Column(Integer, primary_key=True)
 	date = Column(Date)
 	measured_chl = Column(Float)  # average by site/date for 1m
+	# gain_setting  # TODO: do we need to save the actual samples, or just the single averaged value stored here?
 
-	site_id = Column(Integer, ForeignKey("sites.id"))
-	site = relationship(Site,
-						primaryjoin=(site_id == Site.id),
+	profile_site_id = Column(Integer, ForeignKey("profile_sites.id"))
+	profile_site = relationship(ProfileSite,
 						backref="vertical_profiles")
 
 
@@ -108,12 +119,10 @@ class WaterQuality(Base):
 	# might need to move this to the "file" level - check data tables
 	site_id = Column(Integer, ForeignKey('sites.id'))
 	site = relationship("Site",
-						primaryjoin=(site_id == Site.id),
 						backref="water_quality_records")
 
 	water_quality_file_id = Column(Integer, ForeignKey('water_quality_files.id'))
 	file = relationship(WaterQualityFile,
-						primaryjoin=(water_quality_file_id == WaterQualityFile.id),
 						backref="water_quality_records")
 
 	#date and time
@@ -132,4 +141,5 @@ class WaterQuality(Base):
 	chl = Column(Float)  # raw measurement by sonde
 	chl_volts = Column(Float)
 
-	chl_corrected = Column(Float)  # this is the value that's corrected after running the regression.z
+	chl_corrected = Column(Float)  # this is the value that's corrected after running the regression.
+	corrected_gain = Column(Float)  # storing this here in case we need it instead of joining back

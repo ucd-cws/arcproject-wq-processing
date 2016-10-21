@@ -1,11 +1,15 @@
 # match shp and water quality data by timestamp
 import pandas as pd
-import arcpy
 import os
 from datetime import datetime, timedelta
+import logging
+
+import arcpy
 
 from waterquality import classes
 import numpy as np
+
+source_field = "WQ_SOURCE"
 
 
 # load a water quality file
@@ -27,7 +31,7 @@ def wq_from_file(water_quality_raw_data):
 	wq = replaceIllegalFieldnames(wq)
 
 	# add column with source
-	addsourcefield(wq, "WQ_SOURCE", water_quality_raw_data)
+	addsourcefield(wq, source_field, water_quality_raw_data)
 
 	# change Date_Time to be ISO8603 (ie no slashes in date)
 	try:
@@ -113,7 +117,7 @@ def replaceIllegalFieldnames(df):
 	:param df: dataframe with bad fieldnames
 	:return: dataframe with replaced fieldnames
 	"""
-	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'}) # TODO make this catch other potential errors
+	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'})  # TODO make this catch other potential errors
 	return df
 
 
@@ -157,9 +161,9 @@ def splitunmatched(joined_data):
 	# returns all joined data that has a match (ie inner join),
 	# the unmatched transect points (outer left) and unmatched water quality (outer right) points as separate dataframes
 
-	match = joined_data.dropna(subset=["GPS_SOURCE", "WQ_SOURCE"], how='any')
+	match = joined_data.dropna(subset=["GPS_SOURCE", source_field], how='any')
 	no_geo = joined_data[joined_data["GPS_SOURCE"].isnull()]
-	no_wq = joined_data[joined_data["WQ_SOURCE"].isnull()]
+	no_wq = joined_data[joined_data[source_field].isnull()]
 
 	return match, no_geo, no_wq
 
@@ -215,21 +219,67 @@ def gps_append_fromlist(list_gps_files):
 	return master_pts
 
 
-def wq_df2database(data, field_map):
+def site_function_historic(*args, **kwargs):
+	"""
+	Site functions are passed to wq_df2database so that it can determine which site a record is from. Historic data
+	will use this function since it will parse if off the data frame as constructed in this code (which includes
+	a field for the filename, which has the site code). Future data will have another method and use a different site
+	function that will be passed to wq_df2database
 
-	# TODO: Need to pass in a field map and make a default - allows variations on the data table to be handled
-	# TODO: Handle case of attribute that trying to set not existing on the object
-	# TODO: needs to retrieve the site object from the database, or get one passed in.
+	:param args:
+	:param kwargs:
+	:return: site object
+	"""
+
+	record = kwargs["record"]  # unpacking this way because I want it to be able to accept the kinds of args another function might receive too, since the caller will pass a bunch
+	session = kwargs["session"]  # database session from caller
+
+	filename = getattr(record, source_field)  # get the value of the data source field (source_field defined globally)
+	site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+
+	q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
+	if q is None:
+		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.Index, site_code))
+
+	return q  # return the session object
+
+
+def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic):
+	"""
+	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
+
+	:param data: a pandas data frame of water quality records
+	:param field_map: a field map (dictionary) that translates keys in the data frame (as the dict keys) to the keys used
+		in the ORM - uses a default, but when the schema of the data files is different, a new field map will be necessary
+	:param site_function: the object of a function that, given a record from the data frame and a session, returns the
+		site object from the database that should be associated with the record
+	:return:
+	"""
 
 	session = classes.get_new_session()
 
+	# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
 	for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
 		wq = classes.WaterQuality()  # instantiates a new object
 		for key in vars(row).keys():  # converts named_tuple to a Dict-like and gets the keys
-			if key == "Index":  # skips the Index key
+			if key == "Index":  # skips the Index key - could be removed and left to the field map lookup, but it doesn't need to throw a warning, so leaving it. Printing to screen is more expensive.
 				continue
-			setattr(wq, key, getattr(row, key))  # for each value, it sets the object's value to match
-		session.add(wq)  # and adds the object for creation in the DB
+
+			# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
+			try:
+				class_field = field_map[key]
+			except KeyError:
+				logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
+				continue
+
+			try:
+				wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
+			except ValueError:
+				break  # breaks out of this loop, which forces a skip of adding this object
+
+			setattr(wq, class_field, getattr(row, class_field))  # for each value, it sets the object's value to match
+		else:  # if we don't break for a bad site code or something else, then add the object
+			session.add(wq)  # and adds the object for creation in the DB
 
 	session.commit()  # saves all new objects
 	return
@@ -288,6 +338,9 @@ def main(water_quality_files, transect_gps, output_feature):
 	matches = splitunmatched(joined_data)[0]
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
+
+
+	# wq_df2database(matches,)
 
 	# Define a spatial reference for the output feature class by copying the input
 	spatial_ref = arcpy.Describe(transect_gps).spatialReference
