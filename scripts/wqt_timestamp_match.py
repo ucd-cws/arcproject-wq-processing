@@ -30,7 +30,7 @@ def wq_from_file(water_quality_raw_data):
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
 
-	# add column with source
+	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)
 
 	# change Date_Time to be ISO8603 (ie no slashes in date)
