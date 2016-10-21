@@ -11,40 +11,42 @@ from sqlalchemy.orm import relationship
 
 db_name = "wqdb.sqlite"
 db_location = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), db_name)
-db_engine = None
-
 Base = declarative_base()
-Session = None
 
+class db_abstract(object):
 
-def _connect_db(database=db_location):
-	"""
-		Just a helper function that sets up the database engine
-	:return:
-	"""
-	global db_engine
-	if not db_engine:
+	def connect_db(self, database=db_location):
+		"""
+			Just a helper function that sets up the database engine
+		:return:
+		"""
 		db_engine = sqlalchemy.create_engine('sqlite:///{}'.format(database))
+		return db_engine
 
+	def db_session(self, engine):
+		"""
+			provides a Session to the database - can be run for each thing that needs a new session.
+		:param engine:
+		:return:
+		"""
 
-def _db_session(engine=db_engine):
-	"""
-		provides a Session to the database - can be run for each thing that needs a new session.
-	:param engine:
-	:return:
-	"""
-	global Session
-
-	if not Session:
 		Session = orm.sessionmaker(bind=engine)
 		Session.configure(bind=engine)
 
-	return Session()
+		return Session
 
+# this structure is still a bit weird for SQLAlchemy, but much closer to how it should be and avoids the use of a global call.
+db_abstract_container = db_abstract()
+db_engine = db_abstract_container.connect_db(db_location)
+Session = db_abstract_container.db_session(db_engine)
 
 def get_new_session():
-	_connect_db(database=db_location)
-	return _db_session(engine=db_engine)
+	"""
+		A simple function that provides a new session object from the Session factory. Made a function because it used
+		to have more code involved
+	:return:
+	"""
+	return Session()
 
 
 water_quality_header_map = {

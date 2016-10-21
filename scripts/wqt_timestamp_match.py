@@ -339,8 +339,7 @@ def main(water_quality_files, transect_gps, output_feature):
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-
-	# wq_df2database(matches,)
+	wq_df2database(matches)
 
 	# Define a spatial reference for the output feature class by copying the input
 	spatial_ref = arcpy.Describe(transect_gps).spatialReference
