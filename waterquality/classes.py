@@ -127,6 +127,33 @@ class Station(Base):
 	code = Column(String)  # the station code
 
 
+sample_field_map = {
+	"Date": "date",
+	"ID": "internal_id",
+	"SiteID": "site_id",
+	"LabNum": "lab_num",
+	"EC": "ec",
+	"pH": "ph",
+	"Turbidity": "turbidity",
+	"TP": "tp",
+	"TDP": "tdp",
+	"PO4P": "po4p",
+	"TN": "tn",
+	"TDN": "tdn",
+	"NH4N": "nh4n",
+	"NO3N": "no3n",
+	"DOC": "doc",
+	"TNTP": "tntp",
+	"ChlorophyllA": "chlorophyll_a",
+	"PheophytinA": "pheophytin_a",
+	"PreHCl": "pre_hcl",
+	"TSS": "tss",
+	"VSS": "vss",
+	"NOTES": "notes",
+	"SOURCE": "source",
+}
+
+
 class GrabSample(Base):
 	__tablename__ = 'grab_samples'
 
@@ -159,7 +186,7 @@ class GrabSample(Base):
 	vss = Column(Float)
 	notes = Column(String)
 	source = Column(Float)
-	
+
 
 class WaterQuality(Base):
 	"""
