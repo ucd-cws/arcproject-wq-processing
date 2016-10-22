@@ -67,9 +67,9 @@ water_quality_header_map = {
 
 # commented out the following class because I'm not sure it's providing anything of use
 #class WaterQualityFile(Base):
-	"""
-		This class gives us a framework to hang observations on so they can all be traced back to the same origin
-	"""
+#	"""
+#		This class gives us a framework to hang observations on so they can all be traced back to the same origin
+#	"""
 #	__tablename__ = 'water_quality_files'
 
 #	id= Column(Integer, primary_key=True)
