@@ -10,7 +10,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [checkmatch, wqt2shp]
+		self.tools = [checkmatch, wqt2shp, gain2shp]
 
 
 class JoinTimestamp(object):
@@ -213,5 +213,92 @@ class wqt2shp(object):
 
 		# see wqt_timestamp_match for functions
 		wqt_timestamp_match.main(wq_transect_list, gps_pts, output_feature)
+
+		return
+
+class gain2shp(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Join Gain profile average to SHP"
+		self.description = "Matches vertical Water Quality data with Transect using site names"
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+		wqp = arcpy.Parameter(
+			displayName="Vertical Profile file (wqp)",
+			name="wqp_files",
+			datatype="GPValueTable",
+			parameterType='Required',
+			multiValue=True,
+			direction="Input"
+		)
+
+		wqp.columns = [['DEFile', 'WQP'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
+		wqp.filters[1].type = 'ValueList'
+		wqp.filters[1].list = ['BK1', 'CA1', 'CA3', 'CC1', 'LNCA', 'UL1']
+		wqp.filters[2].type = 'ValueList'
+		wqp.filters[2].list = ['g0', 'g1', 'g10', 'g100']
+
+
+		# shapefile for the stationary GPS points
+		bc = arcpy.Parameter(
+			displayName="WQP/Zoop/Chl Shapefile",
+			name="shp_file",
+			datatype="DEShapefile",
+			direction="Input"
+		)
+
+		out = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="out_file",
+			datatype="DEShapefile",
+			direction="Output"
+		)
+
+		params = [wqp, bc, out]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		arcpy.AddMessage(parameters[0])
+		# get the parameters
+		param = parameters[0].valueAsText
+		file_params = param.split(";") # the multi input needs to be split
+		wqp = []
+		for f in file_params:
+			arcpy.AddMessage(f)
+			# MAKE SURE FILE does not have spaces!!!!
+			row = f.split(" ") # split using single space
+			arcpy.AddMessage(row)
+			wqp.append(row)
+
+		arcpy.AddMessage(wqp)
+
+
+
+		# gps_pts = str(parameters[1].valueAsText)
+		# output_feature = parameters[2].valueAsText
+		#
+		# # see wqt_timestamp_match for functions
+		# wqt_timestamp_match.main(wq_transect_list, gps_pts, output_feature)
+		pass
 
 		return
