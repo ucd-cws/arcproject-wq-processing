@@ -2,6 +2,7 @@ import arcpy
 import os
 import pandas
 from scripts import wqt_timestamp_match
+from scripts import wq_gain
 
 class Toolbox(object):
 	def __init__(self):
@@ -278,27 +279,34 @@ class gain2shp(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		arcpy.AddMessage(parameters[0])
 		# get the parameters
 		param = parameters[0].valueAsText
 		file_params = param.split(";") # the multi input needs to be split
-		wqp = []
+		wqps = []
 		for f in file_params:
-			arcpy.AddMessage(f)
 			# MAKE SURE FILE does not have spaces!!!!
 			row = f.split(" ") # split using single space
-			arcpy.AddMessage(row)
-			wqp.append(row)
+			wqps.append(row)
 
-		arcpy.AddMessage(wqp)
-
+		arcpy.AddMessage(wqps)
 
 
-		# gps_pts = str(parameters[1].valueAsText)
-		# output_feature = parameters[2].valueAsText
-		#
-		# # see wqt_timestamp_match for functions
-		# wqt_timestamp_match.main(wq_transect_list, gps_pts, output_feature)
-		pass
+
+		gps_pts = str(parameters[1].valueAsText)
+		output_feature = parameters[2].valueAsText
+
+		master_wq_df = pandas.DataFrame()
+
+		for wq in wqps:
+			wq_gain_file = wq[0]
+			site_id = wq[1]
+			gain_setting = wq[2]
+
+			join_df = wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
+
+			# append to master wq
+			master_wq_df = master_wq_df.append(join_df)
+
+		arcpy.AddMessage(master_wq_df.head())
 
 		return
