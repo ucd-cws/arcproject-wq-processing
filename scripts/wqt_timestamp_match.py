@@ -87,9 +87,14 @@ def wqtshp2pd(shapefile):
 		# add XY points (POINT_X and POINT_Y to shapefile attribute table
 		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
 
-	# convert attribute table to pandas dataframe
-	df = feature_class_to_pandas_data_frame("wqt_xy", ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"]) # TODO "*" returns all fields
+	# list of field names that can be converted to pandas df
+	# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
+	# Data must be 1-dimensional
+	f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
+	          f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
 
+	# convert attribute table to pandas dataframe
+	df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
 
 	addsourcefield(df, "GPS_SOURCE", shapefile)
 
