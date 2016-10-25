@@ -83,36 +83,37 @@ def wqtshp2pd(shapefile):
 
 	# make a temporary copy of the shapefile to add xy data without altering original file
 	arcpy.MakeFeatureLayer_management(shapefile, "wqt_xy")
+	try:
+		# check if XY coords exist
+		fields = arcpy.ListFields("wqt_xy", 'POINT_')
 
-	# check if XY coords exist
-	fields = arcpy.ListFields("wqt_xy", 'POINT_')
+		if len(fields) != 2:
+			# add XY points (POINT_X and POINT_Y to shapefile attribute table
+			arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
 
-	if len(fields) != 2:
-		# add XY points (POINT_X and POINT_Y to shapefile attribute table
-		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
+		# list of field names that can be converted to pandas df
+		# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
+		# Data must be 1-dimensional
+		f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
+				  f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
 
-	# list of field names that can be converted to pandas df
-	# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
-	# Data must be 1-dimensional
-	f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
-	          f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
+		# convert attribute table to pandas dataframe
+		df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
 
-	# convert attribute table to pandas dataframe
-	df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
+		addsourcefield(df, "GPS_SOURCE", shapefile)
 
-	addsourcefield(df, "GPS_SOURCE", shapefile)
+		# cast Date field to str instead of timestamp
+		df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
 
-	# cast Date field to str instead of timestamp
-	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
+		# combine GPS date and GPS time fields into a single column
+		df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
 
-	# combine GPS date and GPS time fields into a single column
-	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
+		# drop duplicated rows in the data frame
+		#df = df.drop_duplicates(["Date_Time"], 'first')
 
-	# drop duplicated rows in the data frame
-	#df = df.drop_duplicates(["Date_Time"], 'first')
-
-	# delete temporary feature layer
-	arcpy.Delete_management("wqt_xy")
+		# delete temporary feature layer
+	finally:  # regardless, if there's an exception, delete the feature layer so other tests can complete
+		arcpy.Delete_management("wqt_xy")
 
 	return df
 
