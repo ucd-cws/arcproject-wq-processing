@@ -1,15 +1,25 @@
 import os
 import unittest
 from datetime import datetime
-from scripts import wqt_timestamp_match
 import pandas
 
+from .. import wqt_timestamp_match
+from waterquality import classes
+
+
+class TestDBInsert(unittest.TestCase):
+
+	def setUp(self):
+		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+
+	def test_data_insert(self):
+		pass
+	
 
 class LoadWQ(unittest.TestCase):
 
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
-		pass
 
 	def test_data_headers(self):
 		headers = wqt_timestamp_match.wq_from_file(self.data).columns.values
@@ -64,10 +74,14 @@ class CheckDates(unittest.TestCase):
 		self.assertEqual(self.plus1hr, datetime.strptime('2013-04-04 09:18:47', '%Y-%m-%d %H:%M:%S'))
 		self.assertEqual(self.minus1hr, datetime.strptime('2013-04-04 07:18:47', '%Y-%m-%d %H:%M:%S'))
 
+
 class CheckJoin(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.gps = os.path.join("testfiles", "Arc_040413_GPS", "040413_PosnPnt.shp")
+
+	def test_join(self):
 		pass
 
 
