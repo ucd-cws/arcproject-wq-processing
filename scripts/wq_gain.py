@@ -96,42 +96,22 @@ def gain_gps_join_closest_timestamp(gain_avg_df, gps_timediff):
 	gps_closest_row = gps_closest_row.reset_index(drop=True)
 	gain_avg_df = gain_avg_df.reset_index(drop=True)
 
-	join = pd.concat([gps_closest_row, gain_avg_df], axis=1, join='inner')
+
+	join = pd.concat([gps_closest_row, gain_avg_df], axis=1, join='inner', verify_integrity=True)
 
 	# there might be duplicate columns
 
 	return join
 
 
-def gain_join_logic(gain_avg_df, shp_df):
-	"""
-	Trys to find a match using the site name, then finds the timestamp with the closest match
-	:param gain_avg_df: mean water quality values for vertical profile
-	:param shp_df: dataframe from a shapefile of multiple Chl/Zoop sampling sites
-	:return:
-	"""
-	# some logic about how to join the data files together
-
-	# first try to join using the site names
-	gain_w_xy = gain_join_gps_by_site(gain_avg_df, shp_df)
-
-	if len(gain_w_xy) != 1:
-		print("Matching by site name did not find a match. Joining using the closest timestamp.")
-		time_diff = gain_gps_timediff(gain_avg_df, shp_df)
-		best_match = gain_gps_join_closest_timestamp(gain_avg_df, time_diff)
-		gain_w_xy = best_match
-
-	return gain_w_xy
-
-
-def main(gain_file, site_id, gain_setting, sample_sites_shp):
+def main(gain_file, sample_sites_shp, site=None, gain=None):
 	"""
 	Takes a water quality vertical profile at a specific site, date, and gain setting and returns the average values
 	for the top 1m of the water column
 	:param gain_file: vertical gain profile
-	:param site_id: a unique identifier for the site (two/four letter character string)
-	:param gain_setting: the gain setting used when recording the water quality data ("g0", "g1", "g10", "g100")
 	:param sample_sites_shp: shapefile of the sampling sites
+	:param site: a unique identifier for the site (two/four letter character string)
+	:param gain: the gain setting used when recording the water quality data ("g0", "g1", "g10", "g100")
 	:return: pandas dataframe with a single row containing the sample date, site id, gain setting as well as the average
 	value for the water quality variables using the top 1m of the vertical profile.
 	"""
@@ -155,17 +135,30 @@ def main(gain_file, site_id, gain_setting, sample_sites_shp):
 	avg_1m['Start_Time'] = start_time  # add start time to the avg df
 	avg_1m['End_Time'] = end_time  # add end time to the avg df
 
-	# add site, gain setting information
-	avg_1m['Site'] = site_id
-	avg_1m['Gain'] = gain_setting
-
 	# add source of wqp file (get's lost when the file gets averaged)
 	wqt.addsourcefield(avg_1m, "WQ_SOURCE", gain_file)
 
 	# convert shapefile into pandas dataframe using function from wqt_timestamp_match
 	sites_shp_df = wqt.wqtshp2pd(sample_sites_shp)
 
-	# join avg_1m with the appropriate attributes from the shp of Zoop/Chl sample points
-	joined = gain_join_logic(avg_1m, sites_shp_df)
+	# add gain setting information if it exists
+	if gain is not None:
+		avg_1m['Gain'] = gain
 
-	return joined
+	# join using site name if it is provided
+	if site is not None:
+		# add site information if it exists
+		avg_1m['Site'] = site
+		# first try to join using the site names
+		gain_w_xy = gain_join_gps_by_site(avg_1m, sites_shp_df)
+
+	# join using closest timestamp if site name is not provided
+	elif site is None:
+		print("Joining using the closest timestamp.")
+		# can't have two columns name "site" so drop from avg_1m
+		time_diff = gain_gps_timediff(avg_1m, sites_shp_df)
+		best_match = gain_gps_join_closest_timestamp(avg_1m, time_diff)
+		gain_w_xy = best_match
+
+	return gain_w_xy
+
