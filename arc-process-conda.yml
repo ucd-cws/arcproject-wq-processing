@@ -1,87 +1,59 @@
-name: arc104
+name: esri104
 dependencies:
 - backports=1.0=py27_0
 - backports_abc=0.4=py27_0
-- cligj=0.4.0=py27_0
 - colorama=0.3.7=py27_0
-- conda-forge::click=6.6=py27_1
-- conda-forge::click-plugins=1.0.3=py27_0
-- conda-forge::curl=7.49.1=vc9_1
-- conda-forge::cycler=0.10.0=py27_0
-- conda-forge::descartes=1.0.2=py27_0
-- conda-forge::fiona=1.7.0=np111py27_0
-- conda-forge::freetype=2.6.3=vc9_1
-- conda-forge::functools32=3.2.3.2=py27_1
-- conda-forge::geopandas=0.2.1=py27_0
-- conda-forge::geopy=1.10.0=py27_0
-- conda-forge::kealib=1.4.6=vc9_0
-- conda-forge::libspatialindex=1.8.5=vc9_1
-- conda-forge::matplotlib=1.5.2=np111py27_5
-- conda-forge::munch=2.0.4=py27_0
-- conda-forge::pyproj=1.9.5.1=py27_0
-- conda-forge::pysal=1.11.2=py27_0
-- conda-forge::rtree=0.8.2=py27_0
-- conda-forge::shapely=1.5.16=np111py27_0
-- conda-forge::xerces-c=3.1.4=vc9_2
 - configparser=3.5.0=py27_0
 - decorator=4.0.10=py27_0
 - entrypoints=0.2.2=py27_0
-- gdal=2.1.0=py27_0
-- geos=3.5.0=vc9_0
+- enum34=1.1.6=py27_0
+- functools32=3.2.3.2=py27_0
 - get_terminal_size=1.0.0=py27_0
-- hdf4=4.2.12=vc9_0
-- hdf5=1.8.15.1=vc9_4
 - ipykernel=4.5.0=py27_0
 - ipython=5.1.0=py27_0
 - ipython-notebook=4.0.4=py27_3
 - ipython-qtconsole=4.0.1=py27_4
 - ipython_genutils=0.1.0=py27_0
 - jinja2=2.8=py27_1
-- jpeg=8d=vc9_0
+- jpeg=8d=vc9_2
 - jsonschema=2.5.1=py27_0
 - jupyter_client=4.4.0=py27_0
-- jupyter_core=4.1.1=py27_0
-- libgdal=2.1.0=vc9_0
-- libnetcdf=4.3.3.1=vc9_4
+- jupyter_core=4.2.0=py27_0
 - libpng=1.6.22=vc9_0
 - libtiff=4.0.6=vc9_2
 - markupsafe=0.23=py27_2
-- mistune=0.7.2=py27_0
-- mkl=11.3.3=1
+- matplotlib=1.4.3=np19py27_3
+- mistune=0.7.3=py27_0
 - msvc_runtime=1.0.1=vc9_0
 - nbconvert=4.2.0=py27_0
 - nbformat=4.1.0=py27_0
-- notebook=4.2.2=py27_0
-- numpy=1.11.1=py27_1
-- openssl=1.0.2h=vc9_0
-- pandas=0.18.1=np111py27_0
+- notebook=4.2.3=py27_0
+- numpy=1.9.2=py27_2
+- openssl=1.0.2j=vc9_0
+- pandas=0.16.1=np19py27_0
 - path.py=8.2.1=py27_0
 - pathlib2=2.1.0=py27_0
-- pickleshare=0.7.3=py27_0
+- pickleshare=0.7.4=py27_0
 - pip=8.1.2=py27_0
-- proj4=4.9.2=vc9_0
 - prompt_toolkit=1.0.3=py27_0
 - pygments=2.1.3=py27_0
 - pyparsing=2.1.4=py27_0
 - pyqt=4.11.4=py27_7
 - python=2.7.10=5
 - python-dateutil=2.5.3=py27_0
-- pytz=2016.6.1=py27_0
-- pyzmq=15.4.0=py27_0
+- pytz=2016.7=py27_0
+- pyzmq=16.0.0=py27_0
 - qt=4.8.7=vc9_9
 - qtconsole=4.2.1=py27_0
-- scipy=0.18.0=np111py27_0
-- setuptools=26.1.1=py27_0
+- setuptools=27.2.0=py27_1
 - simplegeneric=0.8.1=py27_1
 - singledispatch=3.4.0.3=py27_0
 - sip=4.18=py27_0
 - six=1.10.0=py27_0
-- sqlalchemy=1.0.13=py27_0
 - ssl_match_hostname=3.4.0.2=py27_1
 - tk=8.5.18=vc9_0
-- tornado=4.4.1=py27_0
-- traitlets=4.2.2=py27_0
-- vs2008_runtime=9.00.30729.1=2
+- tornado=4.4.2=py27_0
+- traitlets=4.3.1=py27_0
 - wcwidth=0.1.7=py27_0
 - wheel=0.29.0=py27_0
 - win_unicode_console=0.5=py27_0
@@ -90,24 +62,11 @@ dependencies:
   - backports-abc==0.4
   - backports.shutil-get-terminal-size==1.0.0
   - backports.ssl-match-hostname==3.4.0.2
-  - click==6.6
-  - click-plugins==1.0.3
-  - cycler==0.10.0
-  - descartes==1.0.2
-  - fiona==1.7.0.post2
-  - functools32==3.2.3.post2
-  - geopandas==0.2.1
-  - geopy==1.10.0
   - ipython-genutils==0.1.0
   - jupyter-client==4.4.0
-  - jupyter-core==4.1.1
-  - matplotlib==1.5.2
-  - munch==2.0.4
+  - jupyter-core==4.2.0
   - prompt-toolkit==1.0.3
-  - pyproj==1.9.5.1
-  - pysal==1.11.2
-  - rtree==0.8.2
-  - shapely==1.5.16
+  - sqlalchemy==1.1.2
   - win-unicode-console==0.5
-prefix: C:\Anaconda2\envs\arc104
+prefix: C:\Anaconda2\envs\esri104
 

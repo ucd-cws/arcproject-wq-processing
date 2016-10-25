@@ -91,13 +91,19 @@ def wqtshp2pd(shapefile):
 		# add XY points (POINT_X and POINT_Y to shapefile attribute table
 		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
 
+	# list of field names that can be converted to pandas df
+	# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
+	# Data must be 1-dimensional
+	f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
+	          f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
+
 	# convert attribute table to pandas dataframe
-	df = feature_class_to_pandas_data_frame("wqt_xy", ["GPS_Date", "GPS_Time", "POINT_X", "POINT_Y"])
+	df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
 
 	addsourcefield(df, "GPS_SOURCE", shapefile)
 
 	# cast Date field to str instead of timestamp
-	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str) # arcgis adds some artifical times
+	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
 
 	# combine GPS date and GPS time fields into a single column
 	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
@@ -285,23 +291,46 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 	return
 
 
-# TODO: account for different fields (ie create this automatically)
-field_type_dict = {'GPS_Time': 'S10', 'Date_Time': '<M8[us]', 'PAR': '<f', 'Temp': '<f', 'Sal': '<f', 'DEP25': '<f', 'CHL': '<f', 'TurbSC': '<f', 'RPAR': '<f', 'SpCond': '<f', 'POINT_X': '<f8', 'POINT_Y': '<f8', 'GPS_Date': 'S10', 'pH': '<f', 'WQ_SOURCE': 'S21', 'GPS_SOURCE': 'S18', 'CHL_VOLTS': '<f'}
+def dict_field_types(df):
+	"""
+	Creates a python dictonary with the field names and field types (converting the field types to feature class supported)
+	:param df: pandas dataframe
+	:return: data dict with field info : fieldname = dtype(field)
+	"""
+	# create dict using the current data types
+	d = df.dtypes.to_dict()
+
+	# iterate through the items in the dict changing the field types
+	for item in d:
+		# converts timestamps with nanoseconds to microseconds
+		if d[item] == np.dtype('<M8[ns]'):
+			d[item] = np.dtype('<M8[us]')
+		# convert objects into strings
+		elif d[item] == np.dtype('O'):
+			d[item] = np.dtype('S32')  # converts object to strings (string length must be set)
+
+	return d
 
 
-def pd2np(pandas_dataframe, field_dtypes):
+def pd2np(pandas_dataframe):
 	"""
 	Converts a pandas dataframe into a numpy structured array with field names and NumPy dtypes.
 	:param pandas_dataframe:
-	:param field_dtypes: python dictoniary with field name and desired numpy data type to cast
-	:return: numpy array to convet to feature class
+	:return: numpy array to convert to feature class
 	"""
+
+	# replace NAs with -9999
+	pandas_dataframe = pandas_dataframe.fillna(-9999)
+
 	x = np.array(np.rec.fromrecords(pandas_dataframe.values))
 	names = pandas_dataframe.dtypes.index.tolist()
 	x.dtype.names = tuple(names)
 
+	# change field types
+	field_dtypes = dict_field_types(pandas_dataframe)
+
 	# casts fields to new dtype (wq variables to float, date_time field to esri supported format
-	x = x.astype(field_dtypes.items()) # arcpy np to fc only supports specific datatypes (date '<M8[us]'
+	x = x.astype(field_dtypes.items())  # arcpy np to fc only supports specific datatypes (date '<M8[us]'
 
 	return x
 
@@ -345,7 +374,7 @@ def main(water_quality_files, transect_gps, output_feature):
 	spatial_ref = arcpy.Describe(transect_gps).spatialReference
 
 	# convert pandas dataframe to structured numpy array
-	match_np = pd2np(matches, field_dtypes=field_type_dict)
+	match_np = pd2np(matches)
 
 	# convert structured array to output feature class
 	np2feature(match_np, output_feature, spatial_ref)
