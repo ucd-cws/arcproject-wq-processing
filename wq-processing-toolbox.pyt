@@ -232,14 +232,13 @@ class gain2shp(object):
 			displayName="Vertical Profile file (wqp)",
 			name="wqp_files",
 			datatype="GPValueTable",
-			parameterType='Required',
 			multiValue=True,
 			direction="Input"
 		)
 
 		wqp.columns = [['DEFile', 'WQP'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
 		wqp.filters[1].type = 'ValueList'
-		wqp.filters[1].list = ['BK1', 'CA1', 'CA3', 'CC1', 'LNCA', 'UL1'] # TODO fill in from file name?
+		wqp.filters[1].list = ['BK1', 'CA1', 'CA3', 'CC1', 'LNCA', 'UL1']  # TODO fill in from file name?
 		wqp.filters[2].type = 'ValueList'
 		wqp.filters[2].list = ['g0', 'g1', 'g10', 'g100']
 
@@ -293,21 +292,21 @@ class gain2shp(object):
 		gps_pts = str(parameters[1].valueAsText)
 		output_feature = parameters[2].valueAsText
 
-		master_wq_df = pandas.DataFrame() # temporary df to store the results from the individual inputs
+		master_wq_df = pandas.DataFrame()  # temporary df to store the results from the individual inputs
 
 		for wq in wqps:
 			wq_gain_file = wq[0]
 			site_id = wq[1]
 			gain_setting = wq[2]
 
-			join_df = wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
+			join_df = wq_gain.main(wq_gain_file, gps_pts, site_id, gain_setting)
 
 			# append to master wq
 			master_wq_df = master_wq_df.append(join_df)
 
 		arcpy.AddMessage(master_wq_df.head())
 
-		# try to save the gain results to a shapefile
+		# Save the gain results to a shapefile
 		# Define a spatial reference for the output feature class by copying the input
 		spatial_ref = arcpy.Describe(gps_pts).spatialReference
 
