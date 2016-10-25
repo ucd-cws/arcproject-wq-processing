@@ -1,4 +1,3 @@
-import os
 import wqt_timestamp_match as wqt
 import pandas as pd
 
@@ -6,7 +5,7 @@ def convert_wq_dtypes(df): # TODO check to see if the wq_from_file function can 
 	"""
 	Converts all the strings in dataframe into numeric (pd.to_numeric introduced in 0.17 so can't use that)
 	:param df:
-	:return: dataframe with columns converted to numerics
+	:return: dataframe with columns converted to numeric
 	"""
 	for column in list(df.columns.values):
 		if df[column].dtype == object:
@@ -159,6 +158,9 @@ def main(gain_file, site_id, gain_setting, sample_sites_shp):
 	# add site, gain setting information
 	avg_1m['Site'] = site_id
 	avg_1m['Gain'] = gain_setting
+
+	# add source of wqp file (get's lost when the file gets averaged)
+	wqt.addsourcefield(avg_1m, "WQ_SOURCE", gain_file)
 
 	# convert shapefile into pandas dataframe using function from wqt_timestamp_match
 	sites_shp_df = wqt.wqtshp2pd(sample_sites_shp)

@@ -239,7 +239,7 @@ class gain2shp(object):
 
 		wqp.columns = [['DEFile', 'WQP'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
 		wqp.filters[1].type = 'ValueList'
-		wqp.filters[1].list = ['BK1', 'CA1', 'CA3', 'CC1', 'LNCA', 'UL1']
+		wqp.filters[1].list = ['BK1', 'CA1', 'CA3', 'CC1', 'LNCA', 'UL1'] # TODO fill in from file name?
 		wqp.filters[2].type = 'ValueList'
 		wqp.filters[2].list = ['g0', 'g1', 'g10', 'g100']
 
@@ -290,12 +290,10 @@ class gain2shp(object):
 
 		arcpy.AddMessage(wqps)
 
-
-
 		gps_pts = str(parameters[1].valueAsText)
 		output_feature = parameters[2].valueAsText
 
-		master_wq_df = pandas.DataFrame()
+		master_wq_df = pandas.DataFrame() # temporary df to store the results from the individual inputs
 
 		for wq in wqps:
 			wq_gain_file = wq[0]
@@ -308,5 +306,15 @@ class gain2shp(object):
 			master_wq_df = master_wq_df.append(join_df)
 
 		arcpy.AddMessage(master_wq_df.head())
+
+		# try to save the gain results to a shapefile
+		# Define a spatial reference for the output feature class by copying the input
+		spatial_ref = arcpy.Describe(gps_pts).spatialReference
+
+		# convert pandas dataframe to structured numpy array
+		match_np = wqt_timestamp_match.pd2np(master_wq_df)
+
+		# convert structured array to output feature class
+		wqt_timestamp_match.np2feature(match_np, output_feature, spatial_ref)
 
 		return
