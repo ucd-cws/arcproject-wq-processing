@@ -1,7 +1,6 @@
 import os
 import unittest
 from datetime import datetime
-
 import pandas
 
 from .. import wqt_timestamp_match
@@ -37,16 +36,16 @@ class LoadSHP(unittest.TestCase):
 
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
-		self.shpdf = wqt_timestamp_match.shp2gpd(self.data)
+		self.shpdf = wqt_timestamp_match.wqtshp2pd(self.data)
 		pass
 
 	def test_length(self):
-		self.assertEqual(self.shpdf.shape, (15976, 5))
+		self.assertEqual(self.shpdf.shape, (15976, 6))
 
 	def test_headers(self):
 		headers = self.shpdf.columns.values
 		for head in headers:
-			self.assertIn(head, ['Date_Time', 'GPS_SOURCE', 'GPS_Date', 'GPS_Time', 'geometry'])
+			self.assertIn(head, ['Date_Time', 'GPS_SOURCE', 'GPS_Date', 'GPS_Time', 'POINT_X', 'POINT_Y'])
 
 class CheckDates(unittest.TestCase):
 
