@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 import pandas
 
-from .. import wqt_timestamp_match
+from scripts import wqt_timestamp_match
 from waterquality import classes
 
 
