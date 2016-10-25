@@ -1,14 +1,16 @@
 import os
 import unittest
 from datetime import datetime
+from scripts import wq_gain
 from scripts import wqt_timestamp_match
 import pandas
 
 
-class LoadWQ(unittest.TestCase):
+class LoadGainWQ(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqp_ca3.csv")
+		self.top1m = wq_gain.convert_wq_dtypes(wqt_timestamp_match.wq_from_file(self.data))
 		pass
 
 	def test_data_headers(self):
@@ -17,57 +19,17 @@ class LoadWQ(unittest.TestCase):
 		for head in headers:
 			self.assertIn(head, ['Date_Time', 'Temp', 'pH', 'SpCond', 'DO%', 'DO', 'DEP25',
 			                     'PAR', 'RPAR', 'TurbSC', 'CHL', 'CHL_VOLTS', 'Sal', 'WQ_SOURCE'])
-
-	def test_data_length(self):
-		self.assertEqual(wqt_timestamp_match.wq_from_file(self.data).shape, (977, 12))
-
-
-class LoadSHP(unittest.TestCase):
-
-	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
-		self.shpdf = wqt_timestamp_match.wqtshp2pd(self.data)
 		pass
 
-	def test_length(self):
-		self.assertEqual(self.shpdf.shape, (15976, 6))
+	def test_df_len(self):
+		self.assertEqual(wqt_timestamp_match.wq_from_file(self.data).shape, (75, 12))
 
-	def test_headers(self):
-		headers = self.shpdf.columns.values
-		for head in headers:
-			self.assertIn(head, ['Date_Time', 'GPS_SOURCE', 'GPS_Date', 'GPS_Time', 'POINT_X', 'POINT_Y'])
+		one_meter = wq_gain.depth_top_meter(self.top1m, "DEP25")
+		self.assertEqual(one_meter.shape, (13, 12))
 
-class CheckDates(unittest.TestCase):
+		avg_meter = wq_gain.avg_vert_profile(one_meter)
+		self.assertEqual(avg_meter.shape, (1, 10))
 
-	def setUp(self):
-		self.date = '2013-4-4'
-		self.time = '08:18:47am'
-		self.date_time = wqt_timestamp_match.TimestampFromDateTime(self.date, self.time)
-		pass
-
-	def test_ISO8601(self):
-		self.assertEqual(self.date_time.strftime("%Y-%m-%dT%H:%M:%S"), self.date_time.isoformat())
-
-	def test_DST(self):
-		# make example date time into a dataframe with "Date_Time"
-		self.df = pandas.DataFrame({'Date_Time': [self.date_time]})
-
-		# add/subtract an hour
-		self.plus1 = wqt_timestamp_match.dstadjustment(self.df, 1)
-		self.minus1 = wqt_timestamp_match.dstadjustment(self.df, -1)
-
-		# get first row
-		self.plus1hr = self.plus1.loc[0]['Date_Time']
-		self.minus1hr = self.minus1.loc[0]['Date_Time']
-
-		# test against string
-		self.assertEqual(self.plus1hr, datetime.strptime('2013-04-04 09:18:47', '%Y-%m-%d %H:%M:%S'))
-		self.assertEqual(self.minus1hr, datetime.strptime('2013-04-04 07:18:47', '%Y-%m-%d %H:%M:%S'))
-
-class CheckJoin(unittest.TestCase):
-
-	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413_GPS", "040413_PosnPnt.shp")
 		pass
 
 
