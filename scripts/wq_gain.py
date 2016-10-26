@@ -1,4 +1,4 @@
-import wqt_timestamp_match as wqt
+from scripts import wqt_timestamp_match as wqt
 import pandas as pd
 
 def convert_wq_dtypes(df): # TODO check to see if the wq_from_file function can do this
