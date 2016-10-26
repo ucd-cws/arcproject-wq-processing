@@ -4,7 +4,7 @@ from datetime import datetime
 from scripts import wq_gain
 from scripts import wqt_timestamp_match
 import pandas
-
+from pandas.util.testing import assert_frame_equal
 
 class LoadGainWQ(unittest.TestCase):
 
@@ -32,6 +32,37 @@ class LoadGainWQ(unittest.TestCase):
 
 		pass
 
+class ConvertType(unittest.TestCase):
+	# tests for convert dtypes in gain files
+
+	def setUp(self):
+		self.df_w_obj = pandas.DataFrame({'a': pandas.Series(['1.1', '2.2', '3.3'], dtype=object),
+		                                  'b': pandas.Series(["Z", "Y", "X"], dtype=str),
+		                                  'c': pandas.Series(['2011-01-01 00:00:00', '2011-02-01 00:00:00',
+		                                                      '2011-03-01 00:00:00'], dtype='datetime64[ns]')})
+
+		self.df_w_num = pandas.DataFrame({'a': pandas.Series([1.1, 2.2, 3.3], dtype=float),
+		                                  'b': pandas.Series(["Z", "Y", "X"], dtype=str),
+		                                  'c': pandas.Series(['2011-01-01 00:00:00', '2011-02-01 00:00:00',
+		                                                      '2011-03-01 00:00:00'], dtype='datetime64[ns]')})
+		pass
+
+	def test_convert_str2num(self):
+
+		# get data types before running the function
+		df_w_obj_dtype = self.df_w_obj.dtypes.tolist()
+		df_w_n_dtype = self.df_w_num.dtypes.tolist()
+
+		#  try to convert all dtype "objects" into numbers
+		converted = wq_gain.convert_wq_dtypes(self.df_w_obj)
+
+		# get data types as a list
+		converted_dtype = converted.dtypes.tolist()
+
+		self.assertEqual(converted_dtype, df_w_n_dtype)
+		self.assertNotEqual(converted_dtype, df_w_obj_dtype)
+
+	pass
 
 if __name__ == '__main__':
 	unittest.main()
