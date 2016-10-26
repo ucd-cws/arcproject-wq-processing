@@ -32,6 +32,17 @@ class LoadGainWQ(unittest.TestCase):
 
 		pass
 
+	def test_df_type(self):
+		# test that the type is a pandas dataframe
+		df = type(pandas.DataFrame())
+		self.assertIsInstance(self.top1m, df)
+
+		one_meter = wq_gain.depth_top_meter(self.top1m, "DEP25")
+		self.assertIsInstance(one_meter, df)
+
+		avg_meter = wq_gain.avg_vert_profile(one_meter)
+		self.assertIsInstance(avg_meter, df)
+
 class ConvertType(unittest.TestCase):
 	# tests for convert dtypes in gain files
 
