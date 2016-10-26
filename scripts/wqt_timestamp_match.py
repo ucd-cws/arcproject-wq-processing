@@ -50,6 +50,10 @@ def feature_class_to_pandas_data_frame(feature_class, field_list):
 	"""
 	Adapted from http://joelmccune.com/arcgis-to-pandas-data-frame/
 	Load data into a Pandas Data Frame for subsequent analysis.
+
+	Our use of this code requires ArcGIS 10.4 or Pro 1.3 or above because we need datetimes in numpy arrays.
+	The function exists from 10.1 through 10.3 as well, but datetimes aren't allowed and an error is thrown.
+
 	:param feature_class: Input ArcGIS Feature Class.
 	:param field_list: Fields for input.
 	:return: Pandas DataFrame object.

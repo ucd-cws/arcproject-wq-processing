@@ -1,1 +1,1 @@
-C:\Users\dsx.AD3\arcprojectv2\Scripts\activate
+"C:\Program Files\ArcGIS\Pro\bin\Python\Scripts\proswap.bat" arcproject-wq-processing

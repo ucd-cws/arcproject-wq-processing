@@ -33,6 +33,9 @@ class LoadWQ(unittest.TestCase):
 
 
 class LoadSHP(unittest.TestCase):
+	"""
+		Requires ArcGIS 10.4 or Pro 1.3 or above because we need datetimes in numpy arrays
+	"""
 
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
