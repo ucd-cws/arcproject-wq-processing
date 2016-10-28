@@ -61,8 +61,9 @@ water_quality_header_map = {
 	"RPAR": "rpar",
 	"TurbSC": "turbidity_sc",
 	"CHL": "chl",
-	"CHL_VOLTS": "chl_volts"
-	# TODO: Missing other CHL
+	"CHL_VOLTS": "chl_volts",
+	"Date_Time": "date_time",
+	"WQ_SOURCE": None  # a None here means it'll skip it
 }
 
 # commented out the following class because I'm not sure it's providing anything of use
@@ -84,7 +85,7 @@ class Site(Base):
 
 	id = Column(Integer, primary_key=True)
 	name = Column(String)
-	code = Column(String)
+	code = Column(String, unique=True)
 
 	# vertical_profiles = relationship("VerticalProfile", backref="site")
 	# water_quality_records = relationship("WaterQuality", backref="site")

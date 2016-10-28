@@ -5,11 +5,13 @@ import os
 from datetime import datetime, timedelta
 import logging
 import tempfile
+import traceback
 
 import six
 import pandas as pd
 
 import arcpy
+from sqlalchemy.orm.exc import NoResultFound
 
 from waterquality import classes
 import numpy as np
@@ -20,15 +22,18 @@ source_field = "WQ_SOURCE"
 def convert_file_encoding(in_file, targetEncoding="utf-8"):
 	"""
 		pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3.
-		This creates a copy of the file that's converted to UTF-8 and is called before reading the CSV when running Python 3
+		This creates a copy of the file that's converted to UTF-8 and is called before reading the CSV when running Python 3.
+
+		Adapted from http://stackoverflow.com/a/191455/587938
 	:param in_file:
 	:param targetEncoding:
 	:return: path to converted file
 	"""
 
 	source = open(in_file)
+	original_name = os.path.splitext(os.path.split(in_file)[1])[0]  # get the original filename by splitting off the extension and path
 
-	new_file = tempfile.mktemp("converted_encoding")
+	new_file = tempfile.mktemp(prefix=original_name, suffix="converted_encoding")
 	target = open(new_file, "wb")
 
 	target.write(six.text_type(source.read()).encode(targetEncoding))
@@ -274,10 +279,14 @@ def site_function_historic(*args, **kwargs):
 	session = kwargs["session"]  # database session from caller
 
 	filename = getattr(record, source_field)  # get the value of the data source field (source_field defined globally)
-	site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+	try:
+		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+	except IndexError:
+		raise IndexError("Filename was unable to be split based on underscore in order to parse site name - be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
 
-	q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
-	if q is None:
+	try:
+		q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
+	except NoResultFound:
 		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.Index, site_code))
 
 	return q  # return the session object
@@ -300,7 +309,7 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 	# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
 	for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
 		wq = classes.WaterQuality()  # instantiates a new object
-		for key in vars(row).keys():  # converts named_tuple to a Dict-like and gets the keys
+		for key in row._asdict().keys():  # converts named_tuple to a Dict-like and gets the keys
 			if key == "Index":  # skips the Index key - could be removed and left to the field map lookup, but it doesn't need to throw a warning, so leaving it. Printing to screen is more expensive.
 				continue
 
@@ -311,12 +320,19 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 				logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
 				continue
 
+			if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
+				continue
+
 			try:
 				wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
 			except ValueError:
 				break  # breaks out of this loop, which forces a skip of adding this object
 
-			setattr(wq, class_field, getattr(row, class_field))  # for each value, it sets the object's value to match
+			try:
+				setattr(wq, class_field, getattr(row, key))  # for each value, it sets the object's value to match
+			except AttributeError:
+				print("Incorrect field map - original message was {}".format(traceback.format_exc()))
+
 		else:  # if we don't break for a bad site code or something else, then add the object
 			session.add(wq)  # and adds the object for creation in the DB
 

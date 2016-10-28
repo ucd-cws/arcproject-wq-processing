@@ -6,15 +6,39 @@ import pandas
 from scripts import wqt_timestamp_match
 from waterquality import classes
 
+from sqlalchemy.orm.exc import NoResultFound
+
 
 class TestDBInsert(unittest.TestCase):
 
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self._make_site()
+
+	def _make_site(self):
+		"""
+			When testing on test server, database will be cleaned first, but when DB exists, we'll need to check if the site
+			exists, and only create it when it doesn't exist
+		:return:
+		"""
+		session = classes.get_new_session()
+		test_site_code = "wqt"
+
+		try:
+			session.query(classes.Site).filter(classes.Site.code == test_site_code).one()
+		except NoResultFound:
+			new_site = classes.Site()
+			new_site.code = test_site_code
+			new_site.name = "Testing Site"
+			session.add(new_site)
+			session.commit()
+		session.close()
+
 
 	def test_data_insert(self):
 		matched = wqt_timestamp_match.wq_from_file(self.data)
-	
+		wqt_timestamp_match.wq_df2database(matched)
+
 
 class LoadWQ(unittest.TestCase):
 
