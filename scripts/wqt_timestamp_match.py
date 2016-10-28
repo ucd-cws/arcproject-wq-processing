@@ -1,10 +1,13 @@
 from __future__ import print_function
 
 # match shp and water quality data by timestamp
-import pandas as pd
 import os
 from datetime import datetime, timedelta
 import logging
+import tempfile
+
+import six
+import pandas as pd
 
 import arcpy
 
@@ -14,6 +17,26 @@ import numpy as np
 source_field = "WQ_SOURCE"
 
 
+def convert_file_encoding(in_file, targetEncoding="utf-8"):
+	"""
+		pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3.
+		This creates a copy of the file that's converted to UTF-8 and is called before reading the CSV when running Python 3
+	:param in_file:
+	:param targetEncoding:
+	:return: path to converted file
+	"""
+
+	source = open(in_file)
+
+	new_file = tempfile.mktemp("converted_encoding")
+	target = open(new_file, "wb")
+
+	target.write(six.text_type(source.read()).encode(targetEncoding))
+	target.close()
+
+	return new_file
+
+
 # load a water quality file
 def wq_from_file(water_quality_raw_data):
 	"""
@@ -21,6 +44,9 @@ def wq_from_file(water_quality_raw_data):
 	:return: water quality as pandas dataframe
 	"""
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
+	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
+		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+
 	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop first row which contains units with illegal characters

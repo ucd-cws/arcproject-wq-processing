@@ -13,7 +13,7 @@ class TestDBInsert(unittest.TestCase):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 
 	def test_data_insert(self):
-		pass
+		matched = wqt_timestamp_match.wq_from_file(self.data)
 	
 
 class LoadWQ(unittest.TestCase):
