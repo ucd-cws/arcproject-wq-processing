@@ -13,6 +13,7 @@ class TestDBInsert(unittest.TestCase):
 
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.site_code = "wqt"
 		self._make_site()
 
 	def _make_site(self):
@@ -22,13 +23,12 @@ class TestDBInsert(unittest.TestCase):
 		:return:
 		"""
 		session = classes.get_new_session()
-		test_site_code = "wqt"
 
 		try:
-			session.query(classes.Site).filter(classes.Site.code == test_site_code).one()
+			session.query(classes.Site).filter(classes.Site.code == self.site_code).one()
 		except NoResultFound:
 			new_site = classes.Site()
-			new_site.code = test_site_code
+			new_site.code = self.site_code
 			new_site.name = "Testing Site"
 			session.add(new_site)
 			session.commit()
@@ -38,6 +38,12 @@ class TestDBInsert(unittest.TestCase):
 	def test_data_insert(self):
 		matched = wqt_timestamp_match.wq_from_file(self.data)
 		wqt_timestamp_match.wq_df2database(matched)
+
+		session = classes.get_new_session()
+		num_records = session.query(classes.WaterQuality.id).filter(classes.Site.code == self.site_code).count()
+
+		self.assertEqual(977, num_records)
+		session.close()
 
 
 class LoadWQ(unittest.TestCase):
