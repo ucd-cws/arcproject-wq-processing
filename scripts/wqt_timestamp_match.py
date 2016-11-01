@@ -1,9 +1,15 @@
 # match shp and water quality data by timestamp
 import pandas as pd
-import arcpy
 import os
 from datetime import datetime, timedelta
-import geopandas as gpd
+import logging
+
+import arcpy
+
+from waterquality import classes
+import numpy as np
+
+source_field = "WQ_SOURCE"
 
 
 # load a water quality file
@@ -24,8 +30,8 @@ def wq_from_file(water_quality_raw_data):
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
 
-	# add column with source
-	addsourcefield(wq, "WQ_SOURCE", water_quality_raw_data)
+	# add column with source filename
+	addsourcefield(wq, source_field, water_quality_raw_data)
 
 	# change Date_Time to be ISO8603 (ie no slashes in date)
 	try:
@@ -68,20 +74,46 @@ def TimestampFromDateTime(date, time):
 	return date_object
 
 
-def shp2gpd(shapefile):
+def wqtshp2pd(shapefile):
 	"""
-	Converts shp into a geopandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
+	Add XY coords, converts wq transect shp into a pandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
 	:param shapefile: input shapefile
 	:return: geopandas data frame
 	"""
-	df = gpd.read_file(shapefile)
+
+	# make a temporary copy of the shapefile to add xy data without altering original file
+	arcpy.MakeFeatureLayer_management(shapefile, "wqt_xy")
+
+	# check if XY coords exist
+	fields = arcpy.ListFields("wqt_xy", 'POINT_')
+
+	if len(fields) != 2:
+		# add XY points (POINT_X and POINT_Y to shapefile attribute table
+		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
+
+	# list of field names that can be converted to pandas df
+	# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
+	# Data must be 1-dimensional
+	f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
+	          f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
+
+	# convert attribute table to pandas dataframe
+	df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
+
 	addsourcefield(df, "GPS_SOURCE", shapefile)
+
+	# cast Date field to str instead of timestamp
+	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
 
 	# combine GPS date and GPS time fields into a single column
 	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
 
 	# drop duplicated rows in the data frame
-	df = df.drop_duplicates(["Date_Time"], keep='first')
+	#df = df.drop_duplicates(["Date_Time"], 'first')
+
+	# delete temporary feature layer
+	arcpy.Delete_management("wqt_xy")
+
 	return df
 
 
@@ -91,7 +123,7 @@ def replaceIllegalFieldnames(df):
 	:param df: dataframe with bad fieldnames
 	:return: dataframe with replaced fieldnames
 	"""
-	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'}) # TODO make this catch other potential errors
+	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'})  # TODO make this catch other potential errors
 	return df
 
 
@@ -122,7 +154,7 @@ def JoinByTimeStamp(wq_df, shp_df):
 	:param shp_df: geo dataframe from the shapefile
 	:return: geopandas dataframe with water quality data and gps coordinates
 	"""
-	joined = shp_df.merge(wq_df, how="outer", on="Date_Time")
+	joined = pd.merge(shp_df, wq_df, how="outer", on="Date_Time")
 	return joined
 
 
@@ -135,9 +167,9 @@ def splitunmatched(joined_data):
 	# returns all joined data that has a match (ie inner join),
 	# the unmatched transect points (outer left) and unmatched water quality (outer right) points as separate dataframes
 
-	match = joined_data.dropna(subset=["GPS_SOURCE", "WQ_SOURCE"], how='any')
+	match = joined_data.dropna(subset=["GPS_SOURCE", source_field], how='any')
 	no_geo = joined_data[joined_data["GPS_SOURCE"].isnull()]
-	no_wq = joined_data[joined_data["WQ_SOURCE"].isnull()]
+	no_wq = joined_data[joined_data[source_field].isnull()]
 
 	return match, no_geo, no_wq
 
@@ -182,7 +214,7 @@ def gps_append_fromlist(list_gps_files):
 	for gps in list_gps_files:
 		try:
 			# shapefile for transect
-			pts = shp2gpd(gps)
+			pts = wqtshp2pd(gps)
 
 			# append to master wq
 			master_pts = master_pts.append(pts)
@@ -193,56 +225,159 @@ def gps_append_fromlist(list_gps_files):
 	return master_pts
 
 
-def df2database(data, connection, table_name):
-	# appends data to SQL database
-	# THIS is JUST PSEUDOCODE right now
-	data.to_sql(table_name, connection, flavor='sqlite', if_exists='append')
-	return
-
-
-def geodf2shp(geodf, output_filename):
+def site_function_historic(*args, **kwargs):
 	"""
-	Saves geopandas dataframe to shapefile
-	:param geodf: geopandas dataframe with water quality attributes
-	:param output_filename: location for output shapefile
+	Site functions are passed to wq_df2database so that it can determine which site a record is from. Historic data
+	will use this function since it will parse if off the data frame as constructed in this code (which includes
+	a field for the filename, which has the site code). Future data will have another method and use a different site
+	function that will be passed to wq_df2database
+
+	:param args:
+	:param kwargs:
+	:return: site object
+	"""
+
+	record = kwargs["record"]  # unpacking this way because I want it to be able to accept the kinds of args another function might receive too, since the caller will pass a bunch
+	session = kwargs["session"]  # database session from caller
+
+	filename = getattr(record, source_field)  # get the value of the data source field (source_field defined globally)
+	site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+
+	q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
+	if q is None:
+		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.Index, site_code))
+
+	return q  # return the session object
+
+
+def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic):
+	"""
+	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
+
+	:param data: a pandas data frame of water quality records
+	:param field_map: a field map (dictionary) that translates keys in the data frame (as the dict keys) to the keys used
+		in the ORM - uses a default, but when the schema of the data files is different, a new field map will be necessary
+	:param site_function: the object of a function that, given a record from the data frame and a session, returns the
+		site object from the database that should be associated with the record
 	:return:
 	"""
-	# change timestamp values to strings
-	geodf['Date_Time'] = geodf['Date_Time'].astype(str)
 
-	# TODO ugg messy way to convert types
-	numberfields = ["Temp", "pH", "SpCond", "Sal", "DEP25", "PAR", "RPAR", "TurbSC", "CHL"] # Why is DO missing?
+	session = classes.get_new_session()
 
-	for field in numberfields:
-		geodf[field] = geodf[field].astype(float)
+	# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
+	for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
+		wq = classes.WaterQuality()  # instantiates a new object
+		for key in vars(row).keys():  # converts named_tuple to a Dict-like and gets the keys
+			if key == "Index":  # skips the Index key - could be removed and left to the field map lookup, but it doesn't need to throw a warning, so leaving it. Printing to screen is more expensive.
+				continue
 
-	#print(geodf.dtypes)
+			# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
+			try:
+				class_field = field_map[key]
+			except KeyError:
+				logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
+				continue
 
-	geodf.to_file(output_filename, driver="ESRI Shapefile")
+			try:
+				wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
+			except ValueError:
+				break  # breaks out of this loop, which forces a skip of adding this object
+
+			setattr(wq, class_field, getattr(row, class_field))  # for each value, it sets the object's value to match
+		else:  # if we don't break for a bad site code or something else, then add the object
+			session.add(wq)  # and adds the object for creation in the DB
+
+	session.commit()  # saves all new objects
 	return
 
 
-def main(water_quality_csv, GPS_points, output_shapefile):
+def dict_field_types(df):
 	"""
-	:param water_quality_csv:
-	:param GPS_points:
-	:param output_shapefile:
+	Creates a python dictonary with the field names and field types (converting the field types to feature class supported)
+	:param df: pandas dataframe
+	:return: data dict with field info : fieldname = dtype(field)
+	"""
+	# create dict using the current data types
+	d = df.dtypes.to_dict()
+
+	# iterate through the items in the dict changing the field types
+	for item in d:
+		# converts timestamps with nanoseconds to microseconds
+		if d[item] == np.dtype('<M8[ns]'):
+			d[item] = np.dtype('<M8[us]')
+		# convert objects into strings
+		elif d[item] == np.dtype('O'):
+			d[item] = np.dtype('S32')  # converts object to strings (string length must be set)
+
+	return d
+
+
+def pd2np(pandas_dataframe):
+	"""
+	Converts a pandas dataframe into a numpy structured array with field names and NumPy dtypes.
+	:param pandas_dataframe:
+	:return: numpy array to convert to feature class
+	"""
+
+	# replace NAs with -9999
+	pandas_dataframe = pandas_dataframe.fillna(-9999)
+
+	x = np.array(np.rec.fromrecords(pandas_dataframe.values))
+	names = pandas_dataframe.dtypes.index.tolist()
+	x.dtype.names = tuple(names)
+
+	# change field types
+	field_dtypes = dict_field_types(pandas_dataframe)
+
+	# casts fields to new dtype (wq variables to float, date_time field to esri supported format
+	x = x.astype(field_dtypes.items())  # arcpy np to fc only supports specific datatypes (date '<M8[us]'
+
+	return x
+
+
+def np2feature(np_array, output_feature, spatial_ref):
+	"""
+	uses arcpy to convert numpy structured array into a feature class
+	:param np_array: structured numpy array with XY fields to convert
+	:param output_feature: location to save the output feature
+	:param spatial_ref: defined spatial reference for the output feature class
+	:return:
+	"""
+	# set projection info using spatial_ref = arcpy.Describe(input).spatialReference
+	arcpy.da.NumPyArrayToFeatureClass(np_array, output_feature, ("POINT_X", "POINT_Y"), spatial_ref)
+	return
+
+
+def main(water_quality_files, transect_gps, output_feature):
+	"""
+	:param water_quality_files: list of water quality files collected during the transects
+	:param transect_gps: gps shapefile of transect tract
+	:param output_feature: location to save the water quality shapefile
 	:return: shapefile with water quality data matched by time stamps
 	"""
 
 	# water quality
-	wq = wq_from_file(water_quality_csv)
+	wq = wq_append_fromlist(water_quality_files)
 
 	# shapefile for transect
-	pts = shp2gpd(GPS_points)
+	pts = wqtshp2pd(transect_gps)
 
-	# join using time stamps w/ exact match
+	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)
 	matches = splitunmatched(joined_data)[0]
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	geodf2shp(matches, output_shapefile)
+	wq_df2database(matches)
+
+	# Define a spatial reference for the output feature class by copying the input
+	spatial_ref = arcpy.Describe(transect_gps).spatialReference
+
+	# convert pandas dataframe to structured numpy array
+	match_np = pd2np(matches)
+
+	# convert structured array to output feature class
+	np2feature(match_np, output_feature, spatial_ref)
 
 	return
 
