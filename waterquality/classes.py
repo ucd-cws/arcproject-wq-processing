@@ -30,7 +30,7 @@ class db_abstract(object):
 		:return:
 		"""
 
-		Session = orm.sessionmaker(bind=engine)
+		Session = orm.sessionmaker(bind=engine, autoflush=False)
 		Session.configure(bind=engine)
 
 		return Session

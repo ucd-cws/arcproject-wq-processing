@@ -292,7 +292,7 @@ def site_function_historic(*args, **kwargs):
 	return q  # return the session object
 
 
-def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic):
+def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic, session=None):
 	"""
 	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
 
@@ -301,43 +301,61 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 		in the ORM - uses a default, but when the schema of the data files is different, a new field map will be necessary
 	:param site_function: the object of a function that, given a record from the data frame and a session, returns the
 		site object from the database that should be associated with the record
+	:param session: a SQLAlchemy session to use - for tests, we often want the session passed so it can be inspected,
+		otherwise, we'll likely just create it. If a session is passed, this function will NOT commit new records - that
+		becomes the responsibility of the caller.
 	:return:
 	"""
 
-	session = classes.get_new_session()
+	if not session:  # if no session was passed, create our own
+		session = classes.get_new_session()
+		session_created = True
+	else:
+		session_created = False
 
-	# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
-	for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
-		wq = classes.WaterQuality()  # instantiates a new object
-		for key in row._asdict().keys():  # converts named_tuple to a Dict-like and gets the keys
-			if key == "Index":  # skips the Index key - could be removed and left to the field map lookup, but it doesn't need to throw a warning, so leaving it. Printing to screen is more expensive.
-				continue
+	try:
+		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
+		for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
+			make_record(field_map, row, session, site_function)
 
-			# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
-			try:
-				class_field = field_map[key]
-			except KeyError:
-				logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
-				continue
+		# session.add_all(records)
+		if session_created:  # only commit if this function created the session - otherwise leave it to caller
+			session.commit()  # saves all new objects
+	finally:
+		if session_created:
+			session.close()
 
-			if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
-				continue
 
-			try:
-				wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
-			except ValueError:
-				break  # breaks out of this loop, which forces a skip of adding this object
+def make_record(field_map, row, session, site_function):
 
-			try:
-				setattr(wq, class_field, getattr(row, key))  # for each value, it sets the object's value to match
-			except AttributeError:
-				print("Incorrect field map - original message was {}".format(traceback.format_exc()))
+	wq = classes.WaterQuality()  # instantiates a new object
 
-		else:  # if we don't break for a bad site code or something else, then add the object
-			session.add(wq)  # and adds the object for creation in the DB
+	try:
+		wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
+	except ValueError:
+		return  # breaks out of this loop, which forces a skip of adding this object
 
-	session.commit()  # saves all new objects
-	return
+	for key in row._asdict().keys():  # converts named_tuple to a Dict-like and gets the keys
+		if key == "Index":  # skips the Index key - could be removed and left to the field map lookup, but it doesn't need to throw a warning, so leaving it. Printing to screen is more expensive.
+			continue
+
+		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
+		try:
+			class_field = field_map[key]
+		except KeyError:
+			logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
+			continue
+
+		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
+			continue
+
+		try:
+			setattr(wq, class_field, getattr(row, key))  # for each value, it sets the object's value to match
+		except AttributeError:
+			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
+
+	else:  # if we don't break for a bad site code or something else, then add the object
+		session.add(wq)  # and adds the object for creation in the DB
 
 
 def dict_field_types(df):
