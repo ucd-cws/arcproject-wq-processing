@@ -89,3 +89,8 @@ ENV/
 .ropeproject
 
 .idea/*
+
+# R 
+.Rdata
+.Rhistory
+.Rproj
