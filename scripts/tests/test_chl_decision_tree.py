@@ -8,10 +8,17 @@ class ChlCorrection(unittest.TestCase):
 		self.a = 8.3
 		self.b = 1.3
 		self.raw = 6.1
+		self.r2_sig = 0.9
+		self.r2_nosig = 0.7
 		pass
 
-	def test_data_headers(self):
+	def test_Chl_eq(self):
 		self.assertEqual(cdt.chl_correction(self.raw, self.a, self.b), 16.23)
+		pass
+
+	def test_lm_sig(self):
+		self.assertEqual(cdt.lm_significant(self.raw, self.r2_nosig, self.a, self.b), self.raw)
+		self.assertEqual(cdt.lm_significant(self.raw, self.r2_sig, self.a, self.b), 16.23)
 		pass
 
 class LookupReg(unittest.TestCase):
@@ -40,6 +47,12 @@ class LookupReg(unittest.TestCase):
 
 		pass
 
+	def test_chl_descision(self):
+		self.assertEqual(cdt.chl_decision(10, self.df, '2013-01-07'), ?)
+		self.assertEqual(cdt.chl_decision(10, self.df, '2013-01-08'), 10)
+		self.assertEqual(cdt.chl_decision(4, self.df, '2014-01-13'), ?)
+		self.assertEqual(cdt.chl_decision(10, self.df, '2014-01-13'), ?)
+		self.assertEqual(cdt.chl_decision(50, self.df, '2014-01-13'), ?)
 
 
 if __name__ == '__main__':

@@ -2,29 +2,6 @@
 import pandas as pd
 import os
 
-def chl_decision(uncorrected_chl_value, sample_date):
-
-	# # check if there is a regression for gains?
-	#
-	# if there is no corrections:
-	# 	break
-	# elif there is only a gain0 regresion:
-	#
-	# 	#check the r squared value
-	#
-	#
-	# if uncorrected_chl_value < 5:
-	# 	#gain 100
-	#
-	# elif uncorrected_chl_value < 45:
-	# 	#gain 10
-	# else:
-	# 	#gain 1
-	pass
-
-
-
-
 
 # set wd to Arcproject-wq-processing folder
 # wd = os.path.abspath((os.path.join(os.path.dirname(os.path.abspath(os.path.join(os.path.dirname(os.path.dirname("__file__"))))))))
@@ -35,19 +12,32 @@ def chl_decision(uncorrected_chl_value, sample_date):
 
 
 def check_gain_reg_exists(regression_table_pd, sample_date, gain_setting):
-	# this should return True or False
+	"""
+	Given a date and gain setting, check if there exists a regression result in the pandas table that matches
+	:param regression_table_pd: pandas df with the regression results (cols = Date, Gain, Rsquared, A_coeff, B_coeff)
+	:param sample_date: date to check (should be in format of 'YYYY-MM-DD')
+	:param gain_setting: gain setting to check (string - g0, g1, g10, g100
+	:return: True or False
+	"""
+	# Checks if there is a row that matches a given date and gain setting
 	has_gain = ((regression_table_pd['Date'] == sample_date) & (regression_table_pd['Gain'] == gain_setting)).any()
 	return has_gain
 
 
 def lookup_regression_values(regression_table_pd, sample_date, gain_setting):
+	"""
+	Return regression values from table given a sample date and gain setting
+	:param regression_table_pd: pandas dataframe with the regression results
+	:param sample_date: date to check (should be in format of 'YYYY-MM-DD')
+	:param gain_setting: gain setting to check (string - g0, g1, g10, g100
+	:return: tuple with rsquared value, a coefficient (intercept), b coefficient (slope)
+	"""
 	index = regression_table_pd[(regression_table_pd['Date'] == sample_date) & (regression_table_pd['Gain'] == gain_setting)].index.tolist()
 
 	# select row using the index that matches the sample data and gain setting
 	rsquared = regression_table_pd.ix[index, "Rsquared"].values[0]
 	coeff_a = regression_table_pd.loc[index, "A_coeff"].values[0]
 	coeff_b = regression_table_pd.loc[index, "B_coeff"].values[0]
-
 	return rsquared, coeff_a, coeff_b
 
 
@@ -61,3 +51,49 @@ def chl_correction(uncorrected_chl, a_coeff, b_coeff):
 	"""
 	corrected_chl_value = a_coeff + b_coeff * uncorrected_chl
 	return corrected_chl_value
+
+
+def lm_significant(uncorrected_chl_value, rsquared, a_coeff, b_coeff):
+	"""
+	Determines if lm regression is significant (rsquared>0.8) and if so corrects chl using lm. If not returns
+	the original value of chl uncorrected
+	:param uncorrected_chl_value:
+	:param rsquared: r squared value of the linear model
+	:param a_coeff: intercept of linear model to correct chl
+	:param b_coeff: slope linear model to correct chl
+	:return: corrected chl
+	"""
+	if rsquared > 0.8:
+		print("R-square value {} and significant. Using the lm to correct the chl".format(rsquared))
+		corrected_chl = chl_correction(uncorrected_chl_value, a_coeff, b_coeff)
+	else:
+		print("R-square value {} and not significant. Using uncorrected Chl values".format(rsquared))
+		corrected_chl = uncorrected_chl_value
+
+	return corrected_chl
+
+
+def chl_decision(uncorrected_chl_value, regression_table, sample_date):
+
+	# gain zero
+	if check_gain_reg_exists(regression_table, sample_date, "g0"):
+		reg_values = lookup_regression_values(regression_table, sample_date, "g0")
+		chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
+
+	else:
+		if uncorrected_chl_value < 5:
+			# use gain 100 regression if significant
+			reg_values = lookup_regression_values(regression_table, sample_date, "g100")
+			chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
+
+		elif uncorrected_chl_value < 45:
+			# use gain 100 regression if significant
+			reg_values = lookup_regression_values(regression_table, sample_date, "g10")
+			chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
+
+		else:
+			# use gain1 regression if significant
+			reg_values = lookup_regression_values(regression_table, sample_date, "g1")
+			chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
+
+	return chl
