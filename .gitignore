@@ -91,6 +91,6 @@ ENV/
 .idea/*
 
 # R 
-.Rdata
-.Rhistory
-.Rproj
+*.Rdata
+*.Rhistory
+*.Rproj
