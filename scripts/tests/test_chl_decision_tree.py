@@ -1,5 +1,6 @@
 import unittest
-from scripts import chl_decision_tree
+from scripts import chl_decision_tree as cdt
+import pandas as pd
 
 class ChlCorrection(unittest.TestCase):
 
@@ -10,8 +11,35 @@ class ChlCorrection(unittest.TestCase):
 		pass
 
 	def test_data_headers(self):
-		self.assertEqual(chl_decision_tree.chl_correction(self.raw, self.a, self.b), 16.23)
+		self.assertEqual(cdt.chl_correction(self.raw, self.a, self.b), 16.23)
 		pass
+
+class LookupReg(unittest.TestCase):
+
+	def setUp(self):
+		self.df = pd.DataFrame([['2013-01-07', 'gn0', 0.999913452106, -0.7004800719059999, 0.911512370843],
+                                ['2013-01-08', 'gn0', 0.712038046822, 0.353666429071, 0.190055423761],
+                                ['2013-01-10', 'gn0', 0.175292257503, 2.31933396825, -1.0721551944],
+                                ['2014-01-13', 'gn10', 0.987127460968, -1.77156121034, 1.01214030496],
+                                ['2014-01-13', 'gn1', 0.8819283496979999, -2.19331177439, 1.7788943440599998]],
+								columns=['Date', 'Gain', 'Rsquared', 'A_coeff', 'B_coeff'])
+		pass
+
+	def test_check_row_exists(self):
+		self.assertFalse(cdt.check_gain_reg_exists(self.df, '2013-01-09', 'gn0'))
+		self.assertFalse(cdt.check_gain_reg_exists(self.df, '2013-01-08', 'gn10'))
+		self.assertTrue(cdt.check_gain_reg_exists(self.df, '2014-01-13', 'gn10'))
+		pass
+
+	def test_check_lookup(self):
+		self.assertEqual(cdt.lookup_regression_values(self.df, '2013-01-08', 'gn0'),
+		                 (0.712038046822, 0.35366642907099999, 0.19005542376099999))
+
+		self.assertEqual(cdt.lookup_regression_values(self.df, '2014-01-13', 'gn1'),
+		                 (0.8819283496979999, -2.19331177439, 1.7788943440599998))
+
+		pass
+
 
 
 if __name__ == '__main__':
