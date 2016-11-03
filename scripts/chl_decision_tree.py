@@ -1,15 +1,4 @@
 # Decision tree for applying chl correction using linear regression as well as actual values
-import pandas as pd
-import os
-
-
-# set wd to Arcproject-wq-processing folder
-# wd = os.path.abspath((os.path.join(os.path.dirname(os.path.abspath(os.path.join(os.path.dirname(os.path.dirname("__file__"))))))))
-# regression_table = os.path.join(wd, r"data\legacy\lm_coeffs_rsquared\legacy_coeffs_rsquared.csv")
-# regression_table = pd.read_csv(regression_table)
-# print(regression_table.head())
-# print(regression_table.head().to_records())
-
 
 def check_gain_reg_exists(regression_table_pd, sample_date, gain_setting):
 	"""
@@ -74,6 +63,13 @@ def lm_significant(uncorrected_chl_value, rsquared, a_coeff, b_coeff):
 
 
 def chl_decision(uncorrected_chl_value, regression_table, sample_date):
+	"""
+	Decision tree for correcting Chl values using a linear model regression results
+	:param uncorrected_chl_value: the value to correct
+	:param regression_table: the table to look up the rsquared, a coeff, b coeff for given date
+	:param sample_date: date sample was collected to look up for correction
+	:return: corrected chl value if applicable (r square significant for lm)
+	"""
 
 	# gain zero
 	if check_gain_reg_exists(regression_table, sample_date, "g0"):
@@ -95,5 +91,8 @@ def chl_decision(uncorrected_chl_value, regression_table, sample_date):
 			# use gain1 regression if significant
 			reg_values = lookup_regression_values(regression_table, sample_date, "g1")
 			chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
+
+	# TODO there will likely be an error if the regression values don't exist in the table
+	# TODO figure out how to catch that. Alternative is to return uncorrected values.
 
 	return chl
