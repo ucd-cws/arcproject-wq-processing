@@ -1,6 +1,9 @@
 import unittest
-from scripts import chl_decision_tree as cdt
 import pandas as pd
+
+from scripts import chl_decision_tree as cdt
+from waterquality import classes
+
 
 class ChlCorrection(unittest.TestCase):
 
@@ -35,13 +38,19 @@ class LookupReg(unittest.TestCase):
                                 ['2014-11-13', 'g100', 0.79, -2.19331177439, 1.7788943440599998]
 		                        ],
 								columns=['Date', 'Gain', 'Rsquared', 'A_coeff', 'B_coeff'])
-		pass
+
+		cdt.load_regression_data(self.df)
+
 
 	def test_check_row_exists(self):
-		self.assertFalse(cdt.check_gain_reg_exists(self.df, '2013-01-09', 'g0'))
-		self.assertFalse(cdt.check_gain_reg_exists(self.df, '2013-01-08', 'g10'))
-		self.assertTrue(cdt.check_gain_reg_exists(self.df, '2014-01-13', 'g10'))
-		pass
+
+		session = classes.get_new_session()
+		try:
+			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-09', 'g0'))
+			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-08', 'g10'))
+			self.assertTrue(cdt.check_gain_reg_exists(session, '2014-01-13', 'g10'))
+		finally:
+			session.close()
 
 	def test_check_lookup(self):
 		self.assertEqual(cdt.lookup_regression_values(self.df, '2013-01-08', 'g0'),
@@ -50,7 +59,6 @@ class LookupReg(unittest.TestCase):
 		self.assertEqual(cdt.lookup_regression_values(self.df, '2014-01-13', 'g1'),
 		                 (0.8819283496979999, -2.19331177439, 1.7788943440599998))
 
-		pass
 
 	def test_chl_descision(self):
 		# g0 sig

@@ -105,13 +105,21 @@ class VerticalProfile(Base):
 		self._gain_setting = numpy.mean(value_list)
 
 
+regression_field_map = {
+	"Date": "date",
+	"Gain": "gain",
+	"Rsquared": "r_squared",
+	"A_coeff": "a_coefficient",
+	"B_coeff": "b_coefficient",
+}
+
 class Regression(Base):
 	__tablename__ = "regression"
 
 	id = Column(Integer, primary_key=True)
 
 	date = Column(Date)
-	gain = Column(Float)
+	gain = Column(String)
 	r_squared = Column(Float)
 	a_coefficient = Column(Float)
 	b_coefficient = Column(Float)
