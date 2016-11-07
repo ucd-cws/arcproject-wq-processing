@@ -132,6 +132,24 @@ def subset_lab_by_single_day():
 	pass
 
 
+def update_outlier_ignore_flag():
+	# TODO - function to allow the user to select a site, date and gain to
+	# ignore when developing the linear regression to ignore the outlier
+
+	# note sure if its needed to be a full tool. Depending on the experience of
+	# the person entering data this could just be done in the database.
+
+	# TODO - document how to update the ignore flag in the vert profile avg table
+
+	pass
+
+
+def ignore_gain_outliers():
+	# TODO - subsets the records returned from the data base to ignore any
+	# vertical profiles that are determined by the experts to be outliers
+	pass
+
+
 def main(single_day_gain_avg, lab_values_single_day, gain_setting, view_scatter=None):
 	"""
 	For a given gain setting, run regression between field chl values and lab values
