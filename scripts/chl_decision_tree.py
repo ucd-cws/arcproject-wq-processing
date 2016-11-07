@@ -1,5 +1,11 @@
 # Decision tree for applying chl correction using linear regression as well as actual values
 
+from waterquality import classes
+
+session = classes.get_new_session()
+
+gain_record = session.Query(classes.Regression).filter(classes.Regression.date == sample_date)
+
 def check_gain_reg_exists(regression_table_pd, sample_date, gain_setting):
 	"""
 	Given a date and gain setting, check if there exists a regression result in the pandas table that matches

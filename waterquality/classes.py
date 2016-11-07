@@ -48,24 +48,6 @@ def get_new_session():
 	"""
 	return Session()
 
-
-water_quality_header_map = {
-	"Temp": "temp",
-	"pH": "ph",
-	"SpCond": "sp_cond",
-	"Sal": "salinity",
-	"DO_PCT": "dissolved_oxygen_percent",
-	"DO": "dissolved_oxygen",
-	"DEP25": "dep_25",
-	"PAR": "par",
-	"RPAR": "rpar",
-	"TurbSC": "turbidity_sc",
-	"CHL": "chl",
-	"CHL_VOLTS": "chl_volts",
-	"Date_Time": "date_time",
-	"WQ_SOURCE": None  # a None here means it'll skip it
-}
-
 # commented out the following class because I'm not sure it's providing anything of use
 #class WaterQualityFile(Base):
 #	"""
@@ -121,6 +103,18 @@ class VerticalProfile(Base):
 	@gain_setting.setter
 	def gain_setting(self, value_list):
 		self._gain_setting = numpy.mean(value_list)
+
+
+class Regression(Base):
+	__tablename__ = "regression"
+
+	id = Column(Integer, primary_key=True)
+
+	date = Column(Date)
+	gain = Column(Float)
+	r_squared = Column(Float)
+	a_coefficient = Column(Float)
+	b_coefficient = Column(Float)
 
 
 class Station(Base):
@@ -191,6 +185,25 @@ class GrabSample(Base):
 	source = Column(Float)
 
 
+water_quality_header_map = {
+	"Temp": "temp",
+	"pH": "ph",
+	"SpCond": "sp_cond",
+	"Sal": "salinity",
+	"DO_PCT": "dissolved_oxygen_percent",
+	"DO": "dissolved_oxygen",
+	"DEP25": "dep_25",
+	"PAR": "par",
+	"RPAR": "rpar",
+	"TurbSC": "turbidity_sc",
+	"CHL": "chl",
+	"CHL_VOLTS": "chl_volts",
+	"Date_Time": "date_time",
+	"WQ_SOURCE": None,  # a None here means it'll skip it
+	"Latitude": "latitude",
+	"Longitude": "longitude",
+}
+
 class WaterQuality(Base):
 	"""
 		Each instance of this class is an observation in the database
@@ -207,9 +220,13 @@ class WaterQuality(Base):
 	# file = relationship(WaterQualityFile,
 	#					backref="water_quality_records")
 
-	#date and time
 	date_time = Column(DateTime)
-	#still need adjusted values
+
+
+	latitude = Column(Float)
+	longitude = Column(Float)
+	m_value = Column(Float)
+
 	temp = Column(Float)
 	ph = Column(Float)
 	sp_cond = Column(Integer)
