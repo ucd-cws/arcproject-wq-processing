@@ -6,8 +6,6 @@ import pandas
 from scripts import wqt_timestamp_match
 from waterquality import classes
 
-from sqlalchemy.orm.exc import NoResultFound
-
 
 class TestDBInsert(unittest.TestCase):
 
@@ -112,10 +110,41 @@ class CheckJoin(unittest.TestCase):
 
 	def setUp(self):
 		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
-		self.gps = os.path.join("testfiles", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.gps = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.site_code = "wqt"
+		self.session = classes.get_new_session()
+		self._make_site()
 
-	def test_join(self):
-		pass
+	def _make_site(self):
+		"""
+			When testing on test server, database will be cleaned first, but when DB exists, we'll need to check if the site
+			exists, and only create it when it doesn't exist
+		:return:
+		"""
+
+		if self.session.query(classes.Site).filter(classes.Site.code == self.site_code).one_or_none() is None:
+			new_site = classes.Site()
+			new_site.code = self.site_code
+			new_site.name = "Testing Site"
+			self.session.add(new_site)
+			self.session.commit()
+
+	def test_data_insert(self):
+		wq = wqt_timestamp_match.wq_append_fromlist([self.wq])
+
+		# shapefile for transect
+		pts = wqt_timestamp_match.wqtshp2pd(self.gps)
+
+		# join using time stamps with exact match
+		joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
+		matches = wqt_timestamp_match.splitunmatched(joined_data)[0]
+		wqt_timestamp_match.wq_df2database(matches, session=self.session)
+
+		expected = len(matches)
+		added = len(self.session.new)
+		self.session.commit()
+		self.session.close()
+		self.assertEqual(expected, added)  # assert at end so that database commit occurs and we can inspect
 
 
 if __name__ == '__main__':

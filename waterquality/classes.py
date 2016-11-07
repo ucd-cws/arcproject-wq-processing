@@ -200,8 +200,11 @@ water_quality_header_map = {
 	"CHL_VOLTS": "chl_volts",
 	"Date_Time": "date_time",
 	"WQ_SOURCE": None,  # a None here means it'll skip it
-	"Latitude": "latitude",
-	"Longitude": "longitude",
+	"GPS_SOURCE": None,
+	"GPS_Time": None,
+	"GPS_Date": None,
+	"POINT_Y": "latitude",
+	"POINT_X": "longitude",
 }
 
 class WaterQuality(Base):
@@ -222,8 +225,7 @@ class WaterQuality(Base):
 
 	date_time = Column(DateTime)
 
-
-	latitude = Column(Float)
+	latitude = Column(Float)  # currently assumes consistent projections
 	longitude = Column(Float)
 	m_value = Column(Float)
 
