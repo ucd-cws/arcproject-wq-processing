@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 SQLAlchemy == 1.1.2
 six
-=======
-numpy == 1.9.2
-pandas == 0.16.1
-SQLAlchemy
+numpy
+pandas
 matplotlib
->>>>>>> refs/remotes/origin/argh
