@@ -62,10 +62,12 @@ class LookupReg(unittest.TestCase):
 		session = classes.get_new_session()
 
 		try:
-			self.assertEqual(cdt.lookup_regression_values(self.df, '2013-01-08', 'g0'),
+			regression = cdt.lookup_regression_values(session, '2013-01-08', 'g0')
+			self.assertEqual((regression.r_squared, regression.a_coefficient, regression.b_coefficient),
 							 (0.712038046822, 0.35366642907099999, 0.19005542376099999))
 
-			self.assertEqual(cdt.lookup_regression_values(self.df, '2014-01-13', 'g1'),
+			regression = cdt.lookup_regression_values(session, '2014-01-13', 'g1')
+			self.assertEqual((regression.r_squared, regression.a_coefficient, regression.b_coefficient),
 							 (0.8819283496979999, -2.19331177439, 1.7788943440599998))
 		finally:
 			session.close()

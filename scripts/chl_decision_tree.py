@@ -110,7 +110,6 @@ def chl_decision(uncorrected_chl_value, sample_date):
 	:return: corrected chl value if applicable (r square significant for lm)
 	"""
 
-
 	session = classes.get_new_session()
 
 	# gain zero
