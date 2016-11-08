@@ -104,15 +104,15 @@ class LookupReg(unittest.TestCase):
 
 	def test_chl_descision(self):
 		# g0 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(10, '2013-01-07')), 8.41464364)
+		self.assertAlmostEqual(cdt.chl_decision(10, '2013-01-07'), 8.41464364)
 		# g0 nosig
 		self.assertEqual(cdt.chl_decision(10, '2013-01-08'), 10)
 		# g100 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(4, '2014-01-13')), 4.92226560)
+		self.assertAlmostEqual(cdt.chl_decision(4, '2014-01-13'), 4.92226560)
 		# g10 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(10, '2014-01-13')), 8.34984184)
+		self.assertAlmostEqual(cdt.chl_decision(10, '2014-01-13'), 8.34984184)
 		# g1 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(50, '2014-01-13')), 86.75140543)
+		self.assertAlmostEqual(cdt.chl_decision(50, '2014-01-13'), 86.75140543)
 		# g100 no sig
 		self.assertEqual(cdt.chl_decision(4, '2014-11-13'), 4)
 		# g10 no sig
