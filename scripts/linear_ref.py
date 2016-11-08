@@ -26,6 +26,12 @@ def makeFeatureLayer(table):
 	:return: feature class stored in memory
 	"""
 
+	if arcpy.Exists("temp_layer"):
+		arcpy.Delete_management("temp_layer")
+
+	if arcpy.Exists(r"in_memory\out_layer"):
+		arcpy.Delete_management(r"in_memory\out_layer")
+
 	# spatial reference
 	sr = arcpy.SpatialReference(3310)  # CA teale albers ESPG code
 
@@ -76,34 +82,42 @@ def ID_MeasurePair(linear_referenced_table, ID_field):
 	return measurePairs
 
 
-def update_table_river_distance(dbase, table, fids_w_RM):
-
-	# function to update the selected rows in the table with the appropriate distance along the route.
-
-	pass
-
-
-def main(records_to_update):
+def main(record_to_update):
 
 	session = classes.get_new_session()
 
+	q = session.query(classes.WaterQuality).filter(classes.WaterQuality.id == record_to_update).one()
+
+	print(q)
+
 	try:
-		# turn records that need slough measurement to a table
-		table = data_to_linear_reference(records_to_update)
-
-		# turn table into feature layer using XY coords
-		features = makeFeatureLayer(table)
-
-		# locate features along route using the slough reference lines
-		meas_table = LocateWQalongREF(features)
-
-		# create data dict with ID and measurement result
-		distances = ID_MeasurePair(meas_table)
-
-		# update the selected records in the databae with the new measurements
-		#update_table_river_distance()
-
-		session.commit()
+		print("skip")
+		# # turn records that need slough measurement to a table
+		# table = data_to_linear_reference(records_to_update)
+		#
+		# # turn table into feature layer using XY coords
+		# features = makeFeatureLayer(table)
+		#
+		# # locate features along route using the slough reference lines
+		# meas_table = LocateWQalongREF(features)
+		#
+		# # create data dict with ID and measurement result
+		# distances = ID_MeasurePair(meas_table)
+		#
+		# # update the selected records in the database with the new measurements
+		# for location in distances.keys():
+		# 	record = session.query(classes.WaterQuality).filter(classes.WaterQuality.fid == location).one_or_none()
+		#
+		# 	if record is None:
+		# 		# print a warning
+		# 		continue  # skip the record - FID not found - likly a problem - can use .one() instead of .one_or_none() above to raise an exception instead, if no record is found
+		#
+		# 	record.m_value = distances[location]
+		#
+		# session.commit()
 
 	finally:
 		session.close()
+
+if __name__ == '__main__':
+	main(5)
