@@ -1,6 +1,6 @@
 import unittest
 import pandas as pd
-import six
+import os
 
 from sqlalchemy.exc import IntegrityError
 
@@ -26,6 +26,36 @@ class ChlCorrection(unittest.TestCase):
 		self.assertEqual(cdt.lm_significant(self.raw, self.r2_nosig, self.a, self.b), self.raw)
 		self.assertEqual(cdt.lm_significant(self.raw, self.r2_sig, self.a, self.b), 16.23)
 		pass
+
+
+class RegressionTable(unittest.TestCase):
+	def setUp(self):
+		file_path = os.path.abspath(os.path.join(os.path.abspath(__file__), os.pardir, os.pardir, os.pardir))
+		self.regression_data = os.path.join(file_path, "data", "legacy", "lm_coeffs_rsquared", "legacy_coeffs_rsquared.csv")
+
+	def test_load_regression_data(self):
+		try:
+			cdt.load_regression_data_from_csv(self.regression_data)
+		except IntegrityError:
+			pass  # it's ok because data already loaded
+
+		data = pd.read_csv(self.regression_data)
+
+		session = classes.get_new_session()
+
+		reg = classes.Regression
+		try:
+			for record in data.itertuples():
+				self.assertTrue(session.query(classes.Regression)\
+										.filter(reg.a_coefficient == shorten_float(record.A_coeff),
+												reg.b_coefficient == shorten_float(record.B_coeff),
+												reg.r_squared == shorten_float(record.Rsquared),
+												reg.gain == record.Gain)\
+										.count() > 0
+								)
+
+		finally:
+			session.close()
 
 
 class LookupReg(unittest.TestCase):
@@ -74,15 +104,15 @@ class LookupReg(unittest.TestCase):
 
 	def test_chl_descision(self):
 		# g0 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(10, '2013-01-07')), 8.41464364)
+		self.assertAlmostEqual(cdt.chl_decision(10, '2013-01-07'), 8.41464364)
 		# g0 nosig
 		self.assertEqual(cdt.chl_decision(10, '2013-01-08'), 10)
 		# g100 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(4, '2014-01-13')), 4.92226560)
+		self.assertAlmostEqual(cdt.chl_decision(4, '2014-01-13'), 4.92226560)
 		# g10 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(10, '2014-01-13')), 8.34984184)
+		self.assertAlmostEqual(cdt.chl_decision(10, '2014-01-13'), 8.34984184)
 		# g1 sig
-		self.assertEqual(shorten_float(cdt.chl_decision(50, '2014-01-13')), 86.75140543)
+		self.assertAlmostEqual(cdt.chl_decision(50, '2014-01-13'), 86.75140543)
 		# g100 no sig
 		self.assertEqual(cdt.chl_decision(4, '2014-11-13'), 4)
 		# g10 no sig

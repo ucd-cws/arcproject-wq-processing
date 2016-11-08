@@ -2,12 +2,37 @@
 
 from datetime import datetime
 
-from waterquality import classes
+import six
+import numpy
+import pandas
+
+from waterquality import classes, shorten_float
 
 format_string = "%Y-%m-%d"
 
 
+def load_regression_data_from_csv(csv_path, field_map=classes.regression_field_map, date_format_string=format_string):
+	"""
+		Given the path to a CSV file containing regression values, loads them to the database. Takes a field map to translate
+		table CSV fields to the DB. Loads the CSV to a Pandas data frame, then calls load_regression_data
+	:param csv_path: Path to CSV with values to load
+	:param field_map: Field map that translates those values to the database fields
+	:param date_format_string: The format string to use when translating dates to machine dates
+	:return: None
+	"""
+
+	load_regression_data(pandas.read_csv(csv_path), field_map=field_map, date_format_string=date_format_string)
+
+
 def load_regression_data(data_frame, field_map=classes.regression_field_map, date_format_string=format_string):
+	"""
+		Given a pandas data frame containing regression values, loads them to the database. Takes a field map to translate
+		table CSV fields to the DB.
+	:param data_frame: The pandas data frame to load into the Regression table
+	:param field_map: Field map that translates those values to the database fields
+	:param date_format_string: The format string to use when translating dates to machine dates
+	:return: None
+	"""
 
 	session = classes.get_new_session()
 
@@ -27,6 +52,9 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 					value = datetime.strptime(getattr(row, key), date_format_string)
 				else:
 					value = getattr(row, key)
+
+				if type(value) in (float, numpy.float64):  # shorten any floating point number to 8 places for consistency
+					value = shorten_float(value)
 
 				setattr(regression, class_field, value)
 

@@ -37,12 +37,12 @@ def makeFeatureLayer(table):
 
 	# create XY event layer using the Point_X and Point_Y fields from the table
 	arcpy.MakeXYEventLayer_management(table, "Point_X", "Point_Y", "temp_layer", spatial_reference=sr)
-
-	# the XY event layer  does not have a object ID - need to copy to disk via in_memory
-	out_layer = arcpy.CopyFeatures_management("temp_layer", r"in_memory\out_layer")
-
-	# removes the XY event layer
-	arcpy.Delete_management("temp_layer") # delete the temp layer
+	try:
+		# the XY event layer  does not have a object ID - need to copy to disk via in_memory
+		out_layer = arcpy.CopyFeatures_management("temp_layer", r"in_memory\out_layer")
+	finally:
+		# removes the XY event layer
+		arcpy.Delete_management("temp_layer")  # delete the temp layer
 
 	return out_layer
 
