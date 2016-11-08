@@ -335,10 +335,11 @@ def make_record(field_map, row, session, site_function):
 	except ValueError:
 		return  # breaks out of this loop, which forces a skip of adding this object
 
-	for key in row._asdict().keys():  # converts named_tuple to a Dict-like and gets the keys
-		if key == "Index":  # skips the Index key - could be removed and left to the field map lookup, but it doesn't need to throw a warning, so leaving it. Printing to screen is more expensive.
-			continue
+	key_set = set(row._asdict().keys())
+	key_set.remove("Index") # skips the Index key - internal and unnecessary - removes before loop to save cycles
+	keys = list(key_set)
 
+	for key in keys:  # converts named_tuple to a Dict-like and gets the keys
 		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
 		try:
 			class_field = field_map[key]

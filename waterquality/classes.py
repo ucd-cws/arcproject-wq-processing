@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 db_name = "wqdb.sqlite"
@@ -115,6 +115,7 @@ regression_field_map = {
 
 class Regression(Base):
 	__tablename__ = "regression"
+	__table_args__ = (UniqueConstraint('date', 'gain', name='_date_gain_uc'),)
 
 	id = Column(Integer, primary_key=True)
 
