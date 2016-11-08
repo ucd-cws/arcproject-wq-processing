@@ -39,7 +39,8 @@ class LinRefTests(unittest.TestCase):
 		self.assertEqual(desc.dataType, "FeatureClass")
 
 		# test spatial reference
-		self.assertEqual(desc.spatialReference.exportToString(), arcpy.SpatialReference(3310).exportToString()) # CA Teale Albers
+		self.assertEqual(desc.spatialReference.exportToString(),
+		                 arcpy.SpatialReference(3310).exportToString()) # CA Teale Albers
 
 		# make sure temp_layer is deleted
 		self.assertFalse(arcpy.Exists("temp_layer"))
@@ -54,7 +55,7 @@ class LinRefTests(unittest.TestCase):
 		for row in cursor:
 			results.append(row)
 
-		self.assertEqual(results[0], (64, u'CA', 5198.630391043295)) # why so many sig figs???
+		self.assertEqual(results[0], (64, u'CA', 5198.630391043295))  # why so many sig figs???
 		self.assertEqual(results[1], (25, u'F1', 3321.5817420431454))
 
 		pass
