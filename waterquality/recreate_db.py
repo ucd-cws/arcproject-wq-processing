@@ -1,3 +1,3 @@
-import utils
+from waterquality import utils
 
 utils.recreate_tables()
