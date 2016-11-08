@@ -4,6 +4,8 @@ import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 
+from waterquality import classes
+
 class Toolbox(object):
 	def __init__(self):
 		"""Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
@@ -11,7 +13,63 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [checkmatch, wqt2shp, gain2shp]
+		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite]
+
+
+class AddSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Add New Site"
+		self.description = ""
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+
+		site_name = arcpy.Parameter(
+			displayName="Site Name",
+			name="site_name",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		site_code = arcpy.Parameter(
+			displayName="Site Code",
+			name="site_code",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		params = [site_name, site_code]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		session = classes.get_new_session()
+		try:
+			site = classes.Site()
+			site.code = parameters[1].valueAsText
+			site.name = parameters[0].valueAsText
+			session.add(site)
+			session.commit()
+		finally:
+			session.close()
 
 
 class JoinTimestamp(object):
@@ -84,6 +142,7 @@ class JoinTimestamp(object):
 		wqt_timestamp_match.main(wq, pts, out)
 
 		return
+
 
 class checkmatch(object):
 	def __init__(self):
@@ -216,6 +275,7 @@ class wqt2shp(object):
 		wqt_timestamp_match.main(wq_transect_list, gps_pts, output_feature)
 
 		return
+
 
 class gain2shp(object):
 	def __init__(self):

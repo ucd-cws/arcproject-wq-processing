@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 import pandas
 
-from .. import wqt_timestamp_match
+from scripts import wqt_timestamp_match
 from waterquality import classes
 
 
@@ -11,10 +11,38 @@ class TestDBInsert(unittest.TestCase):
 
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.site_code = "wqt"
+		self.session = classes.get_new_session()
+		self._make_site()
+
+	def _make_site(self):
+		"""
+			When testing on test server, database will be cleaned first, but when DB exists, we'll need to check if the site
+			exists, and only create it when it doesn't exist
+		:return:
+		"""
+
+		if self.session.query(classes.Site).filter(classes.Site.code == self.site_code).one_or_none() is None:
+			new_site = classes.Site()
+			new_site.code = self.site_code
+			new_site.name = "Testing Site"
+			self.session.add(new_site)
+			self.session.commit()
 
 	def test_data_insert(self):
-		pass
-	
+		matched = wqt_timestamp_match.wq_from_file(self.data)
+		wqt_timestamp_match.wq_df2database(matched, session=self.session)
+
+		expected = len(matched)
+		added = len(self.session.new)
+		self.session.commit()
+		self.session.close()
+		self.assertEqual(expected, added)  # assert at end so that database commit occurs and we can inspect
+
+	def test_records_in_db(self):
+		num_records = self.session.query(classes.WaterQuality.id).filter(classes.Site.code == self.site_code).count()
+
+		self.assertEqual(977, num_records)
 
 class LoadWQ(unittest.TestCase):
 
@@ -33,6 +61,9 @@ class LoadWQ(unittest.TestCase):
 
 
 class LoadSHP(unittest.TestCase):
+	"""
+		Requires ArcGIS 10.4 or Pro 1.3 or above because we need datetimes in numpy arrays
+	"""
 
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
@@ -79,10 +110,41 @@ class CheckJoin(unittest.TestCase):
 
 	def setUp(self):
 		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
-		self.gps = os.path.join("testfiles", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.gps = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.site_code = "wqt"
+		self.session = classes.get_new_session()
+		self._make_site()
 
-	def test_join(self):
-		pass
+	def _make_site(self):
+		"""
+			When testing on test server, database will be cleaned first, but when DB exists, we'll need to check if the site
+			exists, and only create it when it doesn't exist
+		:return:
+		"""
+
+		if self.session.query(classes.Site).filter(classes.Site.code == self.site_code).one_or_none() is None:
+			new_site = classes.Site()
+			new_site.code = self.site_code
+			new_site.name = "Testing Site"
+			self.session.add(new_site)
+			self.session.commit()
+
+	def test_data_insert(self):
+		wq = wqt_timestamp_match.wq_append_fromlist([self.wq])
+
+		# shapefile for transect
+		pts = wqt_timestamp_match.wqtshp2pd(self.gps)
+
+		# join using time stamps with exact match
+		joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
+		matches = wqt_timestamp_match.splitunmatched(joined_data)[0]
+		wqt_timestamp_match.wq_df2database(matches, session=self.session)
+
+		expected = len(matches)
+		added = len(self.session.new)
+		self.session.commit()
+		self.session.close()
+		self.assertEqual(expected, added)  # assert at end so that database commit occurs and we can inspect
 
 
 if __name__ == '__main__':

@@ -1,15 +1,45 @@
+from __future__ import print_function
+
 # match shp and water quality data by timestamp
-import pandas as pd
 import os
 from datetime import datetime, timedelta
 import logging
+import tempfile
+import traceback
+
+import six
+import pandas as pd
 
 import arcpy
+from sqlalchemy.orm.exc import NoResultFound
 
 from waterquality import classes
 import numpy as np
 
 source_field = "WQ_SOURCE"
+
+
+def convert_file_encoding(in_file, targetEncoding="utf-8"):
+	"""
+		pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3.
+		This creates a copy of the file that's converted to UTF-8 and is called before reading the CSV when running Python 3.
+
+		Adapted from http://stackoverflow.com/a/191455/587938
+	:param in_file:
+	:param targetEncoding:
+	:return: path to converted file
+	"""
+
+	source = open(in_file)
+	original_name = os.path.splitext(os.path.split(in_file)[1])[0]  # get the original filename by splitting off the extension and path
+
+	new_file = tempfile.mktemp(prefix=original_name, suffix="converted_encoding")
+	target = open(new_file, "wb")
+
+	target.write(six.text_type(source.read()).encode(targetEncoding))
+	target.close()
+
+	return new_file
 
 
 # load a water quality file
@@ -19,6 +49,9 @@ def wq_from_file(water_quality_raw_data):
 	:return: water quality as pandas dataframe
 	"""
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
+	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
+		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+
 	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop first row which contains units with illegal characters
@@ -48,6 +81,10 @@ def feature_class_to_pandas_data_frame(feature_class, field_list):
 	"""
 	Adapted from http://joelmccune.com/arcgis-to-pandas-data-frame/
 	Load data into a Pandas Data Frame for subsequent analysis.
+
+	Our use of this code requires ArcGIS 10.4 or Pro 1.3 or above because we need datetimes in numpy arrays.
+	The function exists from 10.1 through 10.3 as well, but datetimes aren't allowed and an error is thrown.
+
 	:param feature_class: Input ArcGIS Feature Class.
 	:param field_list: Fields for input.
 	:return: Pandas DataFrame object.
@@ -83,36 +120,37 @@ def wqtshp2pd(shapefile):
 
 	# make a temporary copy of the shapefile to add xy data without altering original file
 	arcpy.MakeFeatureLayer_management(shapefile, "wqt_xy")
+	try:
+		# check if XY coords exist
+		fields = arcpy.ListFields("wqt_xy", 'POINT_')
 
-	# check if XY coords exist
-	fields = arcpy.ListFields("wqt_xy", 'POINT_')
+		if len(fields) != 2:
+			# add XY points (POINT_X and POINT_Y to shapefile attribute table
+			arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
 
-	if len(fields) != 2:
-		# add XY points (POINT_X and POINT_Y to shapefile attribute table
-		arcpy.AddXY_management("wqt_xy")  # CHECK - does this add xy to the original file everytime?
+		# list of field names that can be converted to pandas df
+		# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
+		# Data must be 1-dimensional
+		f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
+				  f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
 
-	# list of field names that can be converted to pandas df
-	# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
-	# Data must be 1-dimensional
-	f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
-	          f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
+		# convert attribute table to pandas dataframe
+		df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
 
-	# convert attribute table to pandas dataframe
-	df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
+		addsourcefield(df, "GPS_SOURCE", shapefile)
 
-	addsourcefield(df, "GPS_SOURCE", shapefile)
+		# cast Date field to str instead of timestamp
+		df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
 
-	# cast Date field to str instead of timestamp
-	df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
+		# combine GPS date and GPS time fields into a single column
+		df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
 
-	# combine GPS date and GPS time fields into a single column
-	df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
+		# drop duplicated rows in the data frame
+		#df = df.drop_duplicates(["Date_Time"], 'first')
 
-	# drop duplicated rows in the data frame
-	#df = df.drop_duplicates(["Date_Time"], 'first')
-
-	# delete temporary feature layer
-	arcpy.Delete_management("wqt_xy")
+		# delete temporary feature layer
+	finally:  # regardless, if there's an exception, delete the feature layer so other tests can complete
+		arcpy.Delete_management("wqt_xy")
 
 	return df
 
@@ -241,16 +279,20 @@ def site_function_historic(*args, **kwargs):
 	session = kwargs["session"]  # database session from caller
 
 	filename = getattr(record, source_field)  # get the value of the data source field (source_field defined globally)
-	site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+	try:
+		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+	except IndexError:
+		raise IndexError("Filename was unable to be split based on underscore in order to parse site name - be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
 
-	q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
-	if q is None:
+	try:
+		q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
+	except NoResultFound:
 		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.Index, site_code))
 
 	return q  # return the session object
 
 
-def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic):
+def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic, session=None):
 	"""
 	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
 
@@ -259,36 +301,62 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 		in the ORM - uses a default, but when the schema of the data files is different, a new field map will be necessary
 	:param site_function: the object of a function that, given a record from the data frame and a session, returns the
 		site object from the database that should be associated with the record
+	:param session: a SQLAlchemy session to use - for tests, we often want the session passed so it can be inspected,
+		otherwise, we'll likely just create it. If a session is passed, this function will NOT commit new records - that
+		becomes the responsibility of the caller.
 	:return:
 	"""
 
-	session = classes.get_new_session()
+	if not session:  # if no session was passed, create our own
+		session = classes.get_new_session()
+		session_created = True
+	else:
+		session_created = False
 
-	# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
-	for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
-		wq = classes.WaterQuality()  # instantiates a new object
-		for key in vars(row).keys():  # converts named_tuple to a Dict-like and gets the keys
-			if key == "Index":  # skips the Index key - could be removed and left to the field map lookup, but it doesn't need to throw a warning, so leaving it. Printing to screen is more expensive.
-				continue
+	try:
+		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
+		for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
+			make_record(field_map, row, session, site_function)
 
-			# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
-			try:
-				class_field = field_map[key]
-			except KeyError:
-				logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
-				continue
+		# session.add_all(records)
+		if session_created:  # only commit if this function created the session - otherwise leave it to caller
+			session.commit()  # saves all new objects
+	finally:
+		if session_created:
+			session.close()
 
-			try:
-				wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
-			except ValueError:
-				break  # breaks out of this loop, which forces a skip of adding this object
 
-			setattr(wq, class_field, getattr(row, class_field))  # for each value, it sets the object's value to match
-		else:  # if we don't break for a bad site code or something else, then add the object
-			session.add(wq)  # and adds the object for creation in the DB
+def make_record(field_map, row, session, site_function):
 
-	session.commit()  # saves all new objects
-	return
+	wq = classes.WaterQuality()  # instantiates a new object
+
+	try:
+		wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
+	except ValueError:
+		return  # breaks out of this loop, which forces a skip of adding this object
+
+	key_set = set(row._asdict().keys())
+	key_set.remove("Index") # skips the Index key - internal and unnecessary - removes before loop to save cycles
+	keys = list(key_set)
+
+	for key in keys:  # converts named_tuple to a Dict-like and gets the keys
+		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
+		try:
+			class_field = field_map[key]
+		except KeyError:
+			logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
+			continue
+
+		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
+			continue
+
+		try:
+			setattr(wq, class_field, getattr(row, key))  # for each value, it sets the object's value to match
+		except AttributeError:
+			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
+
+	else:  # if we don't break for a bad site code or something else, then add the object
+		session.add(wq)  # and adds the object for creation in the DB
 
 
 def dict_field_types(df):

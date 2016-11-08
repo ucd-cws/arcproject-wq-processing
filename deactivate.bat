@@ -1,0 +1,1 @@
+"C:\Program Files\ArcGIS\Pro\bin\Python\Scripts\deactivate.bat"
