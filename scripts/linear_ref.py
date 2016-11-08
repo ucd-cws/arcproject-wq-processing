@@ -17,8 +17,6 @@ def data_to_linear_reference(dbase, some_query):
 
 # TODO select by reach name so that points at confluences get assigned properly
 
-
-
 def makeFeatureLayer(table):
 	# spatial reference
 	sr = arcpy.SpatialReference(3310)  # CA teale albers ESPG code
@@ -30,7 +28,6 @@ def makeFeatureLayer(table):
 	arcpy.Delete_management("temp_layer") # delete the temp layer
 
 	return out_layer
-
 
 
 def LocateWQalongREF(wq_features):
