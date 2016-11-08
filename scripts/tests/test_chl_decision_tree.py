@@ -5,7 +5,7 @@ import six
 from sqlalchemy.exc import IntegrityError
 
 from scripts import chl_decision_tree as cdt
-from waterquality import classes
+from waterquality import classes, shorten_float
 
 
 class ChlCorrection(unittest.TestCase):
@@ -72,29 +72,17 @@ class LookupReg(unittest.TestCase):
 		finally:
 			session.close()
 
-	def shorten_float(self, original, places=8):
-		"""
-		Used in order to make floats a consistent length for unit tests - it's OK to shorten them because with 8
-		decimal places we should be able to test if the code is functioning correctly. Beyond that the small specifics probably
-		aren't super important
-		:param original: The original number
-		:param places: The number of decimal places to shorten it to (obeys rounding rules)
-		:return: new number with specified number of decimal places
-		"""
-		format_str = "{0:." + six.text_type(places) + "f}"
-		return float(format_str.format(original))
-
 	def test_chl_descision(self):
 		# g0 sig
-		self.assertEqual(self.shorten_float(cdt.chl_decision(10, '2013-01-07')), 8.41464364)
+		self.assertEqual(shorten_float(cdt.chl_decision(10, '2013-01-07')), 8.41464364)
 		# g0 nosig
 		self.assertEqual(cdt.chl_decision(10, '2013-01-08'), 10)
 		# g100 sig
-		self.assertEqual(self.shorten_float(cdt.chl_decision(4, '2014-01-13')), 4.92226560)
+		self.assertEqual(shorten_float(cdt.chl_decision(4, '2014-01-13')), 4.92226560)
 		# g10 sig
-		self.assertEqual(self.shorten_float(cdt.chl_decision(10, '2014-01-13')), 8.34984184)
+		self.assertEqual(shorten_float(cdt.chl_decision(10, '2014-01-13')), 8.34984184)
 		# g1 sig
-		self.assertEqual(self.shorten_float(cdt.chl_decision(50, '2014-01-13')), 86.75140543)
+		self.assertEqual(shorten_float(cdt.chl_decision(50, '2014-01-13')), 86.75140543)
 		# g100 no sig
 		self.assertEqual(cdt.chl_decision(4, '2014-11-13'), 4)
 		# g10 no sig

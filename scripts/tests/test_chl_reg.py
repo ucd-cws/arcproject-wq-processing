@@ -2,6 +2,8 @@ import unittest
 from scripts import chl_reg
 import pandas as pd
 
+from waterquality import shorten_float
+
 
 class LinearRegression(unittest.TestCase):
 	def setUp(self):
@@ -61,9 +63,9 @@ class ChlRegression(unittest.TestCase):
 		pass
 
 	def test_Main(self):
-		self.assertEqual(chl_reg.main(self.chl_gain, self.chl_lab, "gn100")[0], 0.28082684720720524)
-		self.assertEqual(chl_reg.main(self.chl_gain, self.chl_lab, "gn100")[1], 0.83684782181753625)
-		self.assertEqual(chl_reg.main(self.chl_gain, self.chl_lab, "gn100")[2], 0.35963914150167603)
+		self.assertAlmostEqual(chl_reg.main(self.chl_gain, self.chl_lab, "gn100")[0], 0.28082684720720524)
+		self.assertAlmostEqual(chl_reg.main(self.chl_gain, self.chl_lab, "gn100")[1], 0.83684782181753625)
+		self.assertAlmostEqual(chl_reg.main(self.chl_gain, self.chl_lab, "gn100")[2], 0.35963914150167603)
 
 		# Example for viewing scatter (not a test)
 		#chl_reg.main(self.chl_gain, self.chl_lab, "gn1", view_scatter=True)
