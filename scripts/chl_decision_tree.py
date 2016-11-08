@@ -2,9 +2,17 @@
 
 from datetime import datetime
 
-from waterquality import classes
+import six
+import numpy
+import pandas
+
+from waterquality import classes, shorten_float
 
 format_string = "%Y-%m-%d"
+
+
+def load_regression_data_from_csv(csv_path, field_map=classes.regression_field_map, date_format_string=format_string):
+	load_regression_data(pandas.read_csv(csv_path), field_map=field_map, date_format_string=date_format_string)
 
 
 def load_regression_data(data_frame, field_map=classes.regression_field_map, date_format_string=format_string):
@@ -27,6 +35,9 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 					value = datetime.strptime(getattr(row, key), date_format_string)
 				else:
 					value = getattr(row, key)
+
+				if type(value) in (float, numpy.float64):  # shorten any floating point number to 8 places for consistency
+					value = shorten_float(value)
 
 				setattr(regression, class_field, value)
 

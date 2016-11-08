@@ -4,7 +4,7 @@ import numpy
 
 import sqlalchemy
 from sqlalchemy import orm
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime
+from sqlalchemy import Column, Integer, String, Float, Numeric, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
@@ -121,9 +121,9 @@ class Regression(Base):
 
 	date = Column(Date)
 	gain = Column(String)
-	r_squared = Column(Float)
-	a_coefficient = Column(Float)
-	b_coefficient = Column(Float)
+	r_squared = Column(Numeric(asdecimal=False, precision=8))
+	a_coefficient = Column(Numeric(asdecimal=False, precision=8))
+	b_coefficient = Column(Numeric(asdecimal=False, precision=8))
 
 
 class Station(Base):
