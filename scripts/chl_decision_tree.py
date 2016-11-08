@@ -1,19 +1,60 @@
 # Decision tree for applying chl correction using linear regression as well as actual values
 
-def check_gain_reg_exists(regression_table_pd, sample_date, gain_setting):
+from datetime import datetime
+
+from waterquality import classes
+
+format_string = "%Y-%m-%d"
+
+
+def load_regression_data(data_frame, field_map=classes.regression_field_map, date_format_string=format_string):
+
+	session = classes.get_new_session()
+
+	try:
+		for row in data_frame.itertuples():
+			regression = classes.Regression()
+
+			# takes the keys and makes a set to remove unneeded "Index"
+			key_set = set(row._asdict().keys())
+			key_set.remove("Index")
+			keys = list(key_set)
+
+			for key in keys:
+				class_field = field_map[key]
+
+				if key == "Date":
+					value = datetime.strptime(getattr(row, key), date_format_string)
+				else:
+					value = getattr(row, key)
+
+				setattr(regression, class_field, value)
+
+			session.add(regression)
+
+		session.commit()
+	finally:
+		session.close()
+
+
+def check_gain_reg_exists(session, sample_date, gain_setting, date_format_string=format_string):
 	"""
 	Given a date and gain setting, check if there exists a regression result in the pandas table that matches
-	:param regression_table_pd: pandas df with the regression results (cols = Date, Gain, Rsquared, A_coeff, B_coeff)
+	:param session: a SQLAlchemy database session
 	:param sample_date: date to check (should be in format of 'YYYY-MM-DD')
-	:param gain_setting: gain setting to check (string - g0, g1, g10, g100
+	:param gain_setting: the gain setting to check for
 	:return: True or False
 	"""
 	# Checks if there is a row that matches a given date and gain setting
-	has_gain = ((regression_table_pd['Date'] == sample_date) & (regression_table_pd['Gain'] == gain_setting)).any()
+
+	has_gain = session.query(classes.Regression)\
+					.filter(classes.Regression.date == sample_date,
+							classes.Regression.gain == gain_setting)\
+					.count() > 0
 	return has_gain
 
 
-def lookup_regression_values(regression_table_pd, sample_date, gain_setting):
+def lookup_regression_values(session, sample_date, gain_setting):
 	"""
 	Return regression values from table given a sample date and gain setting
 	:param regression_table_pd: pandas dataframe with the regression results
@@ -21,13 +62,11 @@ def lookup_regression_values(regression_table_pd, sample_date, gain_setting):
 	:param gain_setting: gain setting to check (string - g0, g1, g10, g100
 	:return: tuple with rsquared value, a coefficient (intercept), b coefficient (slope)
 	"""
-	index = regression_table_pd[(regression_table_pd['Date'] == sample_date) & (regression_table_pd['Gain'] == gain_setting)].index.tolist()
-
-	# select row using the index that matches the sample data and gain setting
-	rsquared = regression_table_pd.ix[index, "Rsquared"].values[0]
-	coeff_a = regression_table_pd.loc[index, "A_coeff"].values[0]
-	coeff_b = regression_table_pd.loc[index, "B_coeff"].values[0]
-	return rsquared, coeff_a, coeff_b
+	record = session.query(classes.Regression) \
+		.filter(classes.Regression.date == sample_date,
+				classes.Regression.gain == gain_setting)\
+		.one()
+	return record
 
 
 def chl_correction(uncorrected_chl, a_coeff, b_coeff):
@@ -62,7 +101,7 @@ def lm_significant(uncorrected_chl_value, rsquared, a_coeff, b_coeff):
 	return corrected_chl
 
 
-def chl_decision(uncorrected_chl_value, regression_table, sample_date):
+def chl_decision(uncorrected_chl_value, sample_date):
 	"""
 	Decision tree for correcting Chl values using a linear model regression results
 	:param uncorrected_chl_value: the value to correct
@@ -71,28 +110,38 @@ def chl_decision(uncorrected_chl_value, regression_table, sample_date):
 	:return: corrected chl value if applicable (r square significant for lm)
 	"""
 
-	# gain zero
-	if check_gain_reg_exists(regression_table, sample_date, "g0"):
-		reg_values = lookup_regression_values(regression_table, sample_date, "g0")
-		chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
+	session = classes.get_new_session()
 
+	# gain zero
+	if check_gain_reg_exists(session, sample_date, "g0"):
+		chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g0")
 	else:
 		if uncorrected_chl_value < 5:
 			# use gain 100 regression if significant
-			reg_values = lookup_regression_values(regression_table, sample_date, "g100")
-			chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
-
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g100")
 		elif uncorrected_chl_value < 45:
 			# use gain 100 regression if significant
-			reg_values = lookup_regression_values(regression_table, sample_date, "g10")
-			chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
-
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g10")
 		else:
 			# use gain1 regression if significant
-			reg_values = lookup_regression_values(regression_table, sample_date, "g1")
-			chl = lm_significant(uncorrected_chl_value, reg_values[0], reg_values[1], reg_values[2])
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g1")
 
 	# TODO there will likely be an error if the regression values don't exist in the table
 	# TODO figure out how to catch that. Alternative is to return uncorrected values.
+
+	return chl
+
+
+def get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain):
+	"""
+
+	:param sample_date:
+	:param uncorrected_chl_value:
+	:param gain:
+	:return:
+	"""
+
+	reg_values = lookup_regression_values(session, sample_date, gain)
+	chl = lm_significant(uncorrected_chl_value, reg_values.r_squared, reg_values.a_coefficient, reg_values.b_coefficient)
 
 	return chl

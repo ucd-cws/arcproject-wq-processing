@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 db_name = "wqdb.sqlite"
@@ -30,7 +30,7 @@ class db_abstract(object):
 		:return:
 		"""
 
-		Session = orm.sessionmaker(bind=engine)
+		Session = orm.sessionmaker(bind=engine, autoflush=False)
 		Session.configure(bind=engine)
 
 		return Session
@@ -47,23 +47,6 @@ def get_new_session():
 	:return:
 	"""
 	return Session()
-
-
-water_quality_header_map = {
-	"Temp": "temp",
-	"pH": "ph",
-	"SpCond": "sp_cond",
-	"Sal": "salinity",
-	"DO_PCT": "dissolved_oxygen_percent",
-	"DO": "dissolved_oxygen",
-	"DEP25": "dep_25",
-	"PAR": "par",
-	"RPAR": "rpar",
-	"TurbSC": "turbidity_sc",
-	"CHL": "chl",
-	"CHL_VOLTS": "chl_volts"
-	# TODO: Missing other CHL
-}
 
 # commented out the following class because I'm not sure it's providing anything of use
 #class WaterQualityFile(Base):
@@ -84,7 +67,7 @@ class Site(Base):
 
 	id = Column(Integer, primary_key=True)
 	name = Column(String)
-	code = Column(String)
+	code = Column(String, unique=True)
 
 	# vertical_profiles = relationship("VerticalProfile", backref="site")
 	# water_quality_records = relationship("WaterQuality", backref="site")
@@ -120,6 +103,27 @@ class VerticalProfile(Base):
 	@gain_setting.setter
 	def gain_setting(self, value_list):
 		self._gain_setting = numpy.mean(value_list)
+
+
+regression_field_map = {
+	"Date": "date",
+	"Gain": "gain",
+	"Rsquared": "r_squared",
+	"A_coeff": "a_coefficient",
+	"B_coeff": "b_coefficient",
+}
+
+class Regression(Base):
+	__tablename__ = "regression"
+	__table_args__ = (UniqueConstraint('date', 'gain', name='_date_gain_uc'),)
+
+	id = Column(Integer, primary_key=True)
+
+	date = Column(Date)
+	gain = Column(String)
+	r_squared = Column(Float)
+	a_coefficient = Column(Float)
+	b_coefficient = Column(Float)
 
 
 class Station(Base):
@@ -190,6 +194,28 @@ class GrabSample(Base):
 	source = Column(Float)
 
 
+water_quality_header_map = {
+	"Temp": "temp",
+	"pH": "ph",
+	"SpCond": "sp_cond",
+	"Sal": "salinity",
+	"DO_PCT": "dissolved_oxygen_percent",
+	"DO": "dissolved_oxygen",
+	"DEP25": "dep_25",
+	"PAR": "par",
+	"RPAR": "rpar",
+	"TurbSC": "turbidity_sc",
+	"CHL": "chl",
+	"CHL_VOLTS": "chl_volts",
+	"Date_Time": "date_time",
+	"WQ_SOURCE": None,  # a None here means it'll skip it
+	"GPS_SOURCE": None,
+	"GPS_Time": None,
+	"GPS_Date": None,
+	"POINT_Y": "latitude",
+	"POINT_X": "longitude",
+}
+
 class WaterQuality(Base):
 	"""
 		Each instance of this class is an observation in the database
@@ -206,9 +232,12 @@ class WaterQuality(Base):
 	# file = relationship(WaterQualityFile,
 	#					backref="water_quality_records")
 
-	#date and time
 	date_time = Column(DateTime)
-	#still need adjusted values
+
+	latitude = Column(Float)  # currently assumes consistent projections
+	longitude = Column(Float)
+	m_value = Column(Float)
+
 	temp = Column(Float)
 	ph = Column(Float)
 	sp_cond = Column(Integer)
