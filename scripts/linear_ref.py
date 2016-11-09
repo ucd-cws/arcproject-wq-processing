@@ -3,18 +3,48 @@
 import arcpy
 import os
 from waterquality import classes
+import numpy as np
 
 # reference routes that are used to get the slough distance
 wd = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ref_routes = os.path.join(wd, "geo", "Reference_SloughCenterlines.shp")  # routes as lines
 
 
-def data_to_linear_reference(session, some_query):
-	# not sure the format of this yet but likely it with be a list of database rows with XY
-	pass
+def data_to_linear_reference(session, in_memory_table):
+	"""
+	Turns records from session query into an arcgis table
+	:param session: session
+	:param in_memory_table: name of table to create in memory
+	:return:
+	"""
+	# Return all the records that do not have m values
+	q = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None).all()
+
+	# if the query is empty than all records have values
+	if len(q) == 0:
+		print("All records have m_values.")
+	else:
+		recs = []
+
+		# iterate through records pulling just the id, lat, and long
+		for record in q:
+			row = [record.id, record.latitude, record.longitude]
+			print(row)
+			recs.append(row)
 
 
-def subset_ref_route():
+		# turn lists of records to numpy array to table
+		dts = {'names': ('id', 'latitude', 'longitude'),
+		            'formats': (np.uint8, np.float64, np.float64)}
+		array = np.rec.fromrecords(recs, dtype=dts)
+
+		# save numpy array to table
+		arcpy.da.NumPyArrayToTable(array, in_memory_table)
+
+	return
+
+
+def subset_ref_route(reference_lines, slough):
 	# TODO select by reach name so that points at confluences get assigned properly
 	pass
 
@@ -36,7 +66,7 @@ def makeFeatureLayer(table):
 	sr = arcpy.SpatialReference(3310)  # CA teale albers ESPG code
 
 	# create XY event layer using the Point_X and Point_Y fields from the table
-	arcpy.MakeXYEventLayer_management(table, "Point_X", "Point_Y", "temp_layer", spatial_reference=sr)
+	arcpy.MakeXYEventLayer_management(table,  "longitude", "latitude", "temp_layer", spatial_reference=sr)
 	try:
 		# the XY event layer  does not have a object ID - need to copy to disk via in_memory
 		out_layer = arcpy.CopyFeatures_management("temp_layer", r"in_memory\out_layer")
@@ -82,42 +112,47 @@ def ID_MeasurePair(linear_referenced_table, ID_field):
 	return measurePairs
 
 
-def main(record_to_update):
+def main():
+	"""
+	Updates all the records with null m_values in the waterquality table
+	:return:
+	"""
 
+	# creates new session
 	session = classes.get_new_session()
 
-	q = session.query(classes.WaterQuality).filter(classes.WaterQuality.id == record_to_update).one()
-
-	print(q)
-
 	try:
-		print("skip")
-		# # turn records that need slough measurement to a table
-		# table = data_to_linear_reference(records_to_update)
-		#
-		# # turn table into feature layer using XY coords
-		# features = makeFeatureLayer(table)
-		#
-		# # locate features along route using the slough reference lines
-		# meas_table = LocateWQalongREF(features)
-		#
-		# # create data dict with ID and measurement result
-		# distances = ID_MeasurePair(meas_table)
-		#
-		# # update the selected records in the database with the new measurements
-		# for location in distances.keys():
-		# 	record = session.query(classes.WaterQuality).filter(classes.WaterQuality.fid == location).one_or_none()
-		#
-		# 	if record is None:
-		# 		# print a warning
-		# 		continue  # skip the record - FID not found - likly a problem - can use .one() instead of .one_or_none() above to raise an exception instead, if no record is found
-		#
-		# 	record.m_value = distances[location]
-		#
-		# session.commit()
+		# turn records that need slough measurement to a table
+		table = data_to_linear_reference(session, "in_memory/recs_np_table")
+
+		# check that the table exists
+		if arcpy.Exists("in_memory/recs_np_table"):
+
+			# turn table into feature layer using XY coords
+			features = makeFeatureLayer(table)
+
+			# locate features along route using the slough reference lines
+			meas_table = LocateWQalongREF(features)
+
+			# create data dict with ID and measurement result
+			distances = ID_MeasurePair(meas_table, "id")
+
+			# update the selected records in the database with the new measurements
+			for location in distances.keys():
+				record = session.query(classes.WaterQuality).filter(classes.WaterQuality.id == location).one_or_none()
+
+				if record is None:
+					# print a warning
+					continue  # skip the record - FID not found - likly a problem - can use .one() instead of .one_or_none() above to raise an exception instead, if no record is found
+
+				record.m_value = distances[location]
+		else:
+			print("No records updated")
+
+		session.commit()
 
 	finally:
 		session.close()
 
 if __name__ == '__main__':
-	main(5)
+	main()
