@@ -18,11 +18,12 @@ def data_to_linear_reference(session, in_memory_table):
 	:return:
 	"""
 	# Return all the records that do not have m values
-	q = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None).all()
+	q = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None,
+			classes.WaterQuality.longitude != None, classes.WaterQuality.latitude != None ).all()
 
 	# if the query is empty than all records have values
 	if len(q) == 0:
-		print("All records have m_values.")
+		print("All records with Lat/Long have m_values.")
 	else:
 		recs = []
 
@@ -31,7 +32,6 @@ def data_to_linear_reference(session, in_memory_table):
 			row = [record.id, record.latitude, record.longitude]
 			print(row)
 			recs.append(row)
-
 
 		# turn lists of records to numpy array to table
 		dts = {'names': ('id', 'latitude', 'longitude'),
