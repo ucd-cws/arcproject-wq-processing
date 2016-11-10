@@ -44,7 +44,7 @@ heatplot <- function(df, dateField, distanceField, wqVariable, site_code, statio
               legend.title= element_blank(), # no title for legend
               legend.key.size = unit(1.5, "cm") # size of legend
         )
-    p
+  p
 }
 
 
