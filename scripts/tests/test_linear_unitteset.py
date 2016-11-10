@@ -23,7 +23,7 @@ class LinRefTests(unittest.TestCase):
 	def setUp(self):
 		self.recs = [[64, 'CA', -153363.923533, 33135.571809], [25, 'F1', -151940.398463, 32115.633976]]
 		self.dts = {'names': ('ID', 'text', 'longitude', 'latitude',),
-		       'formats': (np.uint8, 'S2',  np.float64, np.float64)}
+		       'formats': (np.uint64, 'S2',  np.float64, np.float64)}
 		self.array = np.rec.fromrecords(self.recs, dtype=self.dts)
 		pass
 

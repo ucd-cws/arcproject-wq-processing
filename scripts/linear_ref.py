@@ -35,7 +35,7 @@ def data_to_linear_reference(session, in_memory_table):
 
 		# turn lists of records to numpy array to table
 		dts = {'names': ('id', 'latitude', 'longitude'),
-		            'formats': (np.uint8, np.float64, np.float64)}
+		            'formats': (np.uint64, np.float64, np.float64)}
 		array = np.rec.fromrecords(recs, dtype=dts)
 
 		# save numpy array to table
@@ -64,6 +64,9 @@ def makeFeatureLayer(table):
 
 	# spatial reference
 	sr = arcpy.SpatialReference(3310)  # CA teale albers ESPG code
+
+	if arcpy.Exists(table):
+		print("can find table")
 
 	# create XY event layer using the Point_X and Point_Y fields from the table
 	arcpy.MakeXYEventLayer_management(table,  "longitude", "latitude", "temp_layer", spatial_reference=sr)
@@ -122,11 +125,15 @@ def main():
 	session = classes.get_new_session()
 
 	try:
+
+		# temporary table
+		table = "in_memory/recs_np_table"
+
 		# turn records that need slough measurement to a table
-		table = data_to_linear_reference(session, "in_memory/recs_np_table")
+		data_to_linear_reference(session, table)
 
 		# check that the table exists
-		if arcpy.Exists("in_memory/recs_np_table"):
+		if arcpy.Exists(table):
 
 			# turn table into feature layer using XY coords
 			features = makeFeatureLayer(table)
@@ -136,6 +143,10 @@ def main():
 
 			# create data dict with ID and measurement result
 			distances = ID_MeasurePair(meas_table, "id")
+
+			# get count of number of records that are going to be updated
+			count = len(distances)
+			print(arcpy.AddMessage("Number of records updated: {}".format(count)))
 
 			# update the selected records in the database with the new measurements
 			for location in distances.keys():
@@ -147,7 +158,7 @@ def main():
 
 				record.m_value = distances[location]
 		else:
-			print("No records updated")
+			print(arcpy.AddMessage("No records updated"))
 
 		session.commit()
 
