@@ -3,6 +3,7 @@ import os
 import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
+from scripts import linear_ref
 
 from waterquality import classes
 
@@ -13,7 +14,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite]
+		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite, LinearRef]
 
 
 class AddSite(object):
@@ -70,6 +71,80 @@ class AddSite(object):
 			session.commit()
 		finally:
 			session.close()
+
+
+class LinearRef(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Add M distance"
+		self.description = "Calculates distance along slough for all water quality measurements along transects"
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+
+		return
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		arcpy.AddMessage("Updating all records that don't have m_values along slough")
+		# creates new session
+		session = classes.get_new_session()
+
+		try:
+			# temporary table
+			table = "in_memory/recs_np_table"
+
+			# turn records that need slough measurement to a table
+			linear_ref.data_to_linear_reference(session, table)
+
+			# check that the table exists
+			if arcpy.Exists(table):
+
+				# turn table into feature layer using XY coords
+				features = linear_ref.makeFeatureLayer(table)
+
+				# locate features along route using the slough reference lines
+				meas_table = linear_ref.LocateWQalongREF(features)
+
+				# create data dict with ID and measurement result
+				distances = linear_ref.ID_MeasurePair(meas_table, "id")
+
+				# get count of number of records that are going to be updated
+				count = len(distances)
+				print(arcpy.AddMessage("Number of records updated: {}".format(count)))
+
+				# update the selected records in the database with the new measurements
+				for location in distances.keys():
+					record = session.query(classes.WaterQuality).filter(
+						classes.WaterQuality.id == location).one_or_none()
+
+					if record is None:
+						# print a warning
+						continue  # skip the record - FID not found - likly a problem - can use .one() instead of .one_or_none() above to raise an exception instead, if no record is found
+
+					record.m_value = distances[location]
+			else:
+				print(arcpy.AddMessage("No records updated"))
+
+			session.commit()
+			arcpy.Delete_management("recs_np_table")
+		finally:
+			session.close()
+		return
 
 
 class JoinTimestamp(object):
