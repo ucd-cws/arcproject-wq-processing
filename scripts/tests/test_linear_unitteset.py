@@ -1,4 +1,3 @@
-import os
 import arcpy
 import numpy as np
 import unittest
@@ -14,8 +13,8 @@ class MeasTableTests(unittest.TestCase):
 		pass
 
 	def test_PairDict(self):
-		arcpy.da.NumPyArrayToTable(self.array, r"in_memory/out_table")
-		self.assertEqual(linear_ref.ID_MeasurePair(r"in_memory/out_table", 'ID'), {64: 12060.5, 25: 2060.5})
+		arcpy.da.NumPyArrayToTable(self.array, "in_memory/out_table1")
+		self.assertEqual(linear_ref.ID_MeasurePair("in_memory/out_table1", 'ID'), {64: 12060.5, 25: 2060.5})
 		pass
 
 
@@ -23,17 +22,15 @@ class LinRefTests(unittest.TestCase):
 
 	def setUp(self):
 		self.recs = [[64, 'CA', -153363.923533, 33135.571809], [25, 'F1', -151940.398463, 32115.633976]]
-		self.dts = {'names': ('ID', 'text', 'Point_X', 'Point_Y'),
+		self.dts = {'names': ('ID', 'text', 'longitude', 'latitude',),
 		       'formats': (np.uint8, 'S2',  np.float64, np.float64)}
 		self.array = np.rec.fromrecords(self.recs, dtype=self.dts)
 		pass
 
 	def test_featurelayer(self):
-		arcpy.da.NumPyArrayToTable(self.array, r"in_memory/np_table")
-
-		out_layer = linear_ref.makeFeatureLayer(r"in_memory/np_table")
-
-		desc = arcpy.Describe(out_layer)
+		arcpy.da.NumPyArrayToTable(self.array, "in_memory/np_table")
+		feature_layer = linear_ref.makeFeatureLayer("in_memory/np_table")
+		desc = arcpy.Describe(feature_layer)
 
 		# check output is a feature class
 		self.assertEqual(desc.dataType, "FeatureClass")
@@ -44,10 +41,11 @@ class LinRefTests(unittest.TestCase):
 
 		# make sure temp_layer is deleted
 		self.assertFalse(arcpy.Exists("temp_layer"))
+		pass
 
 	def test_locate(self):
-		arcpy.da.NumPyArrayToTable(self.array, r"in_memory/np_table")
-		out_layer = linear_ref.makeFeatureLayer(r"in_memory/np_table")
+		arcpy.da.NumPyArrayToTable(self.array, "in_memory/np_table2")
+		out_layer = linear_ref.makeFeatureLayer("in_memory/np_table2")
 		ref_table_out = linear_ref.LocateWQalongREF(out_layer)
 		cursor = arcpy.da.SearchCursor(ref_table_out, ['ID', 'text', 'Meas'])
 
