@@ -79,8 +79,9 @@ class ProfileSite(Base):
 	id = Column(Integer, primary_key=True)
 
 	site_id = Column(Integer, ForeignKey("sites.id"))
-	site = relationship(Site,
-						backref="profile_sites")
+	site = relationship(Site, backref="profile_sites")
+
+	m_value = Column(Float)
 
 
 class VerticalProfile(Base):
@@ -124,13 +125,6 @@ class Regression(Base):
 	r_squared = Column(Numeric(asdecimal=False, precision=8))
 	a_coefficient = Column(Numeric(asdecimal=False, precision=8))
 	b_coefficient = Column(Numeric(asdecimal=False, precision=8))
-
-
-class Station(Base):
-	__tablename__ = 'stations'
-
-	id = Column(Integer, primary_key=True)
-	code = Column(String)  # the station code
 
 
 sample_field_map = {
