@@ -111,15 +111,34 @@ def TimestampFromDateTime(date, time):
 	return date_object
 
 
-def wqtshp2pd(shapefile):
+def reproject_features(feature_class):
+	"""
+	Given a feature class, it make a temporary file for it and reprojects the data to that location
+
+	:param feature_class: the path to a feature class to be reprojected
+	:return: reprojected feature class
+	"""
+
+	return feature_class
+
+
+def wqtshp2pd(feature_class):
 	"""
 	Add XY coords, converts wq transect shp into a pandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
-	:param shapefile: input shapefile
+	:param feature_class: input shapefile
 	:return: geopandas data frame
 	"""
 
 	# make a temporary copy of the shapefile to add xy data without altering original file
-	arcpy.MakeFeatureLayer_management(shapefile, "wqt_xy")
+
+	desc = arcpy.Describe(feature_class)
+	try:
+		if desc.spatialReference.factoryCode != 3310:
+			feature_class = reproject_features(feature_class)
+	finally:
+		del desc
+
+	arcpy.MakeFeatureLayer_management(feature_class, "wqt_xy")
 	try:
 		# check if XY coords exist
 		fields = arcpy.ListFields("wqt_xy", 'POINT_')
@@ -137,7 +156,7 @@ def wqtshp2pd(shapefile):
 		# convert attribute table to pandas dataframe
 		df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
 
-		addsourcefield(df, "GPS_SOURCE", shapefile)
+		addsourcefield(df, "GPS_SOURCE", feature_class)
 
 		# cast Date field to str instead of timestamp
 		df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
