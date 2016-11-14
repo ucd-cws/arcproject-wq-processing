@@ -13,11 +13,13 @@ import pandas as pd
 import arcpy
 from sqlalchemy.orm.exc import NoResultFound
 
+import geodatabase_tempfile
+
 from waterquality import classes
 import numpy as np
 
 source_field = "WQ_SOURCE"
-
+projection_spatial_reference = 3310
 
 def convert_file_encoding(in_file, targetEncoding="utf-8"):
 	"""
@@ -119,7 +121,13 @@ def reproject_features(feature_class):
 	:return: reprojected feature class
 	"""
 
-	return feature_class
+	projected = geodatabase_tempfile.create_gdb_name()
+
+	spatial_reference = arcpy.SpatialReference(projection_spatial_reference)
+
+	arcpy.Project_management(feature_class, projected, spatial_reference)
+
+	return projected
 
 
 def wqtshp2pd(feature_class):
