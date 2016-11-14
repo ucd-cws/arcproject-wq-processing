@@ -154,6 +154,19 @@ sample_field_map = {
 }
 
 
+class Station(Base):
+	"""
+		Stations are locations that grab samples occur at
+	"""
+	__tablename__ = 'stations'
+
+	id = Column(Integer, primary_key=True)
+	code = Column(String)  # the station code
+
+	latitude = Column(Numeric(asdecimal=False))
+	longitude = Column(Numeric(asdecimal=False))
+
+
 class GrabSample(Base):
 	__tablename__ = 'grab_samples'
 
