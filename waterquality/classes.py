@@ -232,8 +232,7 @@ class WaterQuality(Base):
 	id = Column(Integer, primary_key=True)
 
 	site_id = Column(Integer, ForeignKey('sites.id'))
-	site = relationship("Site",
-						backref="water_quality_records")
+	site = relationship("Site", backref="water_quality_records")
 
 	# water_quality_file_id = Column(Integer, ForeignKey('water_quality_files.id'))
 	# file = relationship(WaterQualityFile,
@@ -243,6 +242,7 @@ class WaterQuality(Base):
 
 	latitude = Column(Float)  # currently assumes consistent projections
 	longitude = Column(Float)
+	spatial_reference_code = Column(Integer)  # stores the ESPG/factory code for the coordinate system projection
 	m_value = Column(Float)
 
 	temp = Column(Float)

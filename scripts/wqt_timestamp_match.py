@@ -363,8 +363,10 @@ def make_record(field_map, row, session, site_function):
 		return  # breaks out of this loop, which forces a skip of adding this object
 
 	key_set = set(row._asdict().keys())
-	key_set.remove("Index") # skips the Index key - internal and unnecessary - removes before loop to save cycles
+	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
 	keys = list(key_set)
+
+	wq.spatial_reference_code = projection_spatial_reference  # set the record's spatial reference to what was used to reproject it.
 
 	for key in keys:  # converts named_tuple to a Dict-like and gets the keys
 		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
