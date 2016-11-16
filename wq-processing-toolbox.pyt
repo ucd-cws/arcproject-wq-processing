@@ -75,7 +75,7 @@ class AddSite(object):
 class JoinTimestamp(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Join on Timestamp"
+		self.label = "Add Water Quality Data to Database"
 		self.description = ""
 		self.canRunInBackground = False
 
@@ -99,14 +99,23 @@ class JoinTimestamp(object):
 			direction="Input"
 		)
 
+		site = arcpy.Parameter(
+			displayName="Site Code (Leave blank to detect from filename)",
+			name="site_code",
+			datatype="GPString",
+			direction="Input",
+			parameterType="Optional",
+		)
+
 		out = arcpy.Parameter(
 			displayName="Joined Output",
 			name="Output",
 			datatype="DEFeatureClass",
-			direction="Output"
+			direction="Output",
+			parameterType="Optional"
 		)
 
-		params = [csvs, bc, out]
+		params = [csvs, bc, site, out]
 		return params
 
 	def isLicensed(self):
@@ -126,22 +135,25 @@ class JoinTimestamp(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		param1 = parameters[0].value.exportToString()
-		wq_transect_list = param1.split(";")
+		wq_transect_list = parameters[0].value
 
-		pts = arcpy.GetParameterAsText(1)
+		pts = parameters[1].valueAsText
 		arcpy.AddMessage(pts)
 
-		out = arcpy.GetParameterAsText(2)
+		site_code = parameters[2].valueAsText
+		if not site_code or site_code == "":
+			site_function = wqt_timestamp_match.site_function_historic
 
-		# list of water quality files from parameter
-		#wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
-		wq = wq_transect_list[0] # TODO
+		output_path = parameters[3].valueAsText
+		if output_path == "":
+			output_path = None
 
 		# run wq_join_match
-		wqt_timestamp_match.main(wq, pts, out)
+		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function)
 
-		return
+		if output_path:
+			parameters[3].value = output_path
+			pass
 
 
 class checkmatch(object):

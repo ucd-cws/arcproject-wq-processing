@@ -353,12 +353,19 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 			session.close()
 
 
+def site_from_text(site_code, session):
+	return session.query(classes.Site).filter(classes.Site.code == site_code).one()
+
+
 def make_record(field_map, row, session, site_function):
 
 	wq = classes.WaterQuality()  # instantiates a new object
 
 	try:
-		wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
+		if type(site_function) == six.text_type:
+			wq.site = site_from_text(site_code=site_function, session=session)
+		else:
+			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
 	except ValueError:
 		return  # breaks out of this loop, which forces a skip of adding this object
 
@@ -445,7 +452,7 @@ def np2feature(np_array, output_feature, spatial_ref):
 	return
 
 
-def main(water_quality_files, transect_gps, output_feature):
+def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
 	:param transect_gps: gps shapefile of transect tract
@@ -465,16 +472,15 @@ def main(water_quality_files, transect_gps, output_feature):
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	wq_df2database(matches)
+	wq_df2database(matches, site_function=site_function)
 
-	# Define a spatial reference for the output feature class by copying the input
-	spatial_ref = arcpy.Describe(transect_gps).spatialReference
+	if output_feature:
+		# Define a spatial reference for the output feature class by copying the input
+		spatial_ref = arcpy.Describe(transect_gps).spatialReference
 
-	# convert pandas dataframe to structured numpy array
-	match_np = pd2np(matches)
+		# convert pandas dataframe to structured numpy array
+		match_np = pd2np(matches)
 
-	# convert structured array to output feature class
-	np2feature(match_np, output_feature, spatial_ref)
-
-	return
+		# convert structured array to output feature class
+		np2feature(match_np, output_feature, spatial_ref)
 
