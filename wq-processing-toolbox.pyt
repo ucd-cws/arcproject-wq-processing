@@ -14,7 +14,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite, LinearRef]
+		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite, LinearRef, JoinTimestamp]
 
 
 class AddSite(object):
@@ -150,8 +150,8 @@ class LinearRef(object):
 class JoinTimestamp(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Join on Timestamp"
-		self.description = ""
+		self.label = "Transect - Join on Timestamp"
+		self.description = "Join water quality transect to gps using time stamp and add to database"
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -174,14 +174,14 @@ class JoinTimestamp(object):
 			direction="Input"
 		)
 
-		out = arcpy.Parameter(
-			displayName="Joined Output",
-			name="Output",
-			datatype="DEFeatureClass",
-			direction="Output"
+		add = arcpy.Parameter(
+			displayName="Add to database?",
+			name="add",
+			datatype="GPBoolean",
+			direction="Input"
 		)
 
-		params = [csvs, bc, out]
+		params = [csvs, bc, add]
 		return params
 
 	def isLicensed(self):
@@ -204,17 +204,41 @@ class JoinTimestamp(object):
 		param1 = parameters[0].value.exportToString()
 		wq_transect_list = param1.split(";")
 
-		pts = arcpy.GetParameterAsText(1)
-		arcpy.AddMessage(pts)
+		transect_gps = str(parameters[1].valueAsText)
 
-		out = arcpy.GetParameterAsText(2)
+		arcpy.AddMessage(transect_gps)
+
+		add2db = parameters[2]
 
 		# list of water quality files from parameter
 		#wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
-		wq = wq_transect_list[0] # TODO
+		#wq = wq_transect_list[0] # TODO
 
-		# run wq_join_match
-		wqt_timestamp_match.main(wq, pts, out)
+		arcpy.AddMessage("Processing Water Quality")
+		wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
+
+		arcpy.AddMessage("Processing GPS input")
+		pts = wqt_timestamp_match.wqtshp2pd(transect_gps)
+
+
+		# join using time stamps with exact match
+		joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
+		matched = wqt_timestamp_match.splitunmatched(joined_data)[0]
+
+		arcpy.AddMessage("Percent Matched: {}".format(wqt_timestamp_match.JoinMatchPercent(wq, matched)))
+
+		if add2db:
+			session = classes.get_new_session()
+			wqt_timestamp_match.wq_df2database(matched, session=session)
+
+			tobeadded = len(matched)
+
+			arcpy.AddMessage("Number of records added: {}".format(tobeadded))
+
+			session.commit()
+			session.close()
+		else:
+			arcpy.AddMessage("Fix problems and then add to database")
 
 		return
 
