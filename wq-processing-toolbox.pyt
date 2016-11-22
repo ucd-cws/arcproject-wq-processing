@@ -70,6 +70,59 @@ class AddSite(object):
 			session.add(site)
 			session.commit()
 		finally:
+			session.close()class AddSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Add New Site"
+		self.description = ""
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+
+		site_name = arcpy.Parameter(
+			displayName="Site Name",
+			name="site_name",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		site_code = arcpy.Parameter(
+			displayName="Site Code",
+			name="site_code",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		params = [site_name, site_code]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		session = classes.get_new_session()
+		try:
+			site = classes.Site()
+			site.code = parameters[1].valueAsText
+			site.name = parameters[0].valueAsText
+			session.add(site)
+			session.commit()
+		finally:
 			session.close()
 
 
@@ -390,16 +443,16 @@ class gain2shp(object):
 		wqp = arcpy.Parameter(
 			displayName="Vertical Profile file (wqp)",
 			name="wqp_files",
-			datatype="GPValueTable",
+			parameterType="GPValueTable",
 			multiValue=True,
 			direction="Input"
 		)
 
 		wqp.columns = [['DEFile', 'WQP'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
-		wqp.filters[1].type = 'ValueList'
-		wqp.filters[1].list = ['BK1', 'CA1', 'CA3', 'CC1', 'LNCA', 'UL1']  # TODO fill in from file name?
+
+		# TODO get list of gain settings from the data base?
 		wqp.filters[2].type = 'ValueList'
-		wqp.filters[2].list = ['g0', 'g1', 'g10', 'g100']
+		wqp.filters[2].list = ['0', '1', '10', '100']
 
 
 		# shapefile for the stationary GPS points
@@ -410,15 +463,15 @@ class gain2shp(object):
 			direction="Input"
 		)
 
-		out = arcpy.Parameter(
-			displayName="Output Feature Class",
-			name="out_file",
-			datatype="DEShapefile",
-			direction="Output"
+		bool = arcpy.Parameter(
+			displayName="Fill in table by parsing filename?",
+			name="bool",
+			datatype="GPBoolean"
 		)
 
-		params = [wqp, bc, out]
+		params = [wqp, bool, bc]
 		return params
+
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -428,6 +481,46 @@ class gain2shp(object):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
+		if parameters[0].valueAsText:
+
+			# validate site name by pulling creating filter with names from profile_sites table
+			# get list of sites from the database profile sites table
+			session = classes.get_new_session()
+			try:
+				profiles = session.query(classes.ProfileSite.profile_name).distinct().all()
+				# print(profiles)  # [(u'TES1',), (u'TES2',), (u'TS1',)]
+				profile_names = []
+
+				# add profile name to site list
+				for profile in profiles:
+					print(profile[0])
+					profile_names.append(profile[0])
+
+				parameters[0].filters[1].type = 'ValueList'
+				parameters[0].filters[1].list = profile_names
+
+			finally:
+				session.close()
+
+		# updates the value table using the values parsed from the file name
+		if parameters[1].value:
+			vt = parameters[0].values # values are list of lists
+
+			for i in range(0, len(vt)):
+				filename = vt[i][0]
+				basename = os.path.basename(str(filename))
+				base = os.path.splitext(basename)[0]  # rm extension if there is one
+				parts = base.split("_")  # split on underscore
+				site = parts[2]
+				gain = parts[4]
+				vt[i][0] = str(filename)
+				vt[i][1] = site
+				vt[i][2] = gain
+			parameters[0].values = vt
+
+			# set checkbox to false
+			parameters[1].value = False
+
 		return
 
 	def updateMessages(self, parameters):
@@ -438,41 +531,36 @@ class gain2shp(object):
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
 		# get the parameters
-		param = parameters[0].valueAsText
-		file_params = param.split(";") # the multi input needs to be split
-		wqps = []
-		for f in file_params:
-			# MAKE SURE FILE does not have spaces!!!!
-			row = f.split(" ") # split using single space
-			wqps.append(row)
 
-		arcpy.AddMessage(wqps)
-
-		gps_pts = str(parameters[1].valueAsText)
-		output_feature = parameters[2].valueAsText
+		vt = parameters[0].values  # values are list of lists
+		gps_pts = str(parameters[2].valueAsText)
 
 		master_wq_df = pandas.DataFrame()  # temporary df to store the results from the individual inputs
 
-		for wq in wqps:
-			wq_gain_file = wq[0]
-			site_id = wq[1]
-			gain_setting = wq[2]
+		for i in range(0, len(vt)):
+
+			wq_gain_file = str(vt[i][0])
+			basename = os.path.basename(str(wq_gain_file))
+			vt[i][0] = str(wq_gain_file)
+			site_id = vt[i][1] # site
+			gain_setting = vt[i][2] # gain
+			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
 
 			join_df = wq_gain.main(wq_gain_file, gps_pts, site_id, gain_setting)
-
-			# append to master wq
 			master_wq_df = master_wq_df.append(join_df)
+
+
 
 		arcpy.AddMessage(master_wq_df.head())
 
-		# Save the gain results to a shapefile
-		# Define a spatial reference for the output feature class by copying the input
-		spatial_ref = arcpy.Describe(gps_pts).spatialReference
-
-		# convert pandas dataframe to structured numpy array
-		match_np = wqt_timestamp_match.pd2np(master_wq_df)
-
-		# convert structured array to output feature class
-		wqt_timestamp_match.np2feature(match_np, output_feature, spatial_ref)
+		# # Save the gain results to a shapefile
+		# # Define a spatial reference for the output feature class by copying the input
+		# spatial_ref = arcpy.Describe(gps_pts).spatialReference
+		#
+		# # convert pandas dataframe to structured numpy array
+		# match_np = wqt_timestamp_match.pd2np(master_wq_df)
+		#
+		# # convert structured array to output feature class
+		# wqt_timestamp_match.np2feature(match_np, output_feature, spatial_ref)
 
 		return

@@ -77,7 +77,8 @@ class ProfileSite(Base):
 	__tablename__ = "profile_sites"
 
 	id = Column(Integer, primary_key=True)
-
+	profile_name = Column(String)
+	m_value = Column(Float)
 	site_id = Column(Integer, ForeignKey("sites.id"))
 	site = relationship(Site,
 						backref="profile_sites")
