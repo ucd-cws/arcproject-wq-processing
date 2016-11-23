@@ -354,26 +354,39 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 
 
 def site_from_text(site_code, session):
+	"""
+		Given a site code and an open database session, returns the site object
+	:param site_code: a text string that matches a site code in the database
+	:param session: An open database session
+	:return: Site object
+	"""
 	return session.query(classes.Site).filter(classes.Site.code == site_code).one()
 
 
 def make_record(field_map, row, session, site_function):
+	"""
+	 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame, translates it into a waterquality object
+	:param field_map: A field map dictionary with keys based on the data frame fields and values of the corresponding database field
+	:param row: a named tuple of the row in the data frame to translate into the WaterQuality object
+	:param session: an open SQLAlchemy database session
+	:param site_function: A site code or function that identifies the site and returns the site object for the record.
+	:return:
+	"""
 
 	wq = classes.WaterQuality()  # instantiates a new object
 
-	try:
+	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
 		if type(site_function) == six.text_type:
 			wq.site = site_from_text(site_code=site_function, session=session)
 		else:
 			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
 	except ValueError:
-		# TODO: Make this not silently fail
-		raise
+		traceback.print_exc()
 		return  # breaks out of this loop, which forces a skip of adding this object
 
-	key_set = set(row._asdict().keys())
+	key_set = set(row._asdict().keys())  # make a set of the keys so we can remove by name
 	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
-	keys = list(key_set)
+	keys = list(key_set)  # make it back into a list
 
 	wq.spatial_reference_code = projection_spatial_reference  # set the record's spatial reference to what was used to reproject it.
 
@@ -394,7 +407,7 @@ def make_record(field_map, row, session, site_function):
 			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
 
 	else:  # if we don't break for a bad site code or something else, then add the object
-		session.add(wq)  # and adds the object for creation in the DB
+		session.add(wq)  # and adds the object for creation in the DB - will be committed later before the session is closed.
 
 
 def dict_field_types(df):
