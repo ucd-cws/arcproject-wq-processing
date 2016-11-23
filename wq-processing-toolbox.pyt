@@ -13,7 +13,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite]
+		self.tools = [CheckMatch, WqtToShapefiile, GainToShapefile, AddSite, JoinTimestamp]
 
 
 class AddSite(object):
@@ -156,7 +156,7 @@ class JoinTimestamp(object):
 			pass
 
 
-class checkmatch(object):
+class CheckMatch(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Percent Match - Water Quality data with Transect"
@@ -222,7 +222,7 @@ class checkmatch(object):
 		return
 
 
-class wqt2shp(object):
+class WqtToShapefiile(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Join WQT to SHP"
@@ -289,7 +289,7 @@ class wqt2shp(object):
 		return
 
 
-class gain2shp(object):
+class GainToShapefile(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Join Gain profile average to SHP"

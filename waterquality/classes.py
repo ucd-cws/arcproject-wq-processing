@@ -81,6 +81,8 @@ class ProfileSite(Base):
 	site_id = Column(Integer, ForeignKey("sites.id"))
 	site = relationship(Site, backref="profile_sites")
 
+	abbreviation = Column(String)
+
 	m_value = Column(Float)
 
 
@@ -93,7 +95,7 @@ class VerticalProfile(Base):
 
 	_gain_setting = Column(Float)
 
-	profile_site_id = Column(Integer, ForeignKey("profile_sites.id"))
+	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
 
@@ -156,7 +158,7 @@ sample_field_map = {
 
 class Station(Base):
 	"""
-		Stations are locations that grab samples occur at
+		Stations are locations where= grab samples occur
 	"""
 	__tablename__ = 'stations'
 

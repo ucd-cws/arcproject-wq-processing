@@ -367,6 +367,8 @@ def make_record(field_map, row, session, site_function):
 		else:
 			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
 	except ValueError:
+		# TODO: Make this not silently fail
+		raise
 		return  # breaks out of this loop, which forces a skip of adding this object
 
 	key_set = set(row._asdict().keys())
