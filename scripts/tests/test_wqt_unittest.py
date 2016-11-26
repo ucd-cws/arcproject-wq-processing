@@ -1,16 +1,18 @@
 import os
 import unittest
 from datetime import datetime
+
 import pandas
+import arcpy
 
 from scripts import wqt_timestamp_match
 from waterquality import classes
 
 
-class TestDBInsert(unittest.TestCase):
-
+class BaseDBTest(unittest.TestCase):
 	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.gps = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
 		self.site_code = "wqt"
 		self.session = classes.get_new_session()
 		self._make_site()
@@ -29,8 +31,11 @@ class TestDBInsert(unittest.TestCase):
 			self.session.add(new_site)
 			self.session.commit()
 
+
+class TestDBInsert(BaseDBTest):
+
 	def test_data_insert(self):
-		matched = wqt_timestamp_match.wq_from_file(self.data)
+		matched = wqt_timestamp_match.wq_from_file(self.wq)
 		wqt_timestamp_match.wq_df2database(matched, session=self.session)
 
 		expected = len(matched)
@@ -68,7 +73,6 @@ class LoadSHP(unittest.TestCase):
 	def setUp(self):
 		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
 		self.shpdf = wqt_timestamp_match.wqtshp2pd(self.data)
-		pass
 
 	def test_length(self):
 		self.assertEqual(self.shpdf.shape, (15976, 6))
@@ -77,6 +81,17 @@ class LoadSHP(unittest.TestCase):
 		headers = self.shpdf.columns.values
 		for head in headers:
 			self.assertIn(head, ['Date_Time', 'GPS_SOURCE', 'GPS_Date', 'GPS_Time', 'POINT_X', 'POINT_Y'])
+
+	def test_coordinate_system(self):
+		"""
+			Ensures that the reprojection code properly returns a new dataset that matches the default coordinate system.
+		:return:
+		"""
+		projected_data = wqt_timestamp_match.reproject_features(self.data)
+
+		desc = arcpy.Describe(projected_data)
+		self.assertEqual(desc.spatialReference.factoryCode, wqt_timestamp_match.projection_spatial_reference)
+
 
 class CheckDates(unittest.TestCase):
 
@@ -106,28 +121,7 @@ class CheckDates(unittest.TestCase):
 		self.assertEqual(self.minus1hr, datetime.strptime('2013-04-04 07:18:47', '%Y-%m-%d %H:%M:%S'))
 
 
-class CheckJoin(unittest.TestCase):
-
-	def setUp(self):
-		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
-		self.gps = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
-		self.site_code = "wqt"
-		self.session = classes.get_new_session()
-		self._make_site()
-
-	def _make_site(self):
-		"""
-			When testing on test server, database will be cleaned first, but when DB exists, we'll need to check if the site
-			exists, and only create it when it doesn't exist
-		:return:
-		"""
-
-		if self.session.query(classes.Site).filter(classes.Site.code == self.site_code).one_or_none() is None:
-			new_site = classes.Site()
-			new_site.code = self.site_code
-			new_site.name = "Testing Site"
-			self.session.add(new_site)
-			self.session.commit()
+class CheckJoin(BaseDBTest):
 
 	def test_data_insert(self):
 		wq = wqt_timestamp_match.wq_append_fromlist([self.wq])
@@ -144,7 +138,51 @@ class CheckJoin(unittest.TestCase):
 		added = len(self.session.new)
 		self.session.commit()
 		self.session.close()
+
 		self.assertEqual(expected, added)  # assert at end so that database commit occurs and we can inspect
+
+
+class CheckReprojection(BaseDBTest):
+
+	def setUp(self):
+		super(CheckReprojection, self).setUp()
+
+		self.wq = wqt_timestamp_match.wq_append_fromlist([self.wq])
+
+		# shapefile for transect
+		self.pts = wqt_timestamp_match.wqtshp2pd(self.gps)
+
+		# join using time stamps with exact match
+		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(self.wq, self.pts)
+		self.matches = wqt_timestamp_match.splitunmatched(self.joined_data)[0]
+		wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
+
+	def test_spatial_reference_code_in_db(self):
+
+		wq_objects = self.session.new
+		for wqo in wq_objects:
+			self.assertEqual(wqo.spatial_reference_code, wqt_timestamp_match.projection_spatial_reference)
+
+	def test_coordinates_in_bounds(self):
+		"""
+			This comes close to testing functionality in another library, but we check if the coordinates attached to
+			each record are in bounds for the spatial reference as another way of ensuring that the transformation occurred
+			and that the attributes were all properly set both for the spatial reference and the coordinates.
+
+			This test currently isn't very useful because most coordinates (including Decimal Degrees) are
+			within the domain returned for California Teale Albers. Everything should be true here.
+		:return:
+		"""
+
+		coordinate_system = arcpy.SpatialReference(wqt_timestamp_match.projection_spatial_reference)
+
+		x_min, y_min, x_max, y_max = coordinate_system.domain.split(" ")
+
+		for record in self.session.new:
+			self.assertTrue(float(x_min) <= float(record.longitude) <= float(x_max))
+			self.assertTrue(float(y_min) <= float(record.latitude) <= float(y_max))
+
+
 
 
 if __name__ == '__main__':

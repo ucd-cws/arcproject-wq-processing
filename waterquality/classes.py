@@ -82,8 +82,8 @@ class ProfileSite(Base):
 	longitude = Column(Float)
 	m_value = Column(Float)
 	site_id = Column(Integer, ForeignKey("sites.id"))
-	site = relationship(Site,
-						backref="profile_sites")
+	site = relationship(Site, backref="profile_sites")
+	abbreviation = Column(String)
 
 
 class VerticalProfile(Base):
@@ -95,7 +95,7 @@ class VerticalProfile(Base):
 
 	_gain_setting = Column(Float)
 
-	profile_site_id = Column(Integer, ForeignKey("profile_sites.id"))
+	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
 
@@ -129,13 +129,6 @@ class Regression(Base):
 	b_coefficient = Column(Numeric(asdecimal=False, precision=8))
 
 
-class Station(Base):
-	__tablename__ = 'stations'
-
-	id = Column(Integer, primary_key=True)
-	code = Column(String)  # the station code
-
-
 sample_field_map = {
 	"Date": "date",
 	"ID": "internal_id",
@@ -161,6 +154,19 @@ sample_field_map = {
 	"NOTES": "notes",
 	"SOURCE": "source",
 }
+
+
+class Station(Base):
+	"""
+		Stations are locations where= grab samples occur
+	"""
+	__tablename__ = 'stations'
+
+	id = Column(Integer, primary_key=True)
+	code = Column(String)  # the station code
+
+	latitude = Column(Numeric(asdecimal=False))
+	longitude = Column(Numeric(asdecimal=False))
 
 
 class GrabSample(Base):
@@ -228,8 +234,7 @@ class WaterQuality(Base):
 	id = Column(Integer, primary_key=True)
 
 	site_id = Column(Integer, ForeignKey('sites.id'))
-	site = relationship("Site",
-						backref="water_quality_records")
+	site = relationship("Site", backref="water_quality_records")
 
 	# water_quality_file_id = Column(Integer, ForeignKey('water_quality_files.id'))
 	# file = relationship(WaterQualityFile,
@@ -239,6 +244,7 @@ class WaterQuality(Base):
 
 	latitude = Column(Float)  # currently assumes consistent projections
 	longitude = Column(Float)
+	spatial_reference_code = Column(Integer)  # stores the ESPG/factory code for the coordinate system projection
 	m_value = Column(Float)
 
 	temp = Column(Float)

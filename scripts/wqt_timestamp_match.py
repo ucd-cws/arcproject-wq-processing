@@ -13,11 +13,13 @@ import pandas as pd
 import arcpy
 from sqlalchemy.orm.exc import NoResultFound
 
+import geodatabase_tempfile
+
 from waterquality import classes
 import numpy as np
 
 source_field = "WQ_SOURCE"
-
+projection_spatial_reference = 3310
 
 def convert_file_encoding(in_file, targetEncoding="utf-8"):
 	"""
@@ -111,15 +113,40 @@ def TimestampFromDateTime(date, time):
 	return date_object
 
 
-def wqtshp2pd(shapefile):
+def reproject_features(feature_class):
+	"""
+	Given a feature class, it make a temporary file for it and reprojects the data to that location
+
+	:param feature_class: the path to a feature class to be reprojected
+	:return: reprojected feature class
+	"""
+
+	projected = geodatabase_tempfile.create_gdb_name()
+
+	spatial_reference = arcpy.SpatialReference(projection_spatial_reference)
+
+	arcpy.Project_management(feature_class, projected, spatial_reference)
+
+	return projected
+
+
+def wqtshp2pd(feature_class):
 	"""
 	Add XY coords, converts wq transect shp into a pandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
-	:param shapefile: input shapefile
+	:param feature_class: input shapefile
 	:return: geopandas data frame
 	"""
 
 	# make a temporary copy of the shapefile to add xy data without altering original file
-	arcpy.MakeFeatureLayer_management(shapefile, "wqt_xy")
+
+	desc = arcpy.Describe(feature_class)
+	try:
+		if desc.spatialReference.factoryCode != 3310:
+			feature_class = reproject_features(feature_class)
+	finally:
+		del desc
+
+	arcpy.MakeFeatureLayer_management(feature_class, "wqt_xy")
 	try:
 		# check if XY coords exist
 		fields = arcpy.ListFields("wqt_xy", 'POINT_')
@@ -137,7 +164,7 @@ def wqtshp2pd(shapefile):
 		# convert attribute table to pandas dataframe
 		df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
 
-		addsourcefield(df, "GPS_SOURCE", shapefile)
+		addsourcefield(df, "GPS_SOURCE", feature_class)
 
 		# cast Date field to str instead of timestamp
 		df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
@@ -326,18 +353,42 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 			session.close()
 
 
+def site_from_text(site_code, session):
+	"""
+		Given a site code and an open database session, returns the site object
+	:param site_code: a text string that matches a site code in the database
+	:param session: An open database session
+	:return: Site object
+	"""
+	return session.query(classes.Site).filter(classes.Site.code == site_code).one()
+
+
 def make_record(field_map, row, session, site_function):
+	"""
+	 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame, translates it into a waterquality object
+	:param field_map: A field map dictionary with keys based on the data frame fields and values of the corresponding database field
+	:param row: a named tuple of the row in the data frame to translate into the WaterQuality object
+	:param session: an open SQLAlchemy database session
+	:param site_function: A site code or function that identifies the site and returns the site object for the record.
+	:return:
+	"""
 
 	wq = classes.WaterQuality()  # instantiates a new object
 
-	try:
-		wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
+	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
+		if type(site_function) == six.text_type:
+			wq.site = site_from_text(site_code=site_function, session=session)
+		else:
+			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
 	except ValueError:
+		traceback.print_exc()
 		return  # breaks out of this loop, which forces a skip of adding this object
 
-	key_set = set(row._asdict().keys())
-	key_set.remove("Index") # skips the Index key - internal and unnecessary - removes before loop to save cycles
-	keys = list(key_set)
+	key_set = set(row._asdict().keys())  # make a set of the keys so we can remove by name
+	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
+	keys = list(key_set)  # make it back into a list
+
+	wq.spatial_reference_code = projection_spatial_reference  # set the record's spatial reference to what was used to reproject it.
 
 	for key in keys:  # converts named_tuple to a Dict-like and gets the keys
 		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
@@ -356,7 +407,7 @@ def make_record(field_map, row, session, site_function):
 			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
 
 	else:  # if we don't break for a bad site code or something else, then add the object
-		session.add(wq)  # and adds the object for creation in the DB
+		session.add(wq)  # and adds the object for creation in the DB - will be committed later before the session is closed.
 
 
 def dict_field_types(df):
@@ -416,7 +467,7 @@ def np2feature(np_array, output_feature, spatial_ref):
 	return
 
 
-def main(water_quality_files, transect_gps, output_feature):
+def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
 	:param transect_gps: gps shapefile of transect tract
@@ -436,16 +487,15 @@ def main(water_quality_files, transect_gps, output_feature):
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	wq_df2database(matches)
+	wq_df2database(matches, site_function=site_function)
 
-	# Define a spatial reference for the output feature class by copying the input
-	spatial_ref = arcpy.Describe(transect_gps).spatialReference
+	if output_feature:
+		# Define a spatial reference for the output feature class by copying the input
+		spatial_ref = arcpy.Describe(transect_gps).spatialReference
 
-	# convert pandas dataframe to structured numpy array
-	match_np = pd2np(matches)
+		# convert pandas dataframe to structured numpy array
+		match_np = pd2np(matches)
 
-	# convert structured array to output feature class
-	np2feature(match_np, output_feature, spatial_ref)
-
-	return
+		# convert structured array to output feature class
+		np2feature(match_np, output_feature, spatial_ref)
 
