@@ -397,7 +397,7 @@ class WqtToShapefiile(object):
 class GainToDB(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Join Gain profile average to SHP"
+		self.label = "Add Gain profile average to database"
 		self.description = "Matches vertical Water Quality data with Transect using site names"
 		self.canRunInBackground = False
 
@@ -518,15 +518,7 @@ class GainToDB(object):
 
 		arcpy.AddMessage(master_wq_df.head())
 
-		# # Save the gain results to a shapefile
-		# # Define a spatial reference for the output feature class by copying the input
-		# spatial_ref = arcpy.Describe(gps_pts).spatialReference
-		#
-		# # convert pandas dataframe to structured numpy array
-		# match_np = wqt_timestamp_match.pd2np(master_wq_df)
-		#
-		# # convert structured array to output feature class
-		# wqt_timestamp_match.np2feature(match_np, output_feature, spatial_ref)
+		# TODO append the pandas data frame to the database table
 
 		return
 
@@ -591,10 +583,27 @@ class AddGainSite(object):
 	def execute(self, parameters, messages):
 
 		# project to CA teale albers
+		feature_class = parameters[0].valueAsText
+		desc = arcpy.Describe(feature_class)
+		try:
+			if desc.spatialReference.factoryCode != 3310:
+				feature_class = wqt_timestamp_match.reproject_features(feature_class)
+		finally:
+			del desc
 
-		# add x and y to feature
+		profile_field = parameters[1].valueAsText
+		transect_field = parameters[2].valueAsText
 
 		# iterate through rows and add to profile sites
+		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, transect_field, "SHAPE@Y", "SHAPE@X"])
+		for row in cursor:
+			ps = classes.ProfileSite()
+			arcpy.AddMessage(row)
+			ps.abbreviation = row[0]
+			ps.latitude = row[2]
+			ps.longitude = row[3]
+
+			arcpy.AddMessage(ps)
 
 		# check that profile site does not already exist
 
