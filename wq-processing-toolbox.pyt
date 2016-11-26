@@ -14,7 +14,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite, LinearRef, JoinTimestamp]
+		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite, LinearRef, JoinTimestamp, AddGainSite]
 
 
 class AddSite(object):
@@ -70,32 +70,43 @@ class AddSite(object):
 			session.add(site)
 			session.commit()
 		finally:
-			session.close()class AddSite(object):
+			session.close()
+
+
+class AddGainSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add New Site"
+		self.label = "Add Vertical Gain Profile Site"
 		self.description = ""
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
 
-		site_name = arcpy.Parameter(
-			displayName="Site Name",
-			name="site_name",
+		ZoopChlW = arcpy.Parameter(
+			displayName="Vertical Profile GPS points",
+			name="ZoopChlW",
+			datatype="DEShapefile",
+			multiValue=False,
+			direction="Input"
+		)
+
+		site_codes = arcpy.Parameter(
+			displayName="Field with site codes",
+			name="site_codes",
 			datatype="GPString",
 			multiValue=False,
 			direction="Input"
 		)
 
-		site_code = arcpy.Parameter(
-			displayName="Site Code",
-			name="site_code",
+		sloughs = arcpy.Parameter(
+			displayName="Transect Code",
+			name="transect_code",
 			datatype="GPString",
 			multiValue=False,
 			direction="Input"
 		)
 
-		params = [site_name, site_code]
+		params = [ZoopChlW, site_codes, sloughs]
 		return params
 
 	def isLicensed(self):
@@ -106,6 +117,12 @@ class AddSite(object):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
+
+		# populate the field selection using the fields from the shapefile
+		if parameters[0].value:
+			parameters[1].filter.list = [f.name for f in arcpy.Describe(parameters[0].value).fields]
+			parameters[2].filter.list = [f.name for f in arcpy.Describe(parameters[0].value).fields]
+
 		return
 
 	def updateMessages(self, parameters):
@@ -115,15 +132,26 @@ class AddSite(object):
 
 	def execute(self, parameters, messages):
 
-		session = classes.get_new_session()
-		try:
-			site = classes.Site()
-			site.code = parameters[1].valueAsText
-			site.name = parameters[0].valueAsText
-			session.add(site)
-			session.commit()
-		finally:
-			session.close()
+		# project to CA teale albers
+
+		# add x and y to feature
+
+		# iterate through rows and add to profile sites
+
+		# check that profile site does not already exist
+
+		# TODO add m_value (maybe add to lin ref tool function?)
+
+
+		# session = classes.get_new_session()
+		# try:
+		# 	site = classes.Site()
+		# 	site.code = parameters[1].valueAsText
+		# 	site.name = parameters[0].valueAsText
+		# 	session.add(site)
+		# 	session.commit()
+		# finally:
+		# 	session.close()
 
 
 class LinearRef(object):
