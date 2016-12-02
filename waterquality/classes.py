@@ -242,8 +242,8 @@ class WaterQuality(Base):
 
 	date_time = Column(DateTime)
 
-	latitude = Column(Float)  # currently assumes consistent projections
-	longitude = Column(Float)
+	y_coord = Column(Float)  # currently assumes consistent projections
+	x_coord = Column(Float)
 	spatial_reference_code = Column(Integer)  # stores the ESPG/factory code for the coordinate system projection
 	m_value = Column(Float)
 

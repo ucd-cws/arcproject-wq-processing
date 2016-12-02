@@ -4,6 +4,7 @@ import arcpy
 import pandas as pd
 
 from waterquality import classes
+from scripts.wqt_timestamp_match import pd2np
 
 def export_points_to_features():
 	# this function meant to actual compose a SQLAlchemy query
@@ -13,8 +14,8 @@ def export_points_to_features():
 def query_to_features(query, export_path):
 	"""
 	Given a SQLAlchemy query for water quality data, exports it to a feature class
-	:param query:
-	:param export_path:
+	:param query: a SQLAlchemy query object
+	:param export_path: the path to write out a feature class to
 	:return:
 	"""
 
@@ -33,8 +34,8 @@ def query_to_features(query, export_path):
 	sr = arcpy.SpatialReference(sr_code)  # make a spatial reference object
 
 	arcpy.da.NumPyArrayToFeatureClass(
-		in_array=df.as_matrix(),
+		in_array=pd2np(df),
 		out_table=export_path,
-		shape_fields=["longitude", "latitude"],
+		shape_fields=["x_coord", "y_coord"],
 		spatial_reference=sr,
 	)
