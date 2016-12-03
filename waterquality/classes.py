@@ -79,8 +79,11 @@ class ProfileSite(Base):
 	id = Column(Integer, primary_key=True)
 
 	site_id = Column(Integer, ForeignKey("sites.id"))
-	site = relationship(Site,
-						backref="profile_sites")
+	site = relationship(Site, backref="profile_sites")
+
+	abbreviation = Column(String)
+
+	m_value = Column(Float)
 
 
 class VerticalProfile(Base):
@@ -92,7 +95,7 @@ class VerticalProfile(Base):
 
 	_gain_setting = Column(Float)
 
-	profile_site_id = Column(Integer, ForeignKey("profile_sites.id"))
+	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
 
@@ -126,13 +129,6 @@ class Regression(Base):
 	b_coefficient = Column(Numeric(asdecimal=False, precision=8))
 
 
-class Station(Base):
-	__tablename__ = 'stations'
-
-	id = Column(Integer, primary_key=True)
-	code = Column(String)  # the station code
-
-
 sample_field_map = {
 	"Date": "date",
 	"ID": "internal_id",
@@ -158,6 +154,19 @@ sample_field_map = {
 	"NOTES": "notes",
 	"SOURCE": "source",
 }
+
+
+class Station(Base):
+	"""
+		Stations are locations where= grab samples occur
+	"""
+	__tablename__ = 'stations'
+
+	id = Column(Integer, primary_key=True)
+	code = Column(String)  # the station code
+
+	y_coord = Column(Numeric(asdecimal=False))
+	x_coord = Column(Numeric(asdecimal=False))
 
 
 class GrabSample(Base):
@@ -212,8 +221,8 @@ water_quality_header_map = {
 	"GPS_SOURCE": None,
 	"GPS_Time": None,
 	"GPS_Date": None,
-	"POINT_Y": "latitude",
-	"POINT_X": "longitude",
+	"POINT_Y": "y_coord",
+	"POINT_X": "x_coord",
 }
 
 class WaterQuality(Base):
@@ -225,8 +234,7 @@ class WaterQuality(Base):
 	id = Column(Integer, primary_key=True)
 
 	site_id = Column(Integer, ForeignKey('sites.id'))
-	site = relationship("Site",
-						backref="water_quality_records")
+	site = relationship("Site", backref="water_quality_records")
 
 	# water_quality_file_id = Column(Integer, ForeignKey('water_quality_files.id'))
 	# file = relationship(WaterQualityFile,
@@ -234,8 +242,9 @@ class WaterQuality(Base):
 
 	date_time = Column(DateTime)
 
-	latitude = Column(Float)  # currently assumes consistent projections
-	longitude = Column(Float)
+	y_coord = Column(Float)  # currently assumes consistent projections
+	x_coord = Column(Float)
+	spatial_reference_code = Column(Integer)  # stores the ESPG/factory code for the coordinate system projection
 	m_value = Column(Float)
 
 	temp = Column(Float)

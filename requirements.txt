@@ -3,3 +3,4 @@ six
 numpy
 pandas
 matplotlib
+geodatabase_tempfile
