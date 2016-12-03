@@ -3,8 +3,11 @@ import os
 import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
+from scripts import mapping
 
 from waterquality import classes
+
+from datetime import timedelta
 
 class Toolbox(object):
 	def __init__(self):
@@ -13,7 +16,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [CheckMatch, WqtToShapefiile, GainToShapefile, AddSite, JoinTimestamp]
+		self.tools = [CheckMatch, GenerateWQLayer, WqtToShapefiile, GainToShapefile, AddSite, JoinTimestamp]
 
 
 class AddSite(object):
@@ -70,6 +73,67 @@ class AddSite(object):
 			session.commit()
 		finally:
 			session.close()
+
+
+class GenerateWQLayer(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Generate Map Layer from Water Quality Data"
+		self.description = ""
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+		date_to_generate = arcpy.Parameter(
+			displayName="Date to Generate Layer For",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input"
+		)
+
+		# shapefile for the transects GPS breadcrumbs
+		fc = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="output_feature_class",
+			datatype="DEFeatureClass",
+			direction="Output"
+		)
+
+		params = [date_to_generate, fc, ]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		date_to_use = parameters[0].value
+		output_location = parameters[1].value
+
+		wq = classes.WaterQuality
+		session = classes.get_new_session()
+
+		arcpy.AddMessage("Using Date {}".format(type(date_to_use)))
+
+		upper_bound = date_to_use.date() + timedelta(days=1)
+
+		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound)  # add 1 day's worth of nanoseconds
+		mapping.query_to_features(query, output_location)
 
 
 class JoinTimestamp(object):
