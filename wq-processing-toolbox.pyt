@@ -123,7 +123,7 @@ class GenerateWQLayer(object):
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
 		date_to_use = parameters[0].value
-		output_location = parameters[1].value
+		output_location = parameters[1].valueAsText
 
 		wq = classes.WaterQuality
 		session = classes.get_new_session()
@@ -132,7 +132,7 @@ class GenerateWQLayer(object):
 
 		upper_bound = date_to_use.date() + timedelta(days=1)
 
-		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound)  # add 1 day's worth of nanoseconds
+		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
 		mapping.query_to_features(query, output_location)
 
 

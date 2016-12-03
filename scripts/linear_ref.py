@@ -28,13 +28,13 @@ def data_to_linear_reference(session, in_memory_table):
 
 		# iterate through records pulling just the id, lat, and long
 		for record in q:
-			row = [record.id, record.latitude, record.longitude]
+			row = [record.id, record.y_coord, record.x_coord]
 			print(row)
 			recs.append(row)
 
 
 		# turn lists of records to numpy array to table
-		dts = {'names': ('id', 'latitude', 'longitude'),
+		dts = {'names': ('id', 'y_coord', 'x_coord'),
 		            'formats': (np.uint8, np.float64, np.float64)}
 		array = np.rec.fromrecords(recs, dtype=dts)
 
@@ -66,7 +66,7 @@ def makeFeatureLayer(table):
 	sr = arcpy.SpatialReference(3310)  # CA teale albers ESPG code
 
 	# create XY event layer using the Point_X and Point_Y fields from the table
-	arcpy.MakeXYEventLayer_management(table,  "longitude", "latitude", "temp_layer", spatial_reference=sr)
+	arcpy.MakeXYEventLayer_management(table,  "x_coord", "y_coord", "temp_layer", spatial_reference=sr)
 	try:
 		# the XY event layer  does not have a object ID - need to copy to disk via in_memory
 		out_layer = arcpy.CopyFeatures_management("temp_layer", r"in_memory\out_layer")

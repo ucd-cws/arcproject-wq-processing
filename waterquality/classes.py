@@ -165,8 +165,8 @@ class Station(Base):
 	id = Column(Integer, primary_key=True)
 	code = Column(String)  # the station code
 
-	latitude = Column(Numeric(asdecimal=False))
-	longitude = Column(Numeric(asdecimal=False))
+	y_coord = Column(Numeric(asdecimal=False))
+	x_coord = Column(Numeric(asdecimal=False))
 
 
 class GrabSample(Base):
@@ -221,8 +221,8 @@ water_quality_header_map = {
 	"GPS_SOURCE": None,
 	"GPS_Time": None,
 	"GPS_Date": None,
-	"POINT_Y": "latitude",
-	"POINT_X": "longitude",
+	"POINT_Y": "y_coord",
+	"POINT_X": "x_coord",
 }
 
 class WaterQuality(Base):
