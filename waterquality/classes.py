@@ -85,26 +85,55 @@ class ProfileSite(Base):
 	site = relationship(Site, backref="profile_sites")
 
 
+gain_water_quality_header_map = {
+	"Temp": "temp",
+	"pH": "ph",
+	"SpCond": "sp_cond",
+	"Sal": "salinity",
+	"DO_PCT": "dissolved_oxygen_percent",
+	"DO": "dissolved_oxygen",
+	"DEP25": "dep_25",
+	"PAR": "par",
+	"RPAR": "rpar",
+	"TurbSC": "turbidity_sc",
+	"CHL": "chl",
+	"CHL_VOLTS": "chl_volts",
+	"Date_Time": "date_time",
+	"WQ_SOURCE": None,  # a None here means it'll skip it
+	"Gain": "gain_setting",
+	"Site": "profile_site_abbreviation"
+}
+
 class VerticalProfile(Base):
 	__tablename__ = "vertical_profiles"
 
 	id = Column(Integer, primary_key=True)
-	date = Column(Date)
-	measured_chl = Column(Float)  # average by site/date for 1m
-
-	_gain_setting = Column(Float)
 
 	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
+	gain_setting = Column(Float)
+	date_time = Column(DateTime)
+	temp = Column(Float)
+	ph = Column(Float)
+	sp_cond = Column(Integer)
+	salinity = Column(Float)
+	dissolved_oxygen = Column(Float)
+	dissolved_oxygen_percent = Column(Float)
+	dep_25 = Column(Float)
+	par = Column(Integer)
+	rpar = Column(Integer)
+	turbidity_sc = Column(Float)
+	chl = Column(Float)  # raw measurement by sonde
+	chl_volts = Column(Float)
 
-	@property
-	def gain_setting(self):
-		return self._gain_setting
-
-	@gain_setting.setter
-	def gain_setting(self, value_list):
-		self._gain_setting = numpy.mean(value_list)
+	# @property
+	# def gain_setting(self):
+	# 	return self._gain_setting
+	#
+	# @gain_setting.setter
+	# def gain_setting(self, value_list):
+	# 	self._gain_setting = numpy.mean(value_list)
 
 
 regression_field_map = {
