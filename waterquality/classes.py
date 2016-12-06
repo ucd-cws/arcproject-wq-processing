@@ -78,8 +78,8 @@ class ProfileSite(Base):
 
 	id = Column(Integer, primary_key=True)
 	profile_name = Column(String)
-	latitude = Column(Float)  # currently assumes consistent projections
-	longitude = Column(Float)
+	latitude = Column(Numeric(asdecimal=False))
+	longitude = Column(Numeric(asdecimal=False))
 	m_value = Column(Float)
 	site_id = Column(Integer, ForeignKey("sites.id"))
 	site = relationship(Site, backref="profile_sites")
