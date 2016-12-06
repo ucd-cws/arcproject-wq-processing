@@ -3,8 +3,11 @@ import os
 import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
+from scripts import mapping
 
 from waterquality import classes
+
+from datetime import timedelta
 
 class Toolbox(object):
 	def __init__(self):
@@ -13,7 +16,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [checkmatch, wqt2shp, gain2shp, AddSite]
+		self.tools = [CheckMatch, GenerateWQLayer, WqtToShapefiile, GainToShapefile, AddSite, JoinTimestamp]
 
 
 class AddSite(object):
@@ -72,10 +75,71 @@ class AddSite(object):
 			session.close()
 
 
+class GenerateWQLayer(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Generate Map Layer from Water Quality Data"
+		self.description = ""
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+		date_to_generate = arcpy.Parameter(
+			displayName="Date to Generate Layer For",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input"
+		)
+
+		# shapefile for the transects GPS breadcrumbs
+		fc = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="output_feature_class",
+			datatype="DEFeatureClass",
+			direction="Output"
+		)
+
+		params = [date_to_generate, fc, ]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		date_to_use = parameters[0].value
+		output_location = parameters[1].valueAsText
+
+		wq = classes.WaterQuality
+		session = classes.get_new_session()
+
+		arcpy.AddMessage("Using Date {}".format(type(date_to_use)))
+
+		upper_bound = date_to_use.date() + timedelta(days=1)
+
+		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
+		mapping.query_to_features(query, output_location)
+
+
 class JoinTimestamp(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Join on Timestamp"
+		self.label = "Add Water Quality Data to Database"
 		self.description = ""
 		self.canRunInBackground = False
 
@@ -99,14 +163,23 @@ class JoinTimestamp(object):
 			direction="Input"
 		)
 
+		site = arcpy.Parameter(
+			displayName="Site Code (Leave blank to detect from filename)",
+			name="site_code",
+			datatype="GPString",
+			direction="Input",
+			parameterType="Optional",
+		)
+
 		out = arcpy.Parameter(
 			displayName="Joined Output",
 			name="Output",
 			datatype="DEFeatureClass",
-			direction="Output"
+			direction="Output",
+			parameterType="Optional"
 		)
 
-		params = [csvs, bc, out]
+		params = [csvs, bc, site, out]
 		return params
 
 	def isLicensed(self):
@@ -126,25 +199,28 @@ class JoinTimestamp(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		param1 = parameters[0].value.exportToString()
-		wq_transect_list = param1.split(";")
+		wq_transect_list = parameters[0].value
 
-		pts = arcpy.GetParameterAsText(1)
+		pts = parameters[1].valueAsText
 		arcpy.AddMessage(pts)
 
-		out = arcpy.GetParameterAsText(2)
+		site_code = parameters[2].valueAsText
+		if not site_code or site_code == "":
+			site_function = wqt_timestamp_match.site_function_historic
 
-		# list of water quality files from parameter
-		#wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
-		wq = wq_transect_list[0] # TODO
+		output_path = parameters[3].valueAsText
+		if output_path == "":
+			output_path = None
 
 		# run wq_join_match
-		wqt_timestamp_match.main(wq, pts, out)
+		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function)
 
-		return
+		if output_path:
+			parameters[3].value = output_path
+			pass
 
 
-class checkmatch(object):
+class CheckMatch(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Percent Match - Water Quality data with Transect"
@@ -210,7 +286,7 @@ class checkmatch(object):
 		return
 
 
-class wqt2shp(object):
+class WqtToShapefiile(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Join WQT to SHP"
@@ -277,7 +353,7 @@ class wqt2shp(object):
 		return
 
 
-class gain2shp(object):
+class GainToShapefile(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Join Gain profile average to SHP"
