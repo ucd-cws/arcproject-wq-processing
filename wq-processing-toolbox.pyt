@@ -3,9 +3,11 @@ import os
 import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
-from scripts import linear_ref
+from scripts import mapping
 
 from waterquality import classes
+
+from datetime import timedelta
 
 class Toolbox(object):
 	def __init__(self):
@@ -14,7 +16,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [CheckMatch, WqtToShapefiile, GainToDB, AddSite, JoinTimestamp, AddGainSite]
+		self.tools = [CheckMatch, GenerateWQLayer, WqtToShapefiile, GainToDB, AddSite, JoinTimestamp, AddGainSite]
 
 class AddSite(object):
 	def __init__(self):
@@ -72,19 +74,35 @@ class AddSite(object):
 			session.close()
 
 
-
-
-
-class LinearRef(object):
+class GenerateWQLayer(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add M distance"
-		self.description = "Calculates distance along slough for all water quality measurements along transects"
+		self.label = "Generate Map Layer from Water Quality Data"
+		self.description = ""
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
+		"""Define parameter definitions"""
 
-		return
+		# parameter info for selecting multiple csv water quality files
+		date_to_generate = arcpy.Parameter(
+			displayName="Date to Generate Layer For",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input"
+		)
+
+		# shapefile for the transects GPS breadcrumbs
+		fc = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="output_feature_class",
+			datatype="DEFeatureClass",
+			direction="Output"
+		)
+
+		params = [date_to_generate, fc, ]
+		return params
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -102,51 +120,19 @@ class LinearRef(object):
 		return
 
 	def execute(self, parameters, messages):
-		arcpy.AddMessage("Updating all records that don't have m_values along slough")
-		# creates new session
+		"""The source code of the tool."""
+		date_to_use = parameters[0].value
+		output_location = parameters[1].valueAsText
+
+		wq = classes.WaterQuality
 		session = classes.get_new_session()
 
-		try:
-			# temporary table
-			table = "in_memory/recs_np_table"
+		arcpy.AddMessage("Using Date {}".format(type(date_to_use)))
 
-			# turn records that need slough measurement to a table
-			linear_ref.data_to_linear_reference(session, table)
+		upper_bound = date_to_use.date() + timedelta(days=1)
 
-			# check that the table exists
-			if arcpy.Exists(table):
-
-				# turn table into feature layer using XY coords
-				features = linear_ref.makeFeatureLayer(table)
-
-				# locate features along route using the slough reference lines
-				meas_table = linear_ref.LocateWQalongREF(features)
-
-				# create data dict with ID and measurement result
-				distances = linear_ref.ID_MeasurePair(meas_table, "id")
-
-				# get count of number of records that are going to be updated
-				count = len(distances)
-				print(arcpy.AddMessage("Number of records updated: {}".format(count)))
-
-				# update the selected records in the database with the new measurements
-				for location in distances.keys():
-					record = session.query(classes.WaterQuality).filter(
-						classes.WaterQuality.id == location).one_or_none()
-
-					if record is None:
-						# print a warning
-						continue  # skip the record - FID not found - likly a problem - can use .one() instead of .one_or_none() above to raise an exception instead, if no record is found
-
-					record.m_value = distances[location]
-			else:
-				print(arcpy.AddMessage("No records updated"))
-
-			session.commit()
-			arcpy.Delete_management("recs_np_table")
-		finally:
-			session.close()
-		return
+		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
+		mapping.query_to_features(query, output_location)
 
 
 class JoinTimestamp(object):

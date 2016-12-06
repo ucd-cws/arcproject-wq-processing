@@ -427,7 +427,8 @@ def dict_field_types(df):
 		# convert objects into strings
 		elif d[item] == np.dtype('O'):
 			d[item] = np.dtype('S32')  # converts object to strings (string length must be set)
-
+		elif d[item] == np.dtype('<i8'):  # int64 not supported - needs to be made a float64 (double) - see http://pro.arcgis.com/en/pro-app/arcpy/get-started/working-with-numpy-in-arcgis.htm
+			d[item] = np.dtype('<f8')
 	return d
 
 
@@ -448,8 +449,13 @@ def pd2np(pandas_dataframe):
 	# change field types
 	field_dtypes = dict_field_types(pandas_dataframe)
 
+	if six.PY2:
+		new_types = field_dtypes.items()
+	elif six.PY3:
+		new_types = list(field_dtypes.items())  # need to cast to a list on Python 3
+
 	# casts fields to new dtype (wq variables to float, date_time field to esri supported format
-	x = x.astype(field_dtypes.items())  # arcpy np to fc only supports specific datatypes (date '<M8[us]'
+	x = x.astype(new_types)  # arcpy np to fc only supports specific datatypes (date '<M8[us]'
 
 	return x
 

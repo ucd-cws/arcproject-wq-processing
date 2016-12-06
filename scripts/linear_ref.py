@@ -29,13 +29,13 @@ def data_to_linear_reference(session, in_memory_table):
 
 		# iterate through records pulling just the id, lat, and long
 		for record in q:
-			row = [record.id, record.latitude, record.longitude]
+			row = [record.id, record.y_coord, record.x_coord]
 			print(row)
 			recs.append(row)
 
 		# turn lists of records to numpy array to table
-		dts = {'names': ('id', 'latitude', 'longitude'),
-		            'formats': (np.uint64, np.float64, np.float64)}
+		dts = {'names': ('id', 'y_coord', 'x_coord'),
+		            'formats': (np.uint8, np.float64, np.float64)}
 		array = np.rec.fromrecords(recs, dtype=dts)
 
 		# save numpy array to table
@@ -65,11 +65,8 @@ def makeFeatureLayer(table):
 	# spatial reference
 	sr = arcpy.SpatialReference(3310)  # CA teale albers ESPG code
 
-	if arcpy.Exists(table):
-		print("can find table")
-
 	# create XY event layer using the Point_X and Point_Y fields from the table
-	arcpy.MakeXYEventLayer_management(table,  "longitude", "latitude", "temp_layer", spatial_reference=sr)
+	arcpy.MakeXYEventLayer_management(table,  "x_coord", "y_coord", "temp_layer", spatial_reference=sr)
 	try:
 		# the XY event layer  does not have a object ID - need to copy to disk via in_memory
 		out_layer = arcpy.CopyFeatures_management("temp_layer", r"in_memory\out_layer")
@@ -125,15 +122,11 @@ def main():
 	session = classes.get_new_session()
 
 	try:
-
-		# temporary table
-		table = "in_memory/recs_np_table"
-
 		# turn records that need slough measurement to a table
-		data_to_linear_reference(session, table)
+		table = data_to_linear_reference(session, "in_memory/recs_np_table")
 
 		# check that the table exists
-		if arcpy.Exists(table):
+		if arcpy.Exists("in_memory/recs_np_table"):
 
 			# turn table into feature layer using XY coords
 			features = makeFeatureLayer(table)
@@ -143,10 +136,6 @@ def main():
 
 			# create data dict with ID and measurement result
 			distances = ID_MeasurePair(meas_table, "id")
-
-			# get count of number of records that are going to be updated
-			count = len(distances)
-			print(arcpy.AddMessage("Number of records updated: {}".format(count)))
 
 			# update the selected records in the database with the new measurements
 			for location in distances.keys():
@@ -158,7 +147,7 @@ def main():
 
 				record.m_value = distances[location]
 		else:
-			print(arcpy.AddMessage("No records updated"))
+			print("No records updated")
 
 		session.commit()
 

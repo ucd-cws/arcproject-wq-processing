@@ -10,6 +10,10 @@ from waterquality import classes
 
 
 class BaseDBTest(unittest.TestCase):
+	"""
+		This class is used as the base for a number of other database tests but doesn't have tests of its own
+	"""
+
 	def setUp(self):
 		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 		self.gps = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
@@ -123,24 +127,36 @@ class CheckDates(unittest.TestCase):
 
 class CheckJoin(BaseDBTest):
 
-	def test_data_insert(self):
+	def setUp(self):
+
+		super(CheckJoin, self).setUp()
+
 		wq = wqt_timestamp_match.wq_append_fromlist([self.wq])
 
 		# shapefile for transect
 		pts = wqt_timestamp_match.wqtshp2pd(self.gps)
 
 		# join using time stamps with exact match
-		joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
-		matches = wqt_timestamp_match.splitunmatched(joined_data)[0]
-		wqt_timestamp_match.wq_df2database(matches, session=self.session)
+		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
+		self.matches = wqt_timestamp_match.splitunmatched(self.joined_data)[0]
+		wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
 
-		expected = len(matches)
+	def test_data_insert(self):
+
+		expected = len(self.matches)
 		added = len(self.session.new)
-		self.session.commit()
-		self.session.close()
 
 		self.assertEqual(expected, added)  # assert at end so that database commit occurs and we can inspect
 
+	def check_latitude_and_longitude(self):
+
+		for record in self.session.new:
+			self.assertIsNotNone(record.x_coord)
+			self.assertIsNotNone(record.y_coord)
+
+	def tearDown(self):
+		self.session.commit()
+		self.session.close()
 
 class CheckReprojection(BaseDBTest):
 
@@ -179,8 +195,8 @@ class CheckReprojection(BaseDBTest):
 		x_min, y_min, x_max, y_max = coordinate_system.domain.split(" ")
 
 		for record in self.session.new:
-			self.assertTrue(float(x_min) <= float(record.longitude) <= float(x_max))
-			self.assertTrue(float(y_min) <= float(record.latitude) <= float(y_max))
+			self.assertTrue(float(x_min) <= float(record.x_coord) <= float(x_max))
+			self.assertTrue(float(y_min) <= float(record.y_coord) <= float(y_max))
 
 
 
