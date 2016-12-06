@@ -77,13 +77,12 @@ class ProfileSite(Base):
 	__tablename__ = "profile_sites"
 
 	id = Column(Integer, primary_key=True)
-	profile_name = Column(String)
-	latitude = Column(Numeric(asdecimal=False))
-	longitude = Column(Numeric(asdecimal=False))
+	abbreviation = Column(String)
+	y_coord = Column(Float)
+	x_coord = Column(Float)
 	m_value = Column(Float)
 	site_id = Column(Integer, ForeignKey("sites.id"))
 	site = relationship(Site, backref="profile_sites")
-	abbreviation = Column(String)
 
 
 class VerticalProfile(Base):

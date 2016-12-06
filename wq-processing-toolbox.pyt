@@ -455,7 +455,7 @@ class AddGainSite(object):
 		ZoopChlW = arcpy.Parameter(
 			displayName="Vertical Profile GPS points",
 			name="ZoopChlW",
-			datatype="DEShapefile",
+			datatype="GPFeatureLayer",
 			multiValue=False,
 			direction="Input"
 		)
@@ -468,15 +468,8 @@ class AddGainSite(object):
 			direction="Input"
 		)
 
-		sloughs = arcpy.Parameter(
-			displayName="Transect Code",
-			name="transect_code",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input"
-		)
 
-		params = [ZoopChlW, site_codes, sloughs]
+		params = [ZoopChlW, site_codes]
 		return params
 
 	def isLicensed(self):
@@ -491,7 +484,6 @@ class AddGainSite(object):
 		# populate the field selection using the fields from the shapefile
 		if parameters[0].value:
 			parameters[1].filter.list = [f.name for f in arcpy.Describe(parameters[0].value).fields]
-			parameters[2].filter.list = [f.name for f in arcpy.Describe(parameters[0].value).fields]
 
 		return
 
@@ -512,16 +504,17 @@ class AddGainSite(object):
 			del desc
 
 		profile_field = parameters[1].valueAsText
-		transect_field = parameters[2].valueAsText
+
+		# linear reference to get the slough id and m_value
 
 		# iterate through rows and add to profile sites
-		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, transect_field, "SHAPE@Y", "SHAPE@X"])
+		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, "SHAPE@Y", "SHAPE@X"])
 		for row in cursor:
 			ps = classes.ProfileSite()
 			arcpy.AddMessage(row)
 			ps.abbreviation = row[0]
-			ps.latitude = row[2]
-			ps.longitude = row[3]
+			ps.y_coord = row[1]
+			ps.x_coord = row[2]
 
 			arcpy.AddMessage(ps)
 
