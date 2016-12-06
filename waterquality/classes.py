@@ -77,7 +77,7 @@ class ProfileSite(Base):
 	__tablename__ = "profile_sites"
 
 	id = Column(Integer, primary_key=True)
-	abbreviation = Column(String)
+	abbreviation = Column(String, unique=True)
 	y_coord = Column(Float)
 	x_coord = Column(Float)
 	m_value = Column(Float)
