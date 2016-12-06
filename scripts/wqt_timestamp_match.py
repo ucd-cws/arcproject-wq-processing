@@ -24,7 +24,7 @@ from waterquality import classes
 
 # define constants
 source_field = "WQ_SOURCE"
-projection_spatial_reference = 26942  # CA State Plane II Meters
+projection_spatial_reference = 3310  # Teale Albers  # 26942  # CA State Plane II Meters
 
 
 def convert_file_encoding(in_file, target_encoding="utf-8"):
@@ -365,9 +365,14 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 		session_created = False
 
 	try:
+		if pd.__version__ < "0.17":
+			records = data.iterrows()
+		else:
+			records = data.itertuples()
+
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
-		for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
-			make_record(field_map, row, session, site_function)
+		for row in records:  # iterates over all of the rows in the data frames the fast way
+			make_record(field_map, row, session, site_function,)
 
 		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
@@ -408,7 +413,12 @@ def make_record(field_map, row, session, site_function):
 		traceback.print_exc()
 		return  # breaks out of this loop, which forces a skip of adding this object
 
-	key_set = set(row._asdict().keys())  # make a set of the keys so we can remove by name
+	if pd.__version__ < "0.17":
+		keys_initial = row.keys()
+	else:
+		keys_initial = row._asdict().keys()
+
+	key_set = set(keys_initial)  # make a set of the keys so we can remove by name
 	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
 	keys = list(key_set)  # make it back into a list
 
