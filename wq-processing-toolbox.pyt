@@ -4,7 +4,7 @@ import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
-
+from sqlalchemy import exc
 from waterquality import classes
 
 from datetime import timedelta
@@ -446,7 +446,7 @@ class GainToDB(object):
 class AddGainSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add Vertical Gain Profile Site"
+		self.label = "New Vertical Gain Profile Sites"
 		self.description = ""
 		self.canRunInBackground = False
 
@@ -467,7 +467,6 @@ class AddGainSite(object):
 			multiValue=False,
 			direction="Input"
 		)
-
 
 		params = [ZoopChlW, site_codes]
 		return params
@@ -516,19 +515,16 @@ class AddGainSite(object):
 			ps.y_coord = row[1]
 			ps.x_coord = row[2]
 
-			arcpy.AddMessage(ps)
+			# add to db
+			session = classes.get_new_session()
+			try:
+				session.add(ps)
+				session.commit()
+			except exc.IntegrityError as e:
+				arcpy.AddMessage(e)
+				arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
+			finally:
+				session.close()
 
-		# check that profile site does not already exist
 
 		# TODO add m_value (maybe add to lin ref tool function?)
-
-
-		# session = classes.get_new_session()
-		# try:
-		# 	site = classes.Site()
-		# 	site.code = parameters[1].valueAsText
-		# 	site.name = parameters[0].valueAsText
-		# 	session.add(site)
-		# 	session.commit()
-		# finally:
-		# 	session.close()
