@@ -17,8 +17,6 @@ class Slurper(object):
 	shapefiles = []
 	shapefile_index = {}
 
-	wqt_match =
-
 	def slurp(self, base_path):
 		"""
 			Given a path, traverses it looking for items to slurp in
