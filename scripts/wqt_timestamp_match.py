@@ -1,34 +1,40 @@
 from __future__ import print_function
 
 # match shp and water quality data by timestamp
+
+# import standard library items
 import os
 from datetime import datetime, timedelta
 import logging
 import tempfile
 import traceback
 
+# import major third party modules
 import six
 import pandas as pd
-
+import numpy as np
 import arcpy
 from sqlalchemy.orm.exc import NoResultFound
 
+# import CWS modules
 import geodatabase_tempfile
 
+# import project modules
 from waterquality import classes
-import numpy as np
 
+# define constants
 source_field = "WQ_SOURCE"
-projection_spatial_reference = 3310
+projection_spatial_reference = 26942  # CA State Plane II Meters
 
-def convert_file_encoding(in_file, targetEncoding="utf-8"):
+
+def convert_file_encoding(in_file, target_encoding="utf-8"):
 	"""
 		pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3.
 		This creates a copy of the file that's converted to UTF-8 and is called before reading the CSV when running Python 3.
 
 		Adapted from http://stackoverflow.com/a/191455/587938
 	:param in_file:
-	:param targetEncoding:
+	:param target_encoding:
 	:return: path to converted file
 	"""
 
@@ -38,7 +44,7 @@ def convert_file_encoding(in_file, targetEncoding="utf-8"):
 	new_file = tempfile.mktemp(prefix=original_name, suffix="converted_encoding")
 	target = open(new_file, "wb")
 
-	target.write(six.text_type(source.read()).encode(targetEncoding))
+	target.write(six.text_type(source.read()).encode(target_encoding))
 	target.close()
 
 	return new_file
@@ -122,12 +128,35 @@ def reproject_features(feature_class):
 	"""
 
 	projected = geodatabase_tempfile.create_gdb_name()
-
 	spatial_reference = arcpy.SpatialReference(projection_spatial_reference)
 
 	arcpy.Project_management(feature_class, projected, spatial_reference)
 
 	return projected
+
+
+def check_projection(feature_class):
+	"""
+		Does two things. First, it confirms that the input data has a defined projection. This is something that was done
+		manually in the SOP, so this will handle that. If it's not defined, it defines it as GCS WGS 1984.
+
+		Second, it reprojects the data to the coordinate system of interest, as defined in projection_spatial_reference
+	:param feature_class: The input feature class to check the projection of
+	:return: feature class with corrected projection
+	"""
+	desc = arcpy.Describe(feature_class)
+	try:
+		if desc.spatialReference.factoryCode == 0:
+			# spatial reference code 4326 is GCS WGS 1984. It's the default for the GPS
+			arcpy.DefineProjection_management(feature_class, arcpy.SpatialReference(4326))
+			desc = arcpy.Describe(feature_class)  # we need to refresh this afterward because it won't autoupdate and we need it for the next check
+
+		if desc.spatialReference.factoryCode != projection_spatial_reference:
+			feature_class = reproject_features(feature_class)
+	finally:
+		del desc
+
+	return feature_class
 
 
 def wqtshp2pd(feature_class):
@@ -139,12 +168,7 @@ def wqtshp2pd(feature_class):
 
 	# make a temporary copy of the shapefile to add xy data without altering original file
 
-	desc = arcpy.Describe(feature_class)
-	try:
-		if desc.spatialReference.factoryCode != 3310:
-			feature_class = reproject_features(feature_class)
-	finally:
-		del desc
+	feature_class = check_projection(feature_class)
 
 	arcpy.MakeFeatureLayer_management(feature_class, "wqt_xy")
 	try:
