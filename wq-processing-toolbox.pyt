@@ -16,7 +16,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [CheckMatch, GenerateWQLayer, WqtToShapefiile, GainToDB, AddSite, JoinTimestamp, AddGainSite]
+		self.tools = [CheckMatch, GenerateWQLayer, GainToDB, AddSite, JoinTimestamp, AddGainSite]
 
 class AddSite(object):
 	def __init__(self):
@@ -312,72 +312,6 @@ class CheckMatch(object):
 
 		return
 
-
-class WqtToShapefiile(object):
-	def __init__(self):
-		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Join WQT to SHP"
-		self.description = "Matches Water Quality data with Transect using timestamps"
-		self.canRunInBackground = False
-
-	def getParameterInfo(self):
-		"""Define parameter definitions"""
-
-		# parameter info for selecting multiple csv water quality files
-		wq_data = arcpy.Parameter(
-			displayName="Transect Water Quality Data (wqt)",
-			name="wqt_files",
-			datatype="DEFile",
-			multiValue=True,
-			direction="Input"
-		)
-
-		# shapefile for the transects GPS breadcrumbs
-		bc = arcpy.Parameter(
-			displayName="Transect Shapefile",
-			name="shp_file",
-			datatype="DEShapefile",
-			direction="Input"
-		)
-
-		out = arcpy.Parameter(
-			displayName="Output Feature Class",
-			name="out_file",
-			datatype="DEShapefile",
-			direction="Output"
-		)
-
-		params = [wq_data, bc, out]
-		return params
-
-	def isLicensed(self):
-		"""Set whether tool is licensed to execute."""
-		return True
-
-	def updateParameters(self, parameters):
-		"""Modify the values and properties of parameters before internal
-		validation is performed.  This method is called whenever a parameter
-		has been changed."""
-		return
-
-	def updateMessages(self, parameters):
-		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation."""
-		return
-
-	def execute(self, parameters, messages):
-		"""The source code of the tool."""
-
-		# get the parameters
-		param1 = parameters[0].valueAsText
-		wq_transect_list = param1.split(";") # the multi input needs to be split
-		gps_pts = str(parameters[1].valueAsText)
-		output_feature = parameters[2].valueAsText
-
-		# see wqt_timestamp_match for functions
-		wqt_timestamp_match.main(wq_transect_list, gps_pts, output_feature)
-
-		return
 
 
 class GainToDB(object):
