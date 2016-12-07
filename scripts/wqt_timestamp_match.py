@@ -392,6 +392,30 @@ def site_from_text(site_code, session):
 	return session.query(classes.Site).filter(classes.Site.code == site_code).one()
 
 
+def get_value_pandas_16(record, key):
+	"""
+		These two functions are because we have to use a slightly different approach with pandas < .16 and pandas > .16
+		to retrieve the record information. We can obtain the data as a dict in pandas < .16 and as an object > .16.
+		This function returns values from the dict form. There's probably a better way to do this, but this is quick enough
+	:param record: a pandas record from dataframe.iterrows()
+	:param value: the key to find in the record
+	:return:
+	"""
+	return record[key]
+
+
+def get_value_pandas_17_plus(record, key):
+	"""
+		These two functions are because we have to use a slightly different approach with pandas < .16 and pandas > .16
+		to retrieve the record information. We can obtain the data as a dict in pandas < .16 and as an object > .16.
+		This function returns values from the object form. There's probably a better way to do this, but this is quick enough
+	:param record: a pandas record from dataframe.iterrows()
+	:param value: the key to find in the record
+	:return:
+	"""
+	return getattr(record, key)
+
+
 def make_record(field_map, row, session, site_function):
 	"""
 	 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame, translates it into a waterquality object
@@ -415,8 +439,10 @@ def make_record(field_map, row, session, site_function):
 
 	if pd.__version__ < "0.17":
 		keys_initial = row.keys()
+		get_value = get_value_pandas_16
 	else:
 		keys_initial = row._asdict().keys()
+		get_value = get_value_pandas_17_plus
 
 	key_set = set(keys_initial)  # make a set of the keys so we can remove by name
 	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
@@ -436,7 +462,7 @@ def make_record(field_map, row, session, site_function):
 			continue
 
 		try:
-			setattr(wq, class_field, getattr(row, key))  # for each value, it sets the object's value to match
+			setattr(wq, class_field, get_value(row, key))  # for each value, it sets the object's value to match
 		except AttributeError:
 			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
 
