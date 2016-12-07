@@ -328,9 +328,8 @@ def site_function_historic(*args, **kwargs):
 
 	record = kwargs["record"]  # unpacking this way because I want it to be able to accept the kinds of args another function might receive too, since the caller will pass a bunch
 	session = kwargs["session"]  # database session from caller
-	get_value = kwargs["get_value"]
 
-	filename = get_value(record, source_field)  # get the value of the data source field (source_field defined globally)
+	filename = record.get(source_field)  # get the value of the data source field (source_field defined globally)
 	try:
 		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
 	except IndexError:
@@ -339,7 +338,7 @@ def site_function_historic(*args, **kwargs):
 	try:
 		q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
 	except NoResultFound:
-		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(get_value(record, "Index"), site_code))
+		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.get("Index"), site_code))
 
 	return q  # return the session object
 
@@ -366,14 +365,11 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 		session_created = False
 
 	try:
-		if pd.__version__ < "0.17":
-			records = data.iterrows()
-		else:
-			records = data.itertuples()
+		records = data.iterrows()
 
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
 		for row in records:  # iterates over all of the rows in the data frames the fast way
-			make_record(field_map, row, session, site_function,)
+			make_record(field_map, row[1], session, site_function,)  # row[1] is the actual data included in the row
 
 		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
@@ -393,19 +389,6 @@ def site_from_text(site_code, session):
 	return session.query(classes.Site).filter(classes.Site.code == site_code).one()
 
 
-def get_value_pandas_16(record, key):
-	"""
-		This function is because we have to use a slightly different approach with pandas < .16 and pandas > .16
-		to retrieve the record information. We can obtain the data as a dict in pandas < .16 and as an object > .16.
-		This function returns values from the dict form, while getattr is aliased for the object form.
-		There's probably a better way to do this, but this is quick enough
-	:param record: a pandas record from dataframe.iterrows()
-	:param value: the key to find in the record
-	:return:
-	"""
-	return record[key]
-
-
 def make_record(field_map, row, session, site_function):
 	"""
 	 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame, translates it into a waterquality object
@@ -418,41 +401,30 @@ def make_record(field_map, row, session, site_function):
 
 	wq = classes.WaterQuality()  # instantiates a new object
 
-	if pd.__version__ < "0.17":
-		keys_initial = row.keys()
-		get_value = get_value_pandas_16
-	else:
-		keys_initial = row._asdict().keys()
-		get_value = getattr
-
 	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
 		if type(site_function) == six.text_type:
 			wq.site = site_from_text(site_code=site_function, session=session)
 		else:
-			wq.site = site_function(record=row, session=session, get_value=get_value)  # run the function to determine the record's site code
+			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
 	except ValueError:
 		traceback.print_exc()
 		return  # breaks out of this loop, which forces a skip of adding this object
 
-	key_set = set(keys_initial)  # make a set of the keys so we can remove by name
-	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
-	keys = list(key_set)  # make it back into a list
-
 	wq.spatial_reference_code = projection_spatial_reference  # set the record's spatial reference to what was used to reproject it.
 
-	for key in keys:  # converts named_tuple to a Dict-like and gets the keys
+	for key in row.index:  # converts named_tuple to a Dict-like and gets the keys
 		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
 		try:
 			class_field = field_map[key]
 		except KeyError:
-			logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
+			logging.warning("Skipping field {} with value {} for record {}. Field not found in field map.".format(key, row.get(key), row))
 			continue
 
 		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
 			continue
 
 		try:
-			setattr(wq, class_field, get_value(row, key))  # for each value, it sets the object's value to match
+			setattr(wq, class_field, row.get(key))  # for each value, it sets the object's value to match
 		except AttributeError:
 			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
 
