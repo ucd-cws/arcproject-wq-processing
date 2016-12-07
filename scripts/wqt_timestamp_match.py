@@ -328,8 +328,9 @@ def site_function_historic(*args, **kwargs):
 
 	record = kwargs["record"]  # unpacking this way because I want it to be able to accept the kinds of args another function might receive too, since the caller will pass a bunch
 	session = kwargs["session"]  # database session from caller
+	get_value = kwargs["get_value"]
 
-	filename = getattr(record, source_field)  # get the value of the data source field (source_field defined globally)
+	filename = get_value(record, source_field)  # get the value of the data source field (source_field defined globally)
 	try:
 		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
 	except IndexError:
@@ -338,7 +339,7 @@ def site_function_historic(*args, **kwargs):
 	try:
 		q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
 	except NoResultFound:
-		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.Index, site_code))
+		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(get_value(record, "Index"), site_code))
 
 	return q  # return the session object
 
@@ -394,26 +395,15 @@ def site_from_text(site_code, session):
 
 def get_value_pandas_16(record, key):
 	"""
-		These two functions are because we have to use a slightly different approach with pandas < .16 and pandas > .16
+		This function is because we have to use a slightly different approach with pandas < .16 and pandas > .16
 		to retrieve the record information. We can obtain the data as a dict in pandas < .16 and as an object > .16.
-		This function returns values from the dict form. There's probably a better way to do this, but this is quick enough
+		This function returns values from the dict form, while getattr is aliased for the object form.
+		There's probably a better way to do this, but this is quick enough
 	:param record: a pandas record from dataframe.iterrows()
 	:param value: the key to find in the record
 	:return:
 	"""
 	return record[key]
-
-
-def get_value_pandas_17_plus(record, key):
-	"""
-		These two functions are because we have to use a slightly different approach with pandas < .16 and pandas > .16
-		to retrieve the record information. We can obtain the data as a dict in pandas < .16 and as an object > .16.
-		This function returns values from the object form. There's probably a better way to do this, but this is quick enough
-	:param record: a pandas record from dataframe.iterrows()
-	:param value: the key to find in the record
-	:return:
-	"""
-	return getattr(record, key)
 
 
 def make_record(field_map, row, session, site_function):
@@ -428,21 +418,21 @@ def make_record(field_map, row, session, site_function):
 
 	wq = classes.WaterQuality()  # instantiates a new object
 
-	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
-		if type(site_function) == six.text_type:
-			wq.site = site_from_text(site_code=site_function, session=session)
-		else:
-			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
-	except ValueError:
-		traceback.print_exc()
-		return  # breaks out of this loop, which forces a skip of adding this object
-
 	if pd.__version__ < "0.17":
 		keys_initial = row.keys()
 		get_value = get_value_pandas_16
 	else:
 		keys_initial = row._asdict().keys()
-		get_value = get_value_pandas_17_plus
+		get_value = getattr
+
+	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
+		if type(site_function) == six.text_type:
+			wq.site = site_from_text(site_code=site_function, session=session)
+		else:
+			wq.site = site_function(record=row, session=session, get_value=get_value)  # run the function to determine the record's site code
+	except ValueError:
+		traceback.print_exc()
+		return  # breaks out of this loop, which forces a skip of adding this object
 
 	key_set = set(keys_initial)  # make a set of the keys so we can remove by name
 	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
