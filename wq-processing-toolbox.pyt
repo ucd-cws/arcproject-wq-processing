@@ -424,12 +424,11 @@ class GainToDB(object):
 		for i in range(0, len(vt)):
 
 			wq_gain_file = str(vt[i][0])
-			arcpy.AddMessage(wq_gain_file)
 			basename = os.path.basename(str(wq_gain_file))
 			vt[i][0] = str(wq_gain_file)
 			site_id = vt[i][1] # site
 			gain_setting = vt[i][2] # gain
-			arcpy.AddMessage("{} {} {}".format(wq_gain_file, site_id, gain_setting))
+			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
 
 			wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
 
