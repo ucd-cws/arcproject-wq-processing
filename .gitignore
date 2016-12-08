@@ -1,3 +1,5 @@
+scripts/tests/testfiles/slurp/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -94,3 +96,4 @@ ENV/
 *.Rdata
 *.Rhistory
 *.Rproj
+python.bat

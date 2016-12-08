@@ -1,34 +1,40 @@
 from __future__ import print_function
 
 # match shp and water quality data by timestamp
+
+# import standard library items
 import os
 from datetime import datetime, timedelta
 import logging
 import tempfile
 import traceback
 
+# import major third party modules
 import six
 import pandas as pd
-
+import numpy as np
 import arcpy
 from sqlalchemy.orm.exc import NoResultFound
 
+# import CWS modules
 import geodatabase_tempfile
 
+# import project modules
 from waterquality import classes
-import numpy as np
 
+# define constants
 source_field = "WQ_SOURCE"
-projection_spatial_reference = 3310
+projection_spatial_reference = 3310  # Teale Albers  # 26942  # CA State Plane II Meters
 
-def convert_file_encoding(in_file, targetEncoding="utf-8"):
+
+def convert_file_encoding(in_file, target_encoding="utf-8"):
 	"""
 		pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3.
 		This creates a copy of the file that's converted to UTF-8 and is called before reading the CSV when running Python 3.
 
 		Adapted from http://stackoverflow.com/a/191455/587938
 	:param in_file:
-	:param targetEncoding:
+	:param target_encoding:
 	:return: path to converted file
 	"""
 
@@ -38,7 +44,7 @@ def convert_file_encoding(in_file, targetEncoding="utf-8"):
 	new_file = tempfile.mktemp(prefix=original_name, suffix="converted_encoding")
 	target = open(new_file, "wb")
 
-	target.write(six.text_type(source.read()).encode(targetEncoding))
+	target.write(six.text_type(source.read()).encode(target_encoding))
 	target.close()
 
 	return new_file
@@ -123,12 +129,35 @@ def reproject_features(feature_class):
 	"""
 
 	projected = geodatabase_tempfile.create_gdb_name()
-
 	spatial_reference = arcpy.SpatialReference(projection_spatial_reference)
 
 	arcpy.Project_management(feature_class, projected, spatial_reference)
 
 	return projected
+
+
+def check_projection(feature_class):
+	"""
+		Does two things. First, it confirms that the input data has a defined projection. This is something that was done
+		manually in the SOP, so this will handle that. If it's not defined, it defines it as GCS WGS 1984.
+
+		Second, it reprojects the data to the coordinate system of interest, as defined in projection_spatial_reference
+	:param feature_class: The input feature class to check the projection of
+	:return: feature class with corrected projection
+	"""
+	desc = arcpy.Describe(feature_class)
+	try:
+		if desc.spatialReference.factoryCode == 0:
+			# spatial reference code 4326 is GCS WGS 1984. It's the default for the GPS
+			arcpy.DefineProjection_management(feature_class, arcpy.SpatialReference(4326))
+			desc = arcpy.Describe(feature_class)  # we need to refresh this afterward because it won't autoupdate and we need it for the next check
+
+		if desc.spatialReference.factoryCode != projection_spatial_reference:
+			feature_class = reproject_features(feature_class)
+	finally:
+		del desc
+
+	return feature_class
 
 
 def wqtshp2pd(feature_class):
@@ -140,12 +169,7 @@ def wqtshp2pd(feature_class):
 
 	# make a temporary copy of the shapefile to add xy data without altering original file
 
-	desc = arcpy.Describe(feature_class)
-	try:
-		if desc.spatialReference.factoryCode != 3310:
-			feature_class = reproject_features(feature_class)
-	finally:
-		del desc
+	feature_class = check_projection(feature_class)
 
 	arcpy.MakeFeatureLayer_management(feature_class, "wqt_xy")
 	try:
@@ -306,7 +330,7 @@ def site_function_historic(*args, **kwargs):
 	record = kwargs["record"]  # unpacking this way because I want it to be able to accept the kinds of args another function might receive too, since the caller will pass a bunch
 	session = kwargs["session"]  # database session from caller
 
-	filename = getattr(record, source_field)  # get the value of the data source field (source_field defined globally)
+	filename = record.get(source_field)  # get the value of the data source field (source_field defined globally)
 	try:
 		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
 	except IndexError:
@@ -315,7 +339,7 @@ def site_function_historic(*args, **kwargs):
 	try:
 		q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
 	except NoResultFound:
-		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.Index, site_code))
+		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.get("Index"), site_code))
 
 	return q  # return the session object
 
@@ -342,9 +366,11 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 		session_created = False
 
 	try:
+		records = data.iterrows()
+
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
-		for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
-			make_record(field_map, row, session, site_function)
+		for row in records:  # iterates over all of the rows in the data frames the fast way
+			make_record(field_map, row[1], session, site_function,)  # row[1] is the actual data included in the row
 
 		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
@@ -385,25 +411,21 @@ def make_record(field_map, row, session, site_function):
 		traceback.print_exc()
 		return  # breaks out of this loop, which forces a skip of adding this object
 
-	key_set = set(row._asdict().keys())  # make a set of the keys so we can remove by name
-	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
-	keys = list(key_set)  # make it back into a list
-
 	wq.spatial_reference_code = projection_spatial_reference  # set the record's spatial reference to what was used to reproject it.
 
-	for key in keys:  # converts named_tuple to a Dict-like and gets the keys
+	for key in row.index:  # converts named_tuple to a Dict-like and gets the keys
 		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
 		try:
 			class_field = field_map[key]
 		except KeyError:
-			logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
+			logging.warning("Skipping field {} with value {} for record {}. Field not found in field map.".format(key, row.get(key), row))
 			continue
 
 		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
 			continue
 
 		try:
-			setattr(wq, class_field, getattr(row, key))  # for each value, it sets the object's value to match
+			setattr(wq, class_field, row.get(key))  # for each value, it sets the object's value to match
 		except AttributeError:
 			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
 
