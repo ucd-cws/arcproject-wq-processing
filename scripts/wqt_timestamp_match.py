@@ -56,11 +56,11 @@ def wq_from_file(water_quality_raw_data):
 
 	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
 
-	# drop first row which contains units with illegal characters
-	wq = wq.drop(wq.index[[0]])
-
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
+
+	# drop first row which contains units with illegal characters
+	wq = wq.drop(wq.index[[0]])
 
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
@@ -77,6 +77,7 @@ def wq_from_file(water_quality_raw_data):
 		raise ValueError("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
 
 	return wq
+
 
 
 def feature_class_to_pandas_data_frame(feature_class, field_list):
@@ -473,6 +474,38 @@ def np2feature(np_array, output_feature, spatial_ref):
 	return
 
 
+def dst_closest_match(wq, pts):
+	"""
+	Test shifting timestamp by +1, 0, -1 hour to account for daylight saving time errors
+	:param wq: data frame with water quality data
+	:param pts: dataframe from the shapefile
+	:return: water quality data frame with the highest percentage match to the timestamps in the shapefile
+	"""
+	offsets = {}
+	# determine if file neesd to be adjusted for DST in either direction by testing variants and selecting the one
+	# that matches the most records
+	for i in [-1, 0, 1]:
+		# offset water quality
+		off = dstadjustment(wq, i)
+
+		# try joining by timestamp
+		off_joined_data = JoinByTimeStamp(off, pts)
+		off_matches = splitunmatched(off_joined_data)[0]
+
+		# report the percentage matched
+		percent_match = JoinMatchPercent(wq, off_matches)
+
+		# add to dict
+		offsets[i] = percent_match
+
+	# best match for the offsets
+	highest_percent_offset = max(offsets, key=offsets.get)
+
+	# apply offset to the original data
+	offset_df = dstadjustment(wq, highest_percent_offset)
+	return offset_df
+
+
 def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
@@ -486,6 +519,9 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 
 	# shapefile for transect
 	pts = wqtshp2pd(transect_gps)
+
+	# DST adjustment
+	wq = dst_closest_match(wq, pts)
 
 	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)

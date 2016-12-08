@@ -4,7 +4,7 @@ import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
-
+from sqlalchemy import exc
 from waterquality import classes
 
 from datetime import timedelta
@@ -16,8 +16,7 @@ class Toolbox(object):
 		self.alias = ""
 
 		# List of tool classes associated with this toolbox
-		self.tools = [CheckMatch, GenerateWQLayer, WqtToShapefiile, GainToShapefile, AddSite, JoinTimestamp]
-
+		self.tools = [CheckMatch, GenerateWQLayer, GainToDB, AddSite, JoinTimestamp, AddGainSite]
 
 class AddSite(object):
 	def __init__(self):
@@ -139,8 +138,8 @@ class GenerateWQLayer(object):
 class JoinTimestamp(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add Water Quality Data to Database"
-		self.description = ""
+		self.label = "Transect - Join on Timestamp"
+		self.description = "Join water quality transect to gps using time stamp and add to database"
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -180,6 +179,7 @@ class JoinTimestamp(object):
 		)
 
 		params = [csvs, bc, site, out]
+
 		return params
 
 	def isLicensed(self):
@@ -233,7 +233,7 @@ class CheckMatch(object):
 		# parameter info for selecting multiple csv water quality files
 		csvs = arcpy.Parameter(
 			displayName="Transect Water Quality Data",
-			name="wqt_files",
+			name="csv_files",
 			datatype="DEFile",
 			multiValue=True,
 			direction="Input"
@@ -243,13 +243,18 @@ class CheckMatch(object):
 		bc = arcpy.Parameter(
 			displayName="Transect Shapefile",
 			name="shp_file",
-			datatype="DEShapefile",
+			datatype="DEFeatureClass",
 			direction="Input"
 		)
 
+		add = arcpy.Parameter(
+			displayName="Add to database?",
+			name="add",
+			datatype="GPBoolean",
+			direction="Input"
+		)
 
-		params = [csvs, bc]
-		return params
+		params = [csvs, bc, add]
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -268,96 +273,52 @@ class CheckMatch(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		param1 = parameters[0].valueAsText
-		wq_transect_list = param1.split(";")
+		wq_transect_list = parameters[0].value
 
-		pts = str(parameters[1].valueAsText)
-		shp_df = wqt_timestamp_match.wqtshp2pd(pts)
+		transect_gps = str(parameters[1].valueAsText)
 
-		for wq in wq_transect_list:
-			basename = os.path.basename(wq)
-			wq_df = wqt_timestamp_match.wq_from_file(wq)
-			ts_join = wqt_timestamp_match.JoinByTimeStamp(wq_df, shp_df)
-			ts_results = wqt_timestamp_match.splitunmatched(ts_join)
-			percent = wqt_timestamp_match.JoinMatchPercent(wq_df, ts_results[0])
+		arcpy.AddMessage(transect_gps)
 
-			arcpy.AddMessage("{} has a {} % match with the transect. ".format(basename, percent))
+		add2db = parameters[2]
+
+		# list of water quality files from parameter
+		# wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
+		# wq = wq_transect_list[0] # TODO
+
+		arcpy.AddMessage("Processing Water Quality")
+		wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
+
+		arcpy.AddMessage("Processing GPS input")
+		pts = wqt_timestamp_match.wqtshp2pd(transect_gps)
+
+		# join using time stamps with exact match
+		joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
+		matched = wqt_timestamp_match.splitunmatched(joined_data)[0]
+
+		arcpy.AddMessage("Percent Matched: {}".format(wqt_timestamp_match.JoinMatchPercent(wq, matched)))
+
+		if add2db:
+			session = classes.get_new_session()
+			wqt_timestamp_match.wq_df2database(matched, session=session)
+
+			tobeadded = len(matched)
+
+			arcpy.AddMessage("Number of records added: {}".format(tobeadded))
+
+			session.commit()
+			session.close()
+		else:
+			arcpy.AddMessage("Fix problems and then add to database")
 
 		return
 
 
-class WqtToShapefiile(object):
+
+class GainToDB(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Join WQT to SHP"
-		self.description = "Matches Water Quality data with Transect using timestamps"
-		self.canRunInBackground = False
-
-	def getParameterInfo(self):
-		"""Define parameter definitions"""
-
-		# parameter info for selecting multiple csv water quality files
-		wq_data = arcpy.Parameter(
-			displayName="Transect Water Quality Data (wqt)",
-			name="wqt_files",
-			datatype="DEFile",
-			multiValue=True,
-			direction="Input"
-		)
-
-		# shapefile for the transects GPS breadcrumbs
-		bc = arcpy.Parameter(
-			displayName="Transect Shapefile",
-			name="shp_file",
-			datatype="DEShapefile",
-			direction="Input"
-		)
-
-		out = arcpy.Parameter(
-			displayName="Output Feature Class",
-			name="out_file",
-			datatype="DEShapefile",
-			direction="Output"
-		)
-
-		params = [wq_data, bc, out]
-		return params
-
-	def isLicensed(self):
-		"""Set whether tool is licensed to execute."""
-		return True
-
-	def updateParameters(self, parameters):
-		"""Modify the values and properties of parameters before internal
-		validation is performed.  This method is called whenever a parameter
-		has been changed."""
-		return
-
-	def updateMessages(self, parameters):
-		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation."""
-		return
-
-	def execute(self, parameters, messages):
-		"""The source code of the tool."""
-
-		# get the parameters
-		param1 = parameters[0].valueAsText
-		wq_transect_list = param1.split(";") # the multi input needs to be split
-		gps_pts = str(parameters[1].valueAsText)
-		output_feature = parameters[2].valueAsText
-
-		# see wqt_timestamp_match for functions
-		wqt_timestamp_match.main(wq_transect_list, gps_pts, output_feature)
-
-		return
-
-
-class GainToShapefile(object):
-	def __init__(self):
-		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Join Gain profile average to SHP"
-		self.description = "Matches vertical Water Quality data with Transect using site names"
+		self.label = "Add Gain profile to database"
+		self.description = "Takes average of water quality parameters of the top 1m of the vertical profile"
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -367,35 +328,35 @@ class GainToShapefile(object):
 		wqp = arcpy.Parameter(
 			displayName="Vertical Profile file (wqp)",
 			name="wqp_files",
-			datatype="GPValueTable",
+			parameterType="GPValueTable",
 			multiValue=True,
 			direction="Input"
 		)
 
 		wqp.columns = [['DEFile', 'WQP'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
-		wqp.filters[1].type = 'ValueList'
-		wqp.filters[1].list = ['BK1', 'CA1', 'CA3', 'CC1', 'LNCA', 'UL1']  # TODO fill in from file name?
-		wqp.filters[2].type = 'ValueList'
-		wqp.filters[2].list = ['g0', 'g1', 'g10', 'g100']
 
+		# TODO get list of gain settings from the data base?
+		wqp.filters[2].type = 'ValueList'
+		wqp.filters[2].list = ['0', '1', '10', '100']
+
+		bool = arcpy.Parameter(
+			displayName="Fill in table by parsing filename?",
+			name="bool",
+			datatype="GPBoolean"
+		)
 
 		# shapefile for the stationary GPS points
-		bc = arcpy.Parameter(
-			displayName="WQP/Zoop/Chl Shapefile",
+		shp = arcpy.Parameter(
+			displayName="Shapefile with Vertical Profile Locations",
 			name="shp_file",
-			datatype="DEShapefile",
-			direction="Input"
+			datatype="GPFeatureLayer",
+			direction="Input",
+			parameterType="Optional"
 		)
 
-		out = arcpy.Parameter(
-			displayName="Output Feature Class",
-			name="out_file",
-			datatype="DEShapefile",
-			direction="Output"
-		)
-
-		params = [wqp, bc, out]
+		params = [wqp, bool, shp]
 		return params
+
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -405,6 +366,46 @@ class GainToShapefile(object):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
+		if parameters[0].valueAsText:
+
+			# validate site name by pulling creating filter with names from profile_sites table
+			# get list of sites from the database profile sites table
+			session = classes.get_new_session()
+			try:
+				profiles = session.query(classes.ProfileSite.abbreviation).distinct().all()
+				# print(profiles)  # [(u'TES1',), (u'TES2',), (u'TS1',)]
+				profile_names = []
+
+				# add profile name to site list
+				for profile in profiles:
+					print(profile[0])
+					profile_names.append(profile[0])
+
+				parameters[0].filters[1].type = 'ValueList'
+				parameters[0].filters[1].list = profile_names
+
+			finally:
+				session.close()
+
+		# updates the value table using the values parsed from the file name
+		if parameters[1].value:
+			vt = parameters[0].values # values are list of lists
+
+			for i in range(0, len(vt)):
+				filename = vt[i][0]
+				basename = os.path.basename(str(filename))
+				base = os.path.splitext(basename)[0]  # rm extension if there is one
+				parts = base.split("_")  # split on underscore
+				site = parts[2]
+				gain = parts[4]
+				vt[i][0] = str(filename)
+				vt[i][1] = site
+				vt[i][2] = gain
+			parameters[0].values = vt
+
+			# set checkbox to false
+			parameters[1].value = False
+
 		return
 
 	def updateMessages(self, parameters):
@@ -415,41 +416,106 @@ class GainToShapefile(object):
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
 		# get the parameters
-		param = parameters[0].valueAsText
-		file_params = param.split(";") # the multi input needs to be split
-		wqps = []
-		for f in file_params:
-			# MAKE SURE FILE does not have spaces!!!!
-			row = f.split(" ") # split using single space
-			wqps.append(row)
 
-		arcpy.AddMessage(wqps)
+		vt = parameters[0].values  # values are list of lists
+		gps_pts = parameters[2].value
+		arcpy.AddMessage(gps_pts)
 
-		gps_pts = str(parameters[1].valueAsText)
-		output_feature = parameters[2].valueAsText
+		for i in range(0, len(vt)):
 
-		master_wq_df = pandas.DataFrame()  # temporary df to store the results from the individual inputs
+			wq_gain_file = str(vt[i][0])
+			basename = os.path.basename(str(wq_gain_file))
+			vt[i][0] = str(wq_gain_file)
+			site_id = vt[i][1] # site
+			gain_setting = vt[i][2] # gain
+			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
 
-		for wq in wqps:
-			wq_gain_file = wq[0]
-			site_id = wq[1]
-			gain_setting = wq[2]
-
-			join_df = wq_gain.main(wq_gain_file, gps_pts, site_id, gain_setting)
-
-			# append to master wq
-			master_wq_df = master_wq_df.append(join_df)
-
-		arcpy.AddMessage(master_wq_df.head())
-
-		# Save the gain results to a shapefile
-		# Define a spatial reference for the output feature class by copying the input
-		spatial_ref = arcpy.Describe(gps_pts).spatialReference
-
-		# convert pandas dataframe to structured numpy array
-		match_np = wqt_timestamp_match.pd2np(master_wq_df)
-
-		# convert structured array to output feature class
-		wqt_timestamp_match.np2feature(match_np, output_feature, spatial_ref)
+			wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
 
 		return
+
+
+class AddGainSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "New Vertical Gain Profile Sites"
+		self.description = ""
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+
+		ZoopChlW = arcpy.Parameter(
+			displayName="Vertical Profile GPS points",
+			name="ZoopChlW",
+			datatype="GPFeatureLayer",
+			multiValue=False,
+			direction="Input"
+		)
+
+		site_codes = arcpy.Parameter(
+			displayName="Field with site codes",
+			name="site_codes",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		params = [ZoopChlW, site_codes]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		# populate the field selection using the fields from the shapefile
+		if parameters[0].value:
+			parameters[1].filter.list = [f.name for f in arcpy.Describe(parameters[0].value).fields]
+
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		# project to CA teale albers
+		feature_class = parameters[0].valueAsText
+		desc = arcpy.Describe(feature_class)
+		try:
+			if desc.spatialReference.factoryCode != 3310:
+				feature_class = wqt_timestamp_match.reproject_features(feature_class)
+		finally:
+			del desc
+
+		profile_field = parameters[1].valueAsText
+
+		# linear reference to get the slough id and m_value
+
+		# iterate through rows and add to profile sites
+		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, "SHAPE@Y", "SHAPE@X"])
+		for row in cursor:
+			ps = classes.ProfileSite()
+			arcpy.AddMessage(row)
+			ps.abbreviation = row[0]
+			ps.y_coord = row[1]
+			ps.x_coord = row[2]
+
+			# add to db
+			session = classes.get_new_session()
+			try:
+				session.add(ps)
+				session.commit()
+			except exc.IntegrityError as e:
+				arcpy.AddMessage(e)
+				arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
+			finally:
+				session.close()
+
+		# TODO add m_value (maybe add to lin ref tool function?)

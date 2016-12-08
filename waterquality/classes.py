@@ -77,35 +77,70 @@ class ProfileSite(Base):
 	__tablename__ = "profile_sites"
 
 	id = Column(Integer, primary_key=True)
-
+	abbreviation = Column(String, unique=True)
+	y_coord = Column(Float)
+	x_coord = Column(Float)
+	m_value = Column(Float)
 	site_id = Column(Integer, ForeignKey("sites.id"))
 	site = relationship(Site, backref="profile_sites")
 
-	abbreviation = Column(String)
 
-	m_value = Column(Float)
-
+gain_water_quality_header_map = {
+	"Temp": "temp",
+	"pH": "ph",
+	"SpCond": "sp_cond",
+	"Sal": "salinity",
+	"DO_PCT": "dissolved_oxygen_percent",
+	"DO": "dissolved_oxygen",
+	"DEP25": "dep_25",
+	"PAR": "par",
+	"RPAR": "rpar",
+	"TurbSC": "turbidity_sc",
+	"CHL": "chl",
+	"CHL_VOLTS": "chl_volts",
+	"Start_Time": "start_time",
+	"End_Time": "end_time",
+	"WQ_SOURCE": "source",  # a None here means it'll skip it
+	"Gain": "gain_setting",
+	"Site": "profile_site_abbreviation",
+	"POINT_Y": "y_coord",
+	"POINT_X": "x_coord"
+}
 
 class VerticalProfile(Base):
 	__tablename__ = "vertical_profiles"
 
 	id = Column(Integer, primary_key=True)
-	date = Column(Date)
-	measured_chl = Column(Float)  # average by site/date for 1m
-
-	_gain_setting = Column(Float)
 
 	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
+	gain_setting = Column(Float)
+	start_time = Column(DateTime)
+	end_time = Column(DateTime)
+	temp = Column(Float)
+	ph = Column(Float)
+	sp_cond = Column(Float)
+	salinity = Column(Float)
+	dissolved_oxygen = Column(Float)
+	dissolved_oxygen_percent = Column(Float)
+	dep_25 = Column(Float)
+	par = Column(Float)
+	rpar = Column(Float)
+	turbidity_sc = Column(Float)
+	chl = Column(Float)  # raw measurement by sonde
+	chl_volts = Column(Float)
+	source = Column(String)
+	y_coord = Column(Numeric)
+	x_coord = Column(Float)
 
-	@property
-	def gain_setting(self):
-		return self._gain_setting
-
-	@gain_setting.setter
-	def gain_setting(self, value_list):
-		self._gain_setting = numpy.mean(value_list)
+	# @property
+	# def gain_setting(self):
+	# 	return self._gain_setting
+	#
+	# @gain_setting.setter
+	# def gain_setting(self, value_list):
+	# 	self._gain_setting = numpy.mean(value_list)
 
 
 regression_field_map = {
