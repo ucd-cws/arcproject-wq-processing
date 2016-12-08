@@ -31,7 +31,6 @@ def depth_top_meter(wq_vert_profile, depth_field):
 
 	# Select all cases where depth1m is TRUE
 	wq_1m = wq_vert_profile[depth1m]
-
 	return wq_1m
 
 
@@ -47,7 +46,6 @@ def avg_vert_profile(vert_profile):
 
 	# convert series to dataframe
 	avg_df = avg_series.to_frame().transpose()
-
 	return avg_df
 
 
@@ -64,50 +62,7 @@ def gain_join_gps_by_site(gain_avg_df, shp_df):
 
 	# uses inner join to return a dataframe with a single row
 	joined = pd.merge(shp_df, gain_avg_df, how="inner", on="Site")
-
 	return joined
-
-
-# def gain_gps_timediff(gain_avg_df, shp_df):
-# 	"""
-# 	Calculates the difference between each of the timestamps in the shapefile and the middle time in the vertical profile
-# 	:param gain_avg_df: mean water quality values for vertical profile (must have start_time and end_time)
-# 	:param shp_df: dataframe from a shapefile of multiple Chl/Zoop sampling sites
-# 	:return: dataframe from shapefile attribute table with a new field storing the absolute time difference
-# 	"""
-# 	# calculate the difference between the start time and the end time of the gain file to get mid point
-# 	mid_time = (gain_avg_df['Start_Time'] + (gain_avg_df['Start_Time'] - gain_avg_df['End_Time']) / 2)[0]
-#
-# 	# for each row of the shapefile df what is the time diffence compared to the mid point?
-# 	shp_df["TimeDelta"] = abs(shp_df["Date_Time"] - mid_time)  # absolute diff of time difference
-#
-# 	return shp_df
-
-
-# def gain_gps_join_closest_timestamp(gain_avg_df, gps_timediff):
-# 	"""
-# 	Joins the average water quality gain dataframe with the closest timestamp from the gps points
-# 	:param gain_avg_df: mean water quality values for vertical profile
-# 	:param gps_timediff: dataframe result from gain_gps_timediff with column TimeDelta
-# 	:return: pandas dataframe with the water quality data joined to the GPS attributes for closest time match
-# 	"""
-#
-# 	print(gps_timediff)
-# 	# sort by TimeDelta, return the first row (ie the closest match)
-# 	gps_closest_row = gps_timediff.sort('TimeDelta', ascending=True).head(1)
-#
-# 	# join - using concat - the closest match with the water quality average df
-#
-# 	# reset index
-# 	gps_closest_row = gps_closest_row.reset_index(drop=True)
-# 	gain_avg_df = gain_avg_df.reset_index(drop=True)
-#
-#
-# 	join = pd.concat([gps_closest_row, gain_avg_df], axis=1, join='inner', verify_integrity=True)
-#
-# 	# there might be duplicate columns
-#
-# 	return join
 
 
 def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map, session=None):
@@ -130,7 +85,6 @@ def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map, s
 		session_created = False
 
 	try:
-
 		records = data.iterrows()
 		print(records)
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
@@ -175,6 +129,7 @@ def gain_make_record(field_map, row, session):
 
 	else:  # if we don't break for a bad site code or something else, then add the object
 		session.add(profile)  # and adds the object for creation in the DB - will be committed later before the session is closed.
+	return
 
 
 def main(gain_file, site, gain, sample_sites_shp=None):
