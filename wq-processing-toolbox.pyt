@@ -317,8 +317,8 @@ class CheckMatch(object):
 class GainToDB(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add Gain profile average to database"
-		self.description = "Matches vertical Water Quality data with Transect using site names"
+		self.label = "Add Gain profile to database"
+		self.description = "Takes average of water quality parameters of the top 1m of the vertical profile"
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -339,22 +339,22 @@ class GainToDB(object):
 		wqp.filters[2].type = 'ValueList'
 		wqp.filters[2].list = ['0', '1', '10', '100']
 
-
-		# shapefile for the stationary GPS points
-		bc = arcpy.Parameter(
-			displayName="WQP/Zoop/Chl Shapefile",
-			name="shp_file",
-			datatype="DEShapefile",
-			direction="Input"
-		)
-
 		bool = arcpy.Parameter(
 			displayName="Fill in table by parsing filename?",
 			name="bool",
 			datatype="GPBoolean"
 		)
 
-		params = [wqp, bool, bc]
+		# shapefile for the stationary GPS points
+		shp = arcpy.Parameter(
+			displayName="Shapefile with Vertical Profile Locations",
+			name="shp_file",
+			datatype="GPFeatureLayer",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		params = [wqp, bool, shp]
 		return params
 
 
@@ -372,7 +372,7 @@ class GainToDB(object):
 			# get list of sites from the database profile sites table
 			session = classes.get_new_session()
 			try:
-				profiles = session.query(classes.ProfileSite.profile_name).distinct().all()
+				profiles = session.query(classes.ProfileSite.abbreviation).distinct().all()
 				# print(profiles)  # [(u'TES1',), (u'TES2',), (u'TS1',)]
 				profile_names = []
 
@@ -418,27 +418,20 @@ class GainToDB(object):
 		# get the parameters
 
 		vt = parameters[0].values  # values are list of lists
-		gps_pts = str(parameters[2].valueAsText)
-
-		master_wq_df = pandas.DataFrame()  # temporary df to store the results from the individual inputs
+		gps_pts = parameters[2].value
+		arcpy.AddMessage(gps_pts)
 
 		for i in range(0, len(vt)):
 
 			wq_gain_file = str(vt[i][0])
+			arcpy.AddMessage(wq_gain_file)
 			basename = os.path.basename(str(wq_gain_file))
 			vt[i][0] = str(wq_gain_file)
 			site_id = vt[i][1] # site
 			gain_setting = vt[i][2] # gain
-			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
+			arcpy.AddMessage("{} {} {}".format(wq_gain_file, site_id, gain_setting))
 
-			join_df = wq_gain.main(wq_gain_file, gps_pts, site_id, gain_setting)
-			master_wq_df = master_wq_df.append(join_df)
-
-
-
-		arcpy.AddMessage(master_wq_df.head())
-
-		# TODO append the pandas data frame to the database table
+			wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
 
 		return
 
@@ -525,6 +518,5 @@ class AddGainSite(object):
 				arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
 			finally:
 				session.close()
-
 
 		# TODO add m_value (maybe add to lin ref tool function?)

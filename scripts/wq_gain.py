@@ -5,7 +5,8 @@ from waterquality import utils
 import logging
 import traceback
 
-def convert_wq_dtypes(df): # TODO check to see if the wq_from_file function can do this
+
+def convert_wq_dtypes(df):  # TODO check to see if the wq_from_file function can do this
 	"""
 	Converts all the strings in dataframe into numeric (pd.to_numeric introduced in 0.17 so can't use that)
 	:param df:
@@ -67,45 +68,46 @@ def gain_join_gps_by_site(gain_avg_df, shp_df):
 	return joined
 
 
-def gain_gps_timediff(gain_avg_df, shp_df):
-	"""
-	Calculates the difference between each of the timestamps in the shapefile and the middle time in the vertical profile
-	:param gain_avg_df: mean water quality values for vertical profile (must have start_time and end_time)
-	:param shp_df: dataframe from a shapefile of multiple Chl/Zoop sampling sites
-	:return: dataframe from shapefile attribute table with a new field storing the absolute time difference
-	"""
-	# calculate the difference between the start time and the end time of the gain file to get mid point
-	mid_time = (gain_avg_df['Start_Time'] + (gain_avg_df['Start_Time'] - gain_avg_df['End_Time']) / 2)[0]
-
-	# for each row of the shapefile df what is the time diffence compared to the mid point?
-	shp_df["TimeDelta"] = abs(shp_df["Date_Time"] - mid_time)  # absolute diff of time difference
-
-	return shp_df
-
-
-def gain_gps_join_closest_timestamp(gain_avg_df, gps_timediff):
-	"""
-	Joins the average water quality gain dataframe with the closest timestamp from the gps points
-	:param gain_avg_df: mean water quality values for vertical profile
-	:param gps_timediff: dataframe result from gain_gps_timediff with column TimeDelta
-	:return: pandas dataframe with the water quality data joined to the GPS attributes for closest time match
-	"""
-
-	# sort by TimeDelta, return the first row (ie the closest match)
-	gps_closest_row = gps_timediff.sort('TimeDelta', ascending=True).head(1)
-
-	# join - using concat - the closest match with the water quality average df
-
-	# reset index
-	gps_closest_row = gps_closest_row.reset_index(drop=True)
-	gain_avg_df = gain_avg_df.reset_index(drop=True)
+# def gain_gps_timediff(gain_avg_df, shp_df):
+# 	"""
+# 	Calculates the difference between each of the timestamps in the shapefile and the middle time in the vertical profile
+# 	:param gain_avg_df: mean water quality values for vertical profile (must have start_time and end_time)
+# 	:param shp_df: dataframe from a shapefile of multiple Chl/Zoop sampling sites
+# 	:return: dataframe from shapefile attribute table with a new field storing the absolute time difference
+# 	"""
+# 	# calculate the difference between the start time and the end time of the gain file to get mid point
+# 	mid_time = (gain_avg_df['Start_Time'] + (gain_avg_df['Start_Time'] - gain_avg_df['End_Time']) / 2)[0]
+#
+# 	# for each row of the shapefile df what is the time diffence compared to the mid point?
+# 	shp_df["TimeDelta"] = abs(shp_df["Date_Time"] - mid_time)  # absolute diff of time difference
+#
+# 	return shp_df
 
 
-	join = pd.concat([gps_closest_row, gain_avg_df], axis=1, join='inner', verify_integrity=True)
-
-	# there might be duplicate columns
-
-	return join
+# def gain_gps_join_closest_timestamp(gain_avg_df, gps_timediff):
+# 	"""
+# 	Joins the average water quality gain dataframe with the closest timestamp from the gps points
+# 	:param gain_avg_df: mean water quality values for vertical profile
+# 	:param gps_timediff: dataframe result from gain_gps_timediff with column TimeDelta
+# 	:return: pandas dataframe with the water quality data joined to the GPS attributes for closest time match
+# 	"""
+#
+# 	print(gps_timediff)
+# 	# sort by TimeDelta, return the first row (ie the closest match)
+# 	gps_closest_row = gps_timediff.sort('TimeDelta', ascending=True).head(1)
+#
+# 	# join - using concat - the closest match with the water quality average df
+#
+# 	# reset index
+# 	gps_closest_row = gps_closest_row.reset_index(drop=True)
+# 	gain_avg_df = gain_avg_df.reset_index(drop=True)
+#
+#
+# 	join = pd.concat([gps_closest_row, gain_avg_df], axis=1, join='inner', verify_integrity=True)
+#
+# 	# there might be duplicate columns
+#
+# 	return join
 
 
 def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map, session=None):
@@ -129,10 +131,12 @@ def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map, s
 
 	try:
 
+		records = data.iterrows()
+		print(records)
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
-		for row in data.itertuples():  # iterates over all of the rows in the data frames the fast way
+		for row in records:  # iterates over all of the rows in the data frames the fast way
 			print(row)
-			gain_make_record(field_map, row, session)
+			gain_make_record(field_map, row[1], session) # row[1] is the actual data included in the row
 
 		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
@@ -153,16 +157,12 @@ def gain_make_record(field_map, row, session):
 
 	profile = classes.VerticalProfile()  # instantiates a new object
 
-	key_set = set(row._asdict().keys())  # make a set of the keys so we can remove by name
-	key_set.remove("Index")  # skips the Index key - internal and unnecessary - removes before loop to save cycles
-	keys = list(key_set)  # make it back into a list
-
-	for key in keys:  # converts named_tuple to a Dict-like and gets the keys
+	for key in row.index:  # converts named_tuple to a Dict-like and gets the keys
 		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
 		try:
 			class_field = field_map[key]
 		except KeyError:
-			logging.warning("Skipping field {} with value {} for record with index {}. Field not found in field map.".format(key, getattr(row, key), row.Index))
+			logging.warning("Skipping field {} with value {}. Field not found in field map.".format(key, getattr(row, key)))
 			continue
 
 		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
@@ -177,21 +177,20 @@ def gain_make_record(field_map, row, session):
 		session.add(profile)  # and adds the object for creation in the DB - will be committed later before the session is closed.
 
 
-
-def main(gain_file, site, gain):
+def main(gain_file, site, gain, sample_sites_shp=None):
 	"""
 	Takes a water quality vertical profile at a specific site, date, and gain setting and returns the average values
 	for the top 1m of the water column
 	:param gain_file: vertical gain profile
 	:param site: a unique identifier for the site (two/four letter character string)
-	:param gain: the gain setting used when recording the water quality data ("g0", "g1", "g10", "g100")
+	:param gain: the gain setting used when recording the water quality data ("0", "1", "10", "100")
+	:param sample_sites_shp: OPTIONAL shapefile with field called "Site" to add XY coords to gain sample
 	:return: pandas dataframe with a single row containing the sample date, site id, gain setting as well as the average
 	value for the water quality variables using the top 1m of the vertical profile.
 	"""
 
 	# convert raw water quality gain file into pandas dataframe using function from wqt_timestamp_match
 	gain_df = wqt.wq_from_file(gain_file)
-
 	# convert data types to float
 	num = convert_wq_dtypes(gain_df)  # TODO see if this step could be done in wq_from_file()
 
@@ -202,11 +201,11 @@ def main(gain_file, site, gain):
 	avg_1m = avg_vert_profile(dep_1m)
 
 	# get start and end sampling datetimes from the original gain dataframe
-	#start_time = gain_df["Date_Time"][1]  # first row of the data frame
-	#length = len(gain_df.index)  # total length of the data frame
-	#end_time = gain_df["Date_Time"][length]  # use length of df because df[-1] doesn't work
-	#avg_1m['Start_Time'] = start_time  # add start time to the avg df
-	#avg_1m['End_Time'] = end_time  # add end time to the avg df
+	start_time = gain_df["Date_Time"][1]  # first row of the data frame
+	length = len(gain_df.index)  # total length of the data frame
+	end_time = gain_df["Date_Time"][length]  # use length of df because df[-1] doesn't work
+	avg_1m['Start_Time'] = start_time  # add start time to the avg df
+	avg_1m['End_Time'] = end_time  # add end time to the avg df
 
 	# add source of wqp file (get's lost when the file gets averaged)
 	wqt.addsourcefield(avg_1m, "WQ_SOURCE", gain_file)
@@ -217,15 +216,21 @@ def main(gain_file, site, gain):
 	# add site information
 	avg_1m['Site'] = site
 
-	print(avg_1m.head())
+	# if shapefile provided try joining using the site field
+	if sample_sites_shp is not None:
+		# convert shapefile into pandas dataframe using function from wqt_timestamp_match
+		sites_shp_df = wqt.wqtshp2pd(sample_sites_shp)
+
+		# join using the site names from an attribute field
+		gain_w_xy = gain_join_gps_by_site(avg_1m, sites_shp_df)
+
+		# check that there is data in the join
+		if gain_w_xy.size == 0:
+			print("Unable to add XY coords using the site id to join for the vertical profile gain file")
+		else:
+			avg_1m = gain_w_xy
 
 	# add row to database table vertical_profiles
 	gain_wq_df2database(avg_1m)
 
-
-	return avg_1m
-
-
-# example
-
-main(r"C:\Users\Andy\Documents\arcproject-wq-processing\scripts\tests\testfiles\May_2015\Arc_052615\Arc_052615_WQ\ARC_052615_BM1_WQ_10", "BM1", 10)
+	return
