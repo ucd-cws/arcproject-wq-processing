@@ -116,8 +116,8 @@ class VerticalProfile(Base):
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
 	gain_setting = Column(Float)
-	start_time = Column(DateTime)
-	end_time = Column(DateTime)
+	start_time = Column(DateTime, unique=True)
+	end_time = Column(DateTime, unique=True)
 	temp = Column(Float)
 	ph = Column(Float)
 	sp_cond = Column(Float)

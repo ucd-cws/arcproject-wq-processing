@@ -341,7 +341,8 @@ class GainToDB(object):
 		bool = arcpy.Parameter(
 			displayName="Fill in table by parsing filename?",
 			name="bool",
-			datatype="GPBoolean"
+			datatype="GPBoolean",
+			parameterType="Optional"
 		)
 
 		# shapefile for the stationary GPS points
@@ -418,7 +419,7 @@ class GainToDB(object):
 
 		vt = parameters[0].values  # values are list of lists
 		gps_pts = parameters[2].value
-		arcpy.AddMessage(gps_pts)
+		arcpy.AddMessage("gps_pts")
 
 		for i in range(0, len(vt)):
 
@@ -429,8 +430,11 @@ class GainToDB(object):
 			gain_setting = vt[i][2] # gain
 			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
 
-			wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
-
+			try:
+				wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
+			except exc.IntegrityError as e:
+				arcpy.AddMessage("Unable to import gain file. Record for this gain file "
+				                 "already exists in the vertical_profiles table.")
 		return
 
 

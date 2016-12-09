@@ -4,7 +4,7 @@ from waterquality import classes
 from waterquality import utils
 import logging
 import traceback
-
+from sqlalchemy import exc
 
 def convert_wq_dtypes(df):  # TODO check to see if the wq_from_file function can do this
 	"""
@@ -189,3 +189,4 @@ def main(gain_file, site, gain, sample_sites_shp=None):
 	gain_wq_df2database(avg_1m)
 
 	return
+
