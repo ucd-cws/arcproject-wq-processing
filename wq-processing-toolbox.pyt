@@ -5,7 +5,7 @@ from scripts import wq_gain
 from scripts import mapping
 from sqlalchemy import exc
 from waterquality import classes
-
+from string import digits
 from datetime import timedelta
 
 class Toolbox(object):
@@ -364,7 +364,7 @@ class GainToDB(object):
 			parameterType="Optional"
 		)
 
-		gain_part.value = 3
+		gain_part.value = 5
 		gain_part.filter.type = "ValueList"
 		gain_part.filter.list = [1, 2, 3, 4, 5, 6]
 
@@ -423,6 +423,10 @@ class GainToDB(object):
 				gain = parts[int(parameters[3].value)-1]
 				vt[i][0] = str(filename)
 				vt[i][1] = site
+
+				# strip all letters from gain setting ("GN10" -> 10)
+				digits_only = ''.join(c for c in gain if c in digits)
+				gain = int(digits_only)
 				vt[i][2] = gain
 			parameters[0].values = vt
 
