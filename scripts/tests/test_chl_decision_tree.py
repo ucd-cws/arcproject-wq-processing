@@ -45,7 +45,8 @@ class RegressionTable(unittest.TestCase):
 
 		reg = classes.Regression
 		try:
-			for record in data.itertuples():
+			for record in data.iterrows():
+				record = record[1]
 				self.assertTrue(session.query(classes.Regression)\
 										.filter(reg.a_coefficient == shorten_float(record.A_coeff),
 												reg.b_coefficient == shorten_float(record.B_coeff),

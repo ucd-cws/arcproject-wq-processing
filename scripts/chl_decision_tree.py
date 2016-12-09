@@ -37,21 +37,18 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 	session = classes.get_new_session()
 
 	try:
-		for row in data_frame.itertuples():
+		for row in data_frame.iterrows():
 			regression = classes.Regression()
 
-			# takes the keys and makes a set to remove unneeded "Index"
-			key_set = set(row._asdict().keys())
-			key_set.remove("Index")
-			keys = list(key_set)
+			# row[1] is the actual data that is included in the row
+			row1 = row[1]
 
-			for key in keys:
+			for key in row1.index:
 				class_field = field_map[key]
-
 				if key == "Date":
-					value = datetime.strptime(getattr(row, key), date_format_string)
+					value = datetime.strptime(getattr(row1, key), date_format_string)
 				else:
-					value = getattr(row, key)
+					value = getattr(row1, key)
 
 				if type(value) in (float, numpy.float64):  # shorten any floating point number to 8 places for consistency
 					value = shorten_float(value)
