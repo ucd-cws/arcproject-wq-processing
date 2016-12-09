@@ -345,6 +345,29 @@ class GainToDB(object):
 			parameterType="Optional"
 		)
 
+		site_part = arcpy.Parameter(
+			displayName="Part of filename with site code (split by underscores)?",
+			name="site",
+			datatype="GPLong",
+			parameterType="Optional"
+		)
+
+		site_part.value = 3
+		site_part.filter.type = "ValueList"
+		site_part.filter.list = [1, 2, 3, 4, 5, 6]
+
+
+		gain_part = arcpy.Parameter(
+			displayName="Part of filename with gain code (split by underscores)?",
+			name="gain",
+			datatype="GPLong",
+			parameterType="Optional"
+		)
+
+		gain_part.value = 3
+		gain_part.filter.type = "ValueList"
+		gain_part.filter.list = [1, 2, 3, 4, 5, 6]
+
 		# shapefile for the stationary GPS points
 		shp = arcpy.Parameter(
 			displayName="Shapefile with Vertical Profile Locations",
@@ -354,7 +377,7 @@ class GainToDB(object):
 			parameterType="Optional"
 		)
 
-		params = [wqp, bool, shp]
+		params = [wqp, bool, site_part, gain_part, shp]
 		return params
 
 
@@ -389,15 +412,15 @@ class GainToDB(object):
 
 		# updates the value table using the values parsed from the file name
 		if parameters[1].value:
-			vt = parameters[0].values # values are list of lists
+			vt = parameters[0].values  # values are list of lists
 
 			for i in range(0, len(vt)):
 				filename = vt[i][0]
 				basename = os.path.basename(str(filename))
 				base = os.path.splitext(basename)[0]  # rm extension if there is one
 				parts = base.split("_")  # split on underscore
-				site = parts[2]
-				gain = parts[4]
+				site = parts[int(parameters[2].value)-1]
+				gain = parts[int(parameters[3].value)-1]
 				vt[i][0] = str(filename)
 				vt[i][1] = site
 				vt[i][2] = gain
@@ -418,7 +441,7 @@ class GainToDB(object):
 		# get the parameters
 
 		vt = parameters[0].values  # values are list of lists
-		gps_pts = parameters[2].value
+		gps_pts = parameters[4].value
 		arcpy.AddMessage("gps_pts")
 
 		for i in range(0, len(vt)):
@@ -516,7 +539,7 @@ class AddGainSite(object):
 				session.add(ps)
 				session.commit()
 			except exc.IntegrityError as e:
-				arcpy.AddMessage(e)
+				#arcpy.AddMessage(e)
 				arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
 			finally:
 				session.close()
