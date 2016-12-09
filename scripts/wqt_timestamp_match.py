@@ -26,6 +26,81 @@ from waterquality import classes
 source_field = "WQ_SOURCE"
 projection_spatial_reference = 3310  # Teale Albers  # 26942  # CA State Plane II Meters
 
+# the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
+# a dict there, then look up the unit provided. If there's a number there, it's a multiplier to convert units to the desired
+# standard units for that field
+unit_conversion = {
+	"DEP25": {
+		"meters": None,
+		"feet": 0.3048,
+	},
+	"DEPX": {
+		"meters": None,
+		"feet": 0.3048,
+	},
+	"Temp": {
+		"°C": None,
+	},
+	"SpCond": {
+		"µS/cm": None,
+	},
+	"DO%": {
+		"Sat": None
+	},
+	"DO_PCT": {
+		"Sat": None
+	},
+	"DO": {
+		"mg/l": None
+	},
+	"PAR": {
+		"µE/s/m²": None
+	},
+	"RPAR": {
+		"µE/s/m²": None
+	},
+	"TurbSC": {
+		"NTU": None
+	},
+	"CHL": {
+		"µg/l": None
+	},
+	"CHL_VOLTS": {
+		"Volts": None
+	},
+	"Sal": None,
+	"pH": None,
+	"Date": None,
+	"Time": None,
+	"Date_Time": None,
+	"WQ_SOURCE": None,
+	"GPS_SOURCE": None,
+	"GPS_Time": None,
+	"GPS_Date": None,
+	"POINT_Y": None,
+	"POINT_X": None,
+}
+
+
+def get_unit_conversion_scale(field, current_units):
+	"""
+		Looks up the scaling factors in unit_conversion and returns the appropriate value or None. When it returns None
+		no scaling should be applied.
+	:param field: the name of the field in the data frame we're looking up for scaling
+	:param current_units: the units as described in the sonde data file
+	:return: scaling value to be multiplied against entire field or None
+	"""
+	if field in unit_conversion:
+		if unit_conversion[field] is None:
+			return None
+
+		if current_units in unit_conversion[field]:
+			return unit_conversion[field][current_units]
+
+	# serves as an automatic else to the above - if we didn't return, then this gets raised
+	raise KeyError("Units on field {} not known. Can't continue loading without being sure that units are the same."
+				   " The software will need to be updated with any scaling factors necessary to convert the units".format(field))
+
 
 def convert_file_encoding(in_file, target_encoding="utf-8"):
 	"""

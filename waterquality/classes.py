@@ -48,19 +48,6 @@ def get_new_session():
 	"""
 	return Session()
 
-# commented out the following class because I'm not sure it's providing anything of use
-#class WaterQualityFile(Base):
-#	"""
-#		This class gives us a framework to hang observations on so they can all be traced back to the same origin
-#	"""
-#	__tablename__ = 'water_quality_files'
-
-#	id= Column(Integer, primary_key=True)
-#	original_file_path = Column(String)
-#	processed_file_path = Column(String)
-
-	# records = relationship("WaterQuality", backref="file")
-
 
 class Site(Base):
 	__tablename__ = "sites"
