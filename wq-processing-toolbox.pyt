@@ -1,6 +1,5 @@
 import arcpy
 import os
-import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
@@ -496,14 +495,14 @@ class AddGainSite(object):
 
 		profile_field = parameters[1].valueAsText
 
-		# linear reference to get the slough id and m_value
+		# TODO linear reference to get the slough id and m_value
 
 		# iterate through rows and add to profile sites
 		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, "SHAPE@Y", "SHAPE@X"])
 		for row in cursor:
 			ps = classes.ProfileSite()
 			arcpy.AddMessage(row)
-			ps.abbreviation = row[0]
+			ps.abbreviation = row[0].upper()
 			ps.y_coord = row[1]
 			ps.x_coord = row[2]
 
