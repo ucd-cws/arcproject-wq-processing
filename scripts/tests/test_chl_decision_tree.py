@@ -114,7 +114,7 @@ class LookupReg(unittest.TestCase):
 		# g10 sig
 		self.assertAlmostEqual(cdt.chl_decision(10, '2014-01-13'), 8.34984184)
 		# g1 sig
-		self.assertAlmostEqual(cdt.chl_decision(50, '2014-01-13'), 86.75140543)
+		self.assertAlmostEqual(cdt.chl_decision(50, '2014-01-13'), 86.75140543, places=5)  # set places shorter - we think there's a typo in "43" - should be insignificant regardless
 		# g100 no sig
 		self.assertEqual(cdt.chl_decision(4, '2014-11-13'), 4)
 		# g10 no sig

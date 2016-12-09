@@ -21,6 +21,8 @@ class BaseDBTest(unittest.TestCase):
 		self.session = classes.get_new_session()
 		self._make_site()
 
+		self.pre_test_num_records = self.session.query(classes.WaterQuality.id).filter(classes.Site.code == self.site_code).count()
+
 	def _make_site(self):
 		"""
 			When testing on test server, database will be cleaned first, but when DB exists, we'll need to check if the site
@@ -49,9 +51,10 @@ class TestDBInsert(BaseDBTest):
 		self.assertEqual(expected, added)  # assert at end so that database commit occurs and we can inspect
 
 	def test_records_in_db(self):
+		self.test_data_insert()
 		num_records = self.session.query(classes.WaterQuality.id).filter(classes.Site.code == self.site_code).count()
 
-		self.assertEqual(977, num_records)
+		self.assertEqual(977, num_records - self.pre_test_num_records)
 
 class LoadWQ(unittest.TestCase):
 
