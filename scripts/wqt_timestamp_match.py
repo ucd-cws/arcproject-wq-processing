@@ -135,7 +135,7 @@ def wq_from_file(water_quality_raw_data):
 	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
 		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
 
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#') # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#')  # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
@@ -145,6 +145,8 @@ def wq_from_file(water_quality_raw_data):
 
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
+
+	# TODO: unit conversion goes here
 
 	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)

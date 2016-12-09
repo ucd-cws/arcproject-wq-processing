@@ -233,6 +233,7 @@ water_quality_header_map = {
 	"DO_PCT": "dissolved_oxygen_percent",
 	"DO": "dissolved_oxygen",
 	"DEP25": "dep_25",
+	"DEPX": "dep_25",
 	"PAR": "par",
 	"RPAR": "rpar",
 	"TurbSC": "turbidity_sc",
