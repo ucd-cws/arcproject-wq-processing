@@ -102,6 +102,39 @@ def get_unit_conversion_scale(field, current_units):
 				   " The software will need to be updated with any scaling factors necessary to convert the units".format(field))
 
 
+def check_and_convert_units(data_frame, units):
+	"""
+		Confirms that units are correct on each field we import and if they aren't converts them
+	:param data_frame: a pandas data frame of water quality measurements
+	:return: the same data frame with converted units
+	"""
+
+	fields = data_frame.columns.values.tolist()  # why this is the best way to get the fields is beyond me... http://stackoverflow.com/questions/19482970/get-list-from-pandas-dataframe-column-headers
+
+	for field in fields:
+		scaling_value = get_unit_conversion_scale(field, units[field])
+		if scaling_value:
+			data_frame[field] = pd.to_numeric(data_frame[field])  # before multiplying, we have to cast the data to numeric
+			data_frame[field] = data_frame[field].multiply(scaling_value)
+
+	return data_frame
+
+
+def make_units_index(row):
+	"""
+		Given the row of the data frame that has the units listed, makes a dictionary index of those values that can
+		be looked up by field
+	:param row: First row of the data frame that contains the units - created using data_frame.head(1)
+	:return: dict index of units - keyed by field name
+	"""
+
+	units = {}
+	for field in row:
+		units[field] = row[field][0]
+
+	return units
+
+
 def convert_file_encoding(in_file, target_encoding="utf-8"):
 	"""
 		pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3.
@@ -116,7 +149,7 @@ def convert_file_encoding(in_file, target_encoding="utf-8"):
 	source = open(in_file)
 	original_name = os.path.splitext(os.path.split(in_file)[1])[0]  # get the original filename by splitting off the extension and path
 
-	new_file = tempfile.mktemp(prefix=original_name, suffix="converted_encoding")
+	new_file = tempfile.mktemp(prefix="{}__".format(original_name), suffix="converted_encoding")
 	target = open(new_file, "wb")
 
 	target.write(six.text_type(source.read()).encode(target_encoding))
@@ -140,13 +173,15 @@ def wq_from_file(water_quality_raw_data):
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
 
-	# drop first row which contains units with illegal characters
-	wq = wq.drop(wq.index[[0]])
-
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
 
-	# TODO: unit conversion goes here
+	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+	# drop first row which contains units with illegal characters
+	wq = wq.drop(wq.index[[0]])
+
+	# handles any unit scaling/converting we need to do for fields that aren't always in the same units
+	wq = check_and_convert_units(wq, units)
 
 	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)

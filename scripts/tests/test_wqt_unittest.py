@@ -1,6 +1,8 @@
 import os
 import unittest
 from datetime import datetime
+import sys
+import six
 
 import pandas
 import arcpy
@@ -36,6 +38,108 @@ class BaseDBTest(unittest.TestCase):
 			new_site.name = "Testing Site"
 			self.session.add(new_site)
 			self.session.commit()
+
+
+class TestUnitConversion(unittest.TestCase):
+
+	def setUp(self):
+		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.df = wqt_timestamp_match.wq_from_file(self.wq)  # doesn't really matter that units are already converted here - the test is just going to pretend anyway
+		self.unmodified_data = self.df["DEP25"]
+		self.unmodified_other_column = self.df["pH"]
+
+		self.units = {
+			"DEP25": "feet",
+			"Temp": "°C",
+			"SpCond": "µS/cm",
+			"DO%": "Sat",
+			"DO_PCT": "Sat",
+			"DO": "mg/l",
+			"PAR": "µE/s/m²",
+			"RPAR": "µE/s/m²",
+			"TurbSC": "NTU",
+			"CHL": "µg/l",
+			"CHL_VOLTS": "Volts",
+			"Sal": None,
+			"pH": None,
+			"Date": None,
+			"Time": None,
+			"Date_Time": None,
+			"WQ_SOURCE": None,
+			"GPS_SOURCE": None,
+			"GPS_Time": None,
+			"GPS_Date": None,
+			"POINT_Y": None,
+			"POINT_X": None,
+		}
+
+	def test_convert_type(self):
+
+		converted_df = wqt_timestamp_match.check_and_convert_units(self.df, self.units)
+
+		if sys.maxsize > 2**32:  # basically, if we're running in 64 bit Python (checks if the largest number is larger than the max number a 32 bit integer can hold
+			dtype = "float64"
+		else:
+			dtype = "float32"
+
+		self.assertEqual(converted_df["DEP25"].dtype, dtype)  # check the data type since it would have had to be converted to change the units
+		for index, value in enumerate(self.unmodified_data):  # make sure that
+			self.assertEqual(float(value) * 0.3048, converted_df["DEP25"][index+1])  # records aren't 0 indexed - multiplies the one value * 0.3048 to confirm the other transformation was correct - doesn't test other cases yet, but we don't have any
+
+		for index, value in enumerate(self.unmodified_other_column):
+			self.assertEqual(value, self.df["pH"][index+1])  # make sure that other columns weren't changed
+
+	def test_fail_on_unknown_units(self):
+
+		temp_real_units = self.units["Temp"]
+		self.units["Temp"] = None  # set it to a bad value now
+
+		with self.assertRaises(KeyError):
+			wqt_timestamp_match.check_and_convert_units(self.df, self.units)  # make sure it fails when bad units are put in
+
+		self.units["Temp"] = temp_real_units  # restore it for future tests in the same session
+
+
+class TestDFLoading(unittest.TestCase):
+	def setUp(self):
+		"""
+			Set the path to normal data and foot data
+		:return:
+		"""
+		self.wq_meters = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.wq_feet = os.path.join("testfiles", "feet_conversion.csv")
+
+	def load_file(self, filepath):
+		"""
+			Imitates the first part of the data loading code in wqt_timestamp_match
+		:param filepath:
+		:return:
+		"""
+		if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
+			water_quality_raw_data = wqt_timestamp_match.convert_file_encoding(filepath)
+		else:
+			water_quality_raw_data = filepath
+
+		wq = pandas.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#')  # TODO add other error values (2000000.00 might be error for CHL)
+
+		# drop all columns that are blank since data in csv is separated by empty columns
+		wq = wq.dropna(axis=1, how="all")
+
+		return wqt_timestamp_match.replaceIllegalFieldnames(wq)
+
+	def test_no_data_conversion(self):
+		df = wqt_timestamp_match.wq_from_file(self.wq_meters)
+		wq = self.load_file(self.wq_meters)
+
+		for index, value in enumerate(wq["DEP25"]):
+			self.assertEqual(value, df["DEP25"][index+1])
+
+	def test_data_conversion(self):
+		df = wqt_timestamp_match.wq_from_file(self.wq_feet)
+		wq = self.load_file(self.wq_feet)
+
+		for index, value in enumerate(wq["DEP25"]):
+			self.assertEqual(float(value) * 0.3048, df["DEP25"][index+1])
 
 
 class TestDBInsert(BaseDBTest):
