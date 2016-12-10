@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Numeric, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 
 db_name = "wqdb.sqlite"
@@ -96,15 +96,15 @@ gain_water_quality_header_map = {
 
 class VerticalProfile(Base):
 	__tablename__ = "vertical_profiles"
-
+	__table_args__ = (UniqueConstraint('start_time', 'end_time', name='_time_uc'),)
 	id = Column(Integer, primary_key=True)
 
 	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
 	gain_setting = Column(Float)
-	start_time = Column(DateTime, unique=True)
-	end_time = Column(DateTime, unique=True)
+	start_time = Column(DateTime)
+	end_time = Column(DateTime)
 	temp = Column(Float)
 	ph = Column(Float)
 	sp_cond = Column(Float)
@@ -140,15 +140,16 @@ regression_field_map = {
 
 class Regression(Base):
 	__tablename__ = "regression"
-	__table_args__ = (UniqueConstraint('date', 'gain', name='_date_gain_uc'),)
 
 	id = Column(Integer, primary_key=True)
-
 	date = Column(Date)
-	gain = Column(String)
+	gain = Column(Integer)
 	r_squared = Column(Numeric(asdecimal=False, precision=8))
 	a_coefficient = Column(Numeric(asdecimal=False, precision=8))
 	b_coefficient = Column(Numeric(asdecimal=False, precision=8))
+
+	__table_args__ = (UniqueConstraint('date', 'gain', name='_date_gain_uc'),
+	                  CheckConstraint(gain.in_([0, 1, 10, 100]), name='_check_gains'))  # limits gains
 
 
 sample_field_map = {

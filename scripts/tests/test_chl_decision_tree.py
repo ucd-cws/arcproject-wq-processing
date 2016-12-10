@@ -62,17 +62,29 @@ class RegressionTable(unittest.TestCase):
 class LookupReg(unittest.TestCase):
 
 	def setUp(self):
-		self.df = pd.DataFrame([['2013-01-07', 'g0', 0.999913452106, -0.7004800719059999, 0.911512370843],
-                                ['2013-01-08', 'g0', 0.712038046822, 0.353666429071, 0.190055423761],
-                                ['2013-01-10', 'g0', 0.175292257503, 2.31933396825, -1.0721551944],
-                                ['2014-01-13', 'g10', 0.987127460968, -1.77156121034, 1.01214030496],
-                                ['2014-01-13', 'g1', 0.8819283496979999, -2.19331177439, 1.7788943440599998],
-                                ['2014-01-13', 'g100', 0.8819283496979999, -2.19331177439, 1.7788943440599998],
-                                ['2014-11-13', 'g10', 0.7, -1.77156121034, 1.01214030496],
-                                ['2014-11-13', 'g1', 0.1, -2.19331177439, 1.7788943440599998],
-                                ['2014-11-13', 'g100', 0.79, -2.19331177439, 1.7788943440599998]
-		                        ],
-								columns=['Date', 'Gain', 'Rsquared', 'A_coeff', 'B_coeff'])
+		# this is fake data - should not be imported to database
+		self.df = pd.DataFrame(
+		                        # [['2013-01-07', 0, 0.999913452106, -0.7004800719059999, 0.911512370843],
+		                        # ['2013-01-08', 0, 0.712038046822, 0.353666429071, 0.190055423761],
+		                        # ['2013-01-10', 0, 0.175292257503, 2.31933396825, -1.0721551944],
+		                        # ['2014-01-13', 10, 0.987127460968, -1.77156121034, 1.01214030496],
+		                        # ['2014-01-13', 1, 0.8819283496979999, -2.19331177439, 1.7788943440599998],
+		                        # ['2014-01-13', 100, 0.8819283496979999, -2.19331177439, 1.7788943440599998],
+		                        # ['2014-11-13', 10, 0.7, -1.77156121034, 1.01214030496],
+		                        # ['2014-11-13', 1, 0.1, -2.19331177439, 1.7788943440599998],
+		                        # ['2014-11-13', 100, 0.79, -2.19331177439, 1.7788943440599998]
+		                        # ],
+
+		                       [
+			                       ['2013-01-07', 0, 0.999913452106, -0.700480071906, 0.911512370843],
+			                       ['2013-01-08', 0, 0.712038046822, 0.353666429071, 0.190055423761],
+			                       ['2014-01-13', 10, 0.987127460968, -1.77156121034, 1.01214030496],
+			                       ['2014-01-13', 1, 0.881928349698, -2.19331177439, 1.77889434406],
+			                       ['2014-02-25', 10, 0.0875528346389, 1.30569522004, 0.524964784217],
+			                       ['2014-02-25', 1, 0.12658432064, 1.95385057303, 0.174847905936],
+			                       ['2014-09-16', 100, 0.901128927601, -4.12735096256, 3.78735462682],
+			                       ['2014-09-18', 100, 0.792842499024, -3.06172823977, 1.77689278967]
+		                       ], columns=['Date', 'Gain', 'Rsquared', 'A_coeff', 'B_coeff'])
 
 		try:
 			cdt.load_regression_data(self.df)
@@ -83,9 +95,9 @@ class LookupReg(unittest.TestCase):
 
 		session = classes.get_new_session()
 		try:
-			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-09', 'g0'))
-			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-08', 'g10'))
-			self.assertTrue(cdt.check_gain_reg_exists(session, '2014-01-13', 'g10'))
+			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-09', 0))  # wrong date
+			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-08', 10))  # wrong gain
+			self.assertTrue(cdt.check_gain_reg_exists(session, '2014-01-13', 10))  # right date + gain
 		finally:
 			session.close()
 
@@ -93,12 +105,12 @@ class LookupReg(unittest.TestCase):
 		session = classes.get_new_session()
 
 		try:
-			regression = cdt.lookup_regression_values(session, '2013-01-08', 'g0')
+			regression = cdt.lookup_regression_values(session, '2013-01-08', 0)
 			self.assertAlmostEqual(regression.r_squared, 0.712038046822)
 			self.assertAlmostEqual(regression.a_coefficient, 0.35366642907099999)
 			self.assertAlmostEqual(regression.b_coefficient, 0.19005542376099999)
 
-			regression = cdt.lookup_regression_values(session, '2014-01-13', 'g1')
+			regression = cdt.lookup_regression_values(session, '2014-01-13', 1)
 			self.assertAlmostEqual(regression.r_squared, 0.8819283496979999)
 			self.assertAlmostEqual(regression.a_coefficient, -2.19331177439)
 			self.assertAlmostEqual(regression.b_coefficient, 1.7788943440599998)
@@ -106,22 +118,30 @@ class LookupReg(unittest.TestCase):
 			session.close()
 
 	def test_chl_decision(self):
-		# g0 sig
+
+		# tests decision tree when there only exists gain 0 Chl values
+		# gain 0 with a r-square value that is significant
 		self.assertAlmostEqual(cdt.chl_decision(10, '2013-01-07'), 8.41464364)
-		# g0 nosig
+		# gain 0 with a nonsignificant r-square value
 		self.assertEqual(cdt.chl_decision(10, '2013-01-08'), 10)
-		# g100 sig
-		self.assertAlmostEqual(cdt.chl_decision(4, '2014-01-13'), 4.92226560)
-		# g10 sig
+
+		# when the uncorrected value is less than 5 use gain 100 regression
+		# gain 100 sig
+		self.assertAlmostEqual(cdt.chl_decision(4, '2014-09-16'), 11.02206754472)
+		# gain 100 no sig
+		self.assertEqual(cdt.chl_decision(4, '2014-09-18'), 4)
+
+		# when the uncorrected value is less than 45 but greater than 5 use gain 10
+		# gain 10 sig
 		self.assertAlmostEqual(cdt.chl_decision(10, '2014-01-13'), 8.34984184)
-		# g1 sig
+		# gain 10 no sig
+		self.assertEqual(cdt.chl_decision(10, '2014-02-25'), 10)
+
+		# the rest of the time just use the gain 1 correction
+		# gain 1 sig
 		self.assertAlmostEqual(cdt.chl_decision(50, '2014-01-13'), 86.75140543, places=5)  # set places shorter - we think there's a typo in "43" - should be insignificant regardless
-		# g100 no sig
-		self.assertEqual(cdt.chl_decision(4, '2014-11-13'), 4)
-		# g10 no sig
-		self.assertEqual(cdt.chl_decision(10, '2014-11-13'), 10)
-		# g1 no sig
-		self.assertEqual(cdt.chl_decision(50, '2014-11-13'), 50)
+		# gain 1 no sig
+		self.assertEqual(cdt.chl_decision(50, '2014-02-25'), 50)
 
 if __name__ == '__main__':
 	unittest.main()

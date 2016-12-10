@@ -82,9 +82,9 @@ def check_gain_reg_exists(session, sample_date, gain_setting, date_format_string
 def lookup_regression_values(session, sample_date, gain_setting):
 	"""
 	Return regression values from table given a sample date and gain setting
-	:param regression_table_pd: pandas dataframe with the regression results
+	:param session:  a SQLAlchemy database session
 	:param sample_date: date to check (should be in format of 'YYYY-MM-DD')
-	:param gain_setting: gain setting to check (string - g0, g1, g10, g100
+	:param gain_setting: gain setting to check (0, 1, 10, 100)
 	:return: tuple with rsquared value, a coefficient (intercept), b coefficient (slope)
 	"""
 	record = session.query(classes.Regression) \
@@ -138,18 +138,18 @@ def chl_decision(uncorrected_chl_value, sample_date):
 	session = classes.get_new_session()
 
 	# gain zero
-	if check_gain_reg_exists(session, sample_date, "g0"):
-		chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g0")
+	if check_gain_reg_exists(session, sample_date, 0):
+		chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=0)
 	else:
 		if uncorrected_chl_value < 5:
 			# use gain 100 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g100")
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=100)
 		elif uncorrected_chl_value < 45:
-			# use gain 100 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g10")
+			# use gain 10 regression if significant
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=10)
 		else:
 			# use gain1 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g1")
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=1)
 
 	# TODO there will likely be an error if the regression values don't exist in the table
 	# TODO figure out how to catch that. Alternative is to return uncorrected values.
