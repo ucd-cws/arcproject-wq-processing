@@ -141,15 +141,19 @@ def chl_decision(uncorrected_chl_value, sample_date):
 	if check_gain_reg_exists(session, sample_date, 0):
 		chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=0)
 	else:
-		if uncorrected_chl_value < 5:
+		if uncorrected_chl_value < 5 and check_gain_reg_exists(session, sample_date, 100):
 			# use gain 100 regression if significant
 			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=100)
-		elif uncorrected_chl_value < 45:
+		elif uncorrected_chl_value < 45 and check_gain_reg_exists(session, sample_date, 10):
 			# use gain 10 regression if significant
 			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=10)
-		else:
+		elif check_gain_reg_exists(session, sample_date, 1):
 			# use gain1 regression if significant
 			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=1)
+		else:
+			print("Unable to correct CHL since regression values don't exist in the table.")
+			print("Returning uncorrected values")
+			chl = uncorrected_chl_value
 
 	# TODO there will likely be an error if the regression values don't exist in the table
 	# TODO figure out how to catch that. Alternative is to return uncorrected values.
