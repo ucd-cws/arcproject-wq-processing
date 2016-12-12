@@ -17,11 +17,12 @@ class Toolbox(object):
 		# List of tool classes associated with this toolbox
 		self.tools = [CheckMatch, GenerateWQLayer, GainToDB, AddSite, JoinTimestamp, AddGainSite]
 
+
 class AddSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add New Site"
-		self.description = ""
+		self.label = "New - Site (slough)"
+		self.description = "Add a new site to the database. Each slough should have it's own unique site id."
 		self.canRunInBackground = False
 
 	def getParameterInfo(self):
@@ -65,10 +66,88 @@ class AddSite(object):
 		session = classes.get_new_session()
 		try:
 			site = classes.Site()
-			site.code = parameters[1].valueAsText
+			site.code = parameters[1].valueAsText.upper()
 			site.name = parameters[0].valueAsText
 			session.add(site)
 			session.commit()
+		except exc.IntegrityError as e:
+			arcpy.AddMessage("{} already exists. Site IDs must be unique.".format(site.code))
+		finally:
+			session.close()
+
+
+class AddGainSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "New - Profile Site"
+		self.description = "Create a new vertical profile site to add to the database"
+		self.canRunInBackground = False
+
+	def getParameterInfo(self):
+
+		abbr = arcpy.Parameter(
+			displayName="Profile Abbreviation",
+			name="abbr",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		slough = arcpy.Parameter(
+			displayName="Slough?",
+			name="slough",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		params = [abbr, slough]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		# fill in the sloughs with options already in the database
+		if parameters[0].valueAsText:
+			session = classes.get_new_session()
+			try:
+				q = session.query(classes.Site.code).distinct().all()
+				sites = []
+				# add profile name to site list
+				for site in q:
+					print(site[0])
+					sites.append(site[0])
+				parameters[1].filter.type = 'ValueList'
+				parameters[1].filter.list = sites
+			finally:
+				session.close()
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		abbr = parameters[0].valueAsText
+		slough = parameters[1].valueAsText
+		ps = classes.ProfileSite()
+		ps.abbreviation = abbr.upper()
+		ps.slough = slough.upper()
+
+		# add to db
+		session = classes.get_new_session()
+		try:
+			session.add(ps)
+			session.commit()
+		except exc.IntegrityError as e:
+			arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
 		finally:
 			session.close()
 
@@ -465,87 +544,4 @@ class GainToDB(object):
 		return
 
 
-class AddGainSite(object):
-	def __init__(self):
-		"""Define the tool (tool name is the name of the class)."""
-		self.label = "New Vertical Gain Profile Sites"
-		self.description = ""
-		self.canRunInBackground = False
 
-	def getParameterInfo(self):
-
-		ZoopChlW = arcpy.Parameter(
-			displayName="Vertical Profile GPS points",
-			name="ZoopChlW",
-			datatype="GPFeatureLayer",
-			multiValue=False,
-			direction="Input"
-		)
-
-		site_codes = arcpy.Parameter(
-			displayName="Field with site codes",
-			name="site_codes",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input"
-		)
-
-		params = [ZoopChlW, site_codes]
-		return params
-
-	def isLicensed(self):
-		"""Set whether tool is licensed to execute."""
-		return True
-
-	def updateParameters(self, parameters):
-		"""Modify the values and properties of parameters before internal
-		validation is performed.  This method is called whenever a parameter
-		has been changed."""
-
-		# populate the field selection using the fields from the shapefile
-		if parameters[0].value:
-			parameters[1].filter.list = [f.name for f in arcpy.Describe(parameters[0].value).fields]
-
-		return
-
-	def updateMessages(self, parameters):
-		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation."""
-		return
-
-	def execute(self, parameters, messages):
-
-		# project to CA teale albers
-		feature_class = parameters[0].valueAsText
-		desc = arcpy.Describe(feature_class)
-		try:
-			if desc.spatialReference.factoryCode != 3310:
-				feature_class = wqt_timestamp_match.reproject_features(feature_class)
-		finally:
-			del desc
-
-		profile_field = parameters[1].valueAsText
-
-		# TODO linear reference to get the slough id and m_value
-
-		# iterate through rows and add to profile sites
-		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, "SHAPE@Y", "SHAPE@X"])
-		for row in cursor:
-			ps = classes.ProfileSite()
-			arcpy.AddMessage(row)
-			ps.abbreviation = row[0].upper()
-			ps.y_coord = row[1]
-			ps.x_coord = row[2]
-
-			# add to db
-			session = classes.get_new_session()
-			try:
-				session.add(ps)
-				session.commit()
-			except exc.IntegrityError as e:
-				#arcpy.AddMessage(e)
-				arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
-			finally:
-				session.close()
-
-		# TODO add m_value (maybe add to lin ref tool function?)
