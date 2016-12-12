@@ -68,8 +68,8 @@ class ProfileSite(Base):
 	y_coord = Column(Float)
 	x_coord = Column(Float)
 	m_value = Column(Float)
-	site_id = Column(Integer, ForeignKey("sites.id"))
-	site = relationship(Site, backref="profile_sites")
+	slough = Column(String, ForeignKey("sites.code"))
+	site_id = relationship(Site, backref="profile_sites")
 
 
 gain_water_quality_header_map = {

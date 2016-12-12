@@ -19,20 +19,42 @@ wq_data = os.path.join(base_path, "scripts", "tests", "testfiles", "Arc_040413",
 gps_data = os.path.join(base_path, os.path.split(os.path.split(os.path.abspath(__file__))[0])[0], "scripts", "tests", "testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
 
 ### MAKE SITE FOR DATA ###
-site_code = "wqt"
+#site_code = "wqt"
+print("Adding default sloughs to sites")
+site_names = {"NS": "Nurse Slough",
+		"MZ": "Montezuma Slough"}
+
 session = classes.get_new_session()
-if session.query(classes.Site).filter(classes.Site.code == site_code).one_or_none() is None:
-	new_site = classes.Site()
-	new_site.code = site_code
-	new_site.name = "Testing Site"
-	session.add(new_site)
+for site in site_names:
+	site_code = site
+	if session.query(classes.Site).filter(classes.Site.code == site_code).one_or_none() is None:
+		new_site = classes.Site()
+		new_site.code = site_code
+		new_site.name = site_names[site]
+		session.add(new_site)
+		session.commit()
+
+session.close()
+
+### Add vertical profile default sites ###
+print("Adding default vertical profiles to profile_sites")
+vert_profiles = {"MZ1": "MZ",
+                 "NS3": "NS"}
+
+session = classes.get_new_session()
+
+for vp in vert_profiles:
+	new_vp = classes.ProfileSite()
+	new_vp.abbreviation = vp
+	new_vp.slough = vert_profiles[vp]
+	session.add(new_vp)
 	session.commit()
 
 session.close()
 
 ### LOAD WQ DATA ###
 print("Loading Water Quality Data")
-wqt_timestamp_match.main([wq_data,], gps_data,)
+#wqt_timestamp_match.main([wq_data,], gps_data,)
 
 ### LOAD REGRESSION DATA ###
 print("Loading Regression Data")
