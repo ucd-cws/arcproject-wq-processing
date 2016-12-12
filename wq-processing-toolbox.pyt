@@ -8,14 +8,14 @@ from waterquality import classes
 from string import digits
 from datetime import timedelta
 
+
 class Toolbox(object):
 	def __init__(self):
 		"""Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
 		self.label = "ArcWQ"
 		self.alias = ""
-
 		# List of tool classes associated with this toolbox
-		self.tools = [CheckMatch, GenerateWQLayer, GainToDB, AddSite, JoinTimestamp, AddGainSite]
+		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch, GenerateWQLayer, GainToDB, ]
 
 
 class AddSite(object):
@@ -24,6 +24,7 @@ class AddSite(object):
 		self.label = "New - Site (slough)"
 		self.description = "Add a new site to the database. Each slough should have it's own unique site id."
 		self.canRunInBackground = False
+		self.category = "Create New Sites"
 
 	def getParameterInfo(self):
 
@@ -82,6 +83,7 @@ class AddGainSite(object):
 		self.label = "New - Profile Site"
 		self.description = "Create a new vertical profile site to add to the database"
 		self.canRunInBackground = False
+		self.category = "Create New Sites"
 
 	def getParameterInfo(self):
 
@@ -158,6 +160,7 @@ class GenerateWQLayer(object):
 		self.label = "Generate Map Layer from Water Quality Data"
 		self.description = ""
 		self.canRunInBackground = False
+		self.category = "Mapping"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -219,6 +222,7 @@ class JoinTimestamp(object):
 		self.label = "Transect - Join on Timestamp"
 		self.description = "Join water quality transect to gps using time stamp and add to database"
 		self.canRunInBackground = False
+		self.category = "Add Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -304,6 +308,7 @@ class CheckMatch(object):
 		self.label = "Percent Match - Water Quality data with Transect"
 		self.description = "Reports the percent match for multiple water quality dataset with transect shapefile"
 		self.canRunInBackground = False
+		self.category = "Add Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -398,6 +403,7 @@ class GainToDB(object):
 		self.label = "Add Gain profile to database"
 		self.description = "Takes average of water quality parameters of the top 1m of the vertical profile"
 		self.canRunInBackground = False
+		self.category = "Add Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
