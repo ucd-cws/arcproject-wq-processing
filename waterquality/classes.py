@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Numeric, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, UniqueConstraint
+from sqlalchemy import ForeignKey, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship
 
 db_name = "wqdb.sqlite"
@@ -47,19 +47,6 @@ def get_new_session():
 	:return:
 	"""
 	return Session()
-
-# commented out the following class because I'm not sure it's providing anything of use
-#class WaterQualityFile(Base):
-#	"""
-#		This class gives us a framework to hang observations on so they can all be traced back to the same origin
-#	"""
-#	__tablename__ = 'water_quality_files'
-
-#	id= Column(Integer, primary_key=True)
-#	original_file_path = Column(String)
-#	processed_file_path = Column(String)
-
-	# records = relationship("WaterQuality", backref="file")
 
 
 class Site(Base):
@@ -109,7 +96,7 @@ gain_water_quality_header_map = {
 
 class VerticalProfile(Base):
 	__tablename__ = "vertical_profiles"
-
+	__table_args__ = (UniqueConstraint('start_time', 'end_time', name='_time_uc'),)
 	id = Column(Integer, primary_key=True)
 
 	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
@@ -153,15 +140,16 @@ regression_field_map = {
 
 class Regression(Base):
 	__tablename__ = "regression"
-	__table_args__ = (UniqueConstraint('date', 'gain', name='_date_gain_uc'),)
 
 	id = Column(Integer, primary_key=True)
-
 	date = Column(Date)
-	gain = Column(String)
+	gain = Column(Integer)
 	r_squared = Column(Numeric(asdecimal=False, precision=8))
 	a_coefficient = Column(Numeric(asdecimal=False, precision=8))
 	b_coefficient = Column(Numeric(asdecimal=False, precision=8))
+
+	__table_args__ = (UniqueConstraint('date', 'gain', name='_date_gain_uc'),
+	                  CheckConstraint(gain.in_([0, 1, 10, 100]), name='_check_gains'))  # limits gains
 
 
 sample_field_map = {
@@ -246,6 +234,7 @@ water_quality_header_map = {
 	"DO_PCT": "dissolved_oxygen_percent",
 	"DO": "dissolved_oxygen",
 	"DEP25": "dep_25",
+	"DEPX": "dep_25",
 	"PAR": "par",
 	"RPAR": "rpar",
 	"TurbSC": "turbidity_sc",
