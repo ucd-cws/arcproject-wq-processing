@@ -1,12 +1,11 @@
 import arcpy
 import os
-import pandas
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
 from sqlalchemy import exc
 from waterquality import classes
-
+from string import digits
 from datetime import timedelta
 
 class Toolbox(object):
@@ -342,8 +341,32 @@ class GainToDB(object):
 		bool = arcpy.Parameter(
 			displayName="Fill in table by parsing filename?",
 			name="bool",
-			datatype="GPBoolean"
+			datatype="GPBoolean",
+			parameterType="Optional"
 		)
+
+		site_part = arcpy.Parameter(
+			displayName="Part of filename with site code (split by underscores)?",
+			name="site",
+			datatype="GPLong",
+			parameterType="Optional"
+		)
+
+		site_part.value = 3
+		site_part.filter.type = "ValueList"
+		site_part.filter.list = [1, 2, 3, 4, 5, 6]
+
+
+		gain_part = arcpy.Parameter(
+			displayName="Part of filename with gain code (split by underscores)?",
+			name="gain",
+			datatype="GPLong",
+			parameterType="Optional"
+		)
+
+		gain_part.value = 5
+		gain_part.filter.type = "ValueList"
+		gain_part.filter.list = [1, 2, 3, 4, 5, 6]
 
 		# shapefile for the stationary GPS points
 		shp = arcpy.Parameter(
@@ -354,7 +377,7 @@ class GainToDB(object):
 			parameterType="Optional"
 		)
 
-		params = [wqp, bool, shp]
+		params = [wqp, bool, site_part, gain_part, shp]
 		return params
 
 
@@ -389,17 +412,21 @@ class GainToDB(object):
 
 		# updates the value table using the values parsed from the file name
 		if parameters[1].value:
-			vt = parameters[0].values # values are list of lists
+			vt = parameters[0].values  # values are list of lists
 
 			for i in range(0, len(vt)):
 				filename = vt[i][0]
 				basename = os.path.basename(str(filename))
 				base = os.path.splitext(basename)[0]  # rm extension if there is one
 				parts = base.split("_")  # split on underscore
-				site = parts[2]
-				gain = parts[4]
+				site = parts[int(parameters[2].value)-1]
+				gain = parts[int(parameters[3].value)-1]
 				vt[i][0] = str(filename)
 				vt[i][1] = site
+
+				# strip all letters from gain setting ("GN10" -> 10)
+				digits_only = ''.join(c for c in gain if c in digits)
+				gain = int(digits_only)
 				vt[i][2] = gain
 			parameters[0].values = vt
 
@@ -418,8 +445,8 @@ class GainToDB(object):
 		# get the parameters
 
 		vt = parameters[0].values  # values are list of lists
-		gps_pts = parameters[2].value
-		arcpy.AddMessage(gps_pts)
+		gps_pts = parameters[4].value
+		arcpy.AddMessage("gps_pts")
 
 		for i in range(0, len(vt)):
 
@@ -430,8 +457,11 @@ class GainToDB(object):
 			gain_setting = vt[i][2] # gain
 			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
 
-			wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
-
+			try:
+				wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
+			except exc.IntegrityError as e:
+				arcpy.AddMessage("Unable to import gain file. Record for this gain file "
+				                 "already exists in the vertical_profiles table.")
 		return
 
 
@@ -496,14 +526,14 @@ class AddGainSite(object):
 
 		profile_field = parameters[1].valueAsText
 
-		# linear reference to get the slough id and m_value
+		# TODO linear reference to get the slough id and m_value
 
 		# iterate through rows and add to profile sites
 		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, "SHAPE@Y", "SHAPE@X"])
 		for row in cursor:
 			ps = classes.ProfileSite()
 			arcpy.AddMessage(row)
-			ps.abbreviation = row[0]
+			ps.abbreviation = row[0].upper()
 			ps.y_coord = row[1]
 			ps.x_coord = row[2]
 
@@ -513,7 +543,7 @@ class AddGainSite(object):
 				session.add(ps)
 				session.commit()
 			except exc.IntegrityError as e:
-				arcpy.AddMessage(e)
+				#arcpy.AddMessage(e)
 				arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
 			finally:
 				session.close()

@@ -37,21 +37,18 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 	session = classes.get_new_session()
 
 	try:
-		for row in data_frame.itertuples():
+		for row in data_frame.iterrows():
 			regression = classes.Regression()
 
-			# takes the keys and makes a set to remove unneeded "Index"
-			key_set = set(row._asdict().keys())
-			key_set.remove("Index")
-			keys = list(key_set)
+			# row[1] is the actual data that is included in the row
+			row1 = row[1]
 
-			for key in keys:
+			for key in row1.index:
 				class_field = field_map[key]
-
 				if key == "Date":
-					value = datetime.strptime(getattr(row, key), date_format_string)
+					value = datetime.strptime(getattr(row1, key), date_format_string)
 				else:
-					value = getattr(row, key)
+					value = getattr(row1, key)
 
 				if type(value) in (float, numpy.float64):  # shorten any floating point number to 8 places for consistency
 					value = shorten_float(value)
@@ -85,9 +82,9 @@ def check_gain_reg_exists(session, sample_date, gain_setting, date_format_string
 def lookup_regression_values(session, sample_date, gain_setting):
 	"""
 	Return regression values from table given a sample date and gain setting
-	:param regression_table_pd: pandas dataframe with the regression results
+	:param session:  a SQLAlchemy database session
 	:param sample_date: date to check (should be in format of 'YYYY-MM-DD')
-	:param gain_setting: gain setting to check (string - g0, g1, g10, g100
+	:param gain_setting: gain setting to check (0, 1, 10, 100)
 	:return: tuple with rsquared value, a coefficient (intercept), b coefficient (slope)
 	"""
 	record = session.query(classes.Regression) \
@@ -141,18 +138,22 @@ def chl_decision(uncorrected_chl_value, sample_date):
 	session = classes.get_new_session()
 
 	# gain zero
-	if check_gain_reg_exists(session, sample_date, "g0"):
-		chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g0")
+	if check_gain_reg_exists(session, sample_date, 0):
+		chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=0)
 	else:
-		if uncorrected_chl_value < 5:
+		if uncorrected_chl_value < 5 and check_gain_reg_exists(session, sample_date, 100):
 			# use gain 100 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g100")
-		elif uncorrected_chl_value < 45:
-			# use gain 100 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g10")
-		else:
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=100)
+		elif uncorrected_chl_value < 45 and check_gain_reg_exists(session, sample_date, 10):
+			# use gain 10 regression if significant
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=10)
+		elif check_gain_reg_exists(session, sample_date, 1):
 			# use gain1 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain="g1")
+			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=1)
+		else:
+			print("Unable to correct CHL since regression values don't exist in the table.")
+			print("Returning uncorrected values")
+			chl = uncorrected_chl_value
 
 	# TODO there will likely be an error if the regression values don't exist in the table
 	# TODO figure out how to catch that. Alternative is to return uncorrected values.
