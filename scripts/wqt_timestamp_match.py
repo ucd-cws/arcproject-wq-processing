@@ -30,56 +30,57 @@ projection_spatial_reference = 3310  # Teale Albers  # 26942  # CA State Plane I
 # the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
 # a dict there, then look up the unit provided. If there's a number there, it's a multiplier to convert units to the desired
 # standard units for that field
+
 unit_conversion = {
-	"DEP25": {
-		"meters": None,
-		"feet": 0.3048,
+	u"DEP25": {
+		u"meters": None,
+		u"feet": 0.3048,
 	},
-	"DEPX": {
-		"meters": None,
-		"feet": 0.3048,
+	u"DEPX": {
+		u"meters": None,
+		u"feet": 0.3048,
 	},
 	"Temp": {
 		"°C": None,
 	},
-	"SpCond": {
-		"µS/cm": None,
+	u"SpCond": {
+		u"µS/cm": None,
 	},
-	"DO%": {
-		"Sat": None
+	u"DO%": {
+		u"Sat": None
 	},
-	"DO_PCT": {
-		"Sat": None
+	u"DO_PCT": {
+		u"Sat": None
 	},
-	"DO": {
-		"mg/l": None
+	u"DO": {
+		u"mg/l": None
 	},
-	"PAR": {
-		"µE/s/m²": None
+	u"PAR": {
+		u"µE/s/m²": None
 	},
-	"RPAR": {
-		"µE/s/m²": None
+	u"RPAR": {
+		u"µE/s/m²": None
 	},
-	"TurbSC": {
-		"NTU": None
+	u"TurbSC": {
+		u"NTU": None
 	},
-	"CHL": {
-		"µg/l": None
+	u"CHL": {
+		u"µg/l": None
 	},
-	"CHL_VOLTS": {
-		"Volts": None
+	u"CHL_VOLTS": {
+		u"Volts": None
 	},
-	"Sal": None,
-	"pH": None,
-	"Date": None,
-	"Time": None,
-	"Date_Time": None,
-	"WQ_SOURCE": None,
-	"GPS_SOURCE": None,
-	"GPS_Time": None,
-	"GPS_Date": None,
-	"POINT_Y": None,
-	"POINT_X": None,
+	u"Sal": None,
+	u"pH": None,
+	u"Date": None,
+	u"Time": None,
+	u"Date_Time": None,
+	u"WQ_SOURCE": None,
+	u"GPS_SOURCE": None,
+	u"GPS_Time": None,
+	u"GPS_Date": None,
+	u"POINT_Y": None,
+	u"POINT_X": None,
 }
 
 
@@ -166,8 +167,8 @@ def wq_from_file(water_quality_raw_data):
 	:return: water quality as pandas dataframe
 	"""
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
-		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+	# if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
+	water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
 
 	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#')  # TODO add other error values (2000000.00 might be error for CHL)
 
