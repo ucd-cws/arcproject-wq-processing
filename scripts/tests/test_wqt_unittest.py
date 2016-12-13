@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import unittest
 from datetime import datetime
@@ -49,28 +51,28 @@ class TestUnitConversion(unittest.TestCase):
 		self.unmodified_other_column = self.df["pH"]
 
 		self.units = {
-			"DEP25": "feet",
-			"Temp": "°C",
-			"SpCond": "µS/cm",
-			"DO%": "Sat",
-			"DO_PCT": "Sat",
-			"DO": "mg/l",
-			"PAR": "µE/s/m²",
-			"RPAR": "µE/s/m²",
-			"TurbSC": "NTU",
-			"CHL": "µg/l",
-			"CHL_VOLTS": "Volts",
-			"Sal": None,
-			"pH": None,
-			"Date": None,
-			"Time": None,
-			"Date_Time": None,
-			"WQ_SOURCE": None,
-			"GPS_SOURCE": None,
-			"GPS_Time": None,
-			"GPS_Date": None,
-			"POINT_Y": None,
-			"POINT_X": None,
+			u"DEP25": u"feet",
+			u"Temp": u"°C",
+			u"SpCond": u"µS/cm",
+			u"DO%": u"Sat",
+			u"DO_PCT": u"Sat",
+			u"DO": u"mg/l",
+			u"PAR": u"µE/s/m²",
+			u"RPAR": u"µE/s/m²",
+			u"TurbSC": u"NTU",
+			u"CHL": u"µg/l",
+			u"CHL_VOLTS": u"Volts",
+			u"Sal": None,
+			u"pH": None,
+			u"Date": None,
+			u"Time": None,
+			u"Date_Time": None,
+			u"WQ_SOURCE": None,
+			u"GPS_SOURCE": None,
+			u"GPS_Time": None,
+			u"GPS_Date": None,
+			u"POINT_Y": None,
+			u"POINT_X": None,
 		}
 
 	def test_convert_type(self):

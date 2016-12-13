@@ -97,3 +97,4 @@ ENV/
 *.Rhistory
 *.Rproj
 python.bat
+tox.ini
