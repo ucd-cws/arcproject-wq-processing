@@ -22,7 +22,12 @@ gps_data = os.path.join(base_path, os.path.split(os.path.split(os.path.abspath(_
 #site_code = "wqt"
 print("Adding default sloughs to sites")
 site_names = {"NS": "Nurse Slough",
-		"MZ": "Montezuma Slough"}
+			"MZ": "Montezuma Slough",
+            "CC": "Calhoun Cut Canal",
+            "CB": "Cabin Slough",
+            "NSDV": "Nurse Slough DV",
+            "SB": "",
+            "UL": "Ulatis Creek"}
 
 session = classes.get_new_session()
 for site in site_names:
@@ -44,10 +49,10 @@ vert_profiles = {"MZ1": "MZ",
 session = classes.get_new_session()
 
 for vp in vert_profiles:
-	new_vp = classes.ProfileSite()
-	new_vp.abbreviation = vp
-	new_vp.slough = vert_profiles[vp]
-	session.add(new_vp)
+	ps = classes.ProfileSite()
+	ps.abbreviation = vp
+	ps.slough = vert_profiles[vp]
+	session.add(ps)
 	session.commit()
 
 session.close()
