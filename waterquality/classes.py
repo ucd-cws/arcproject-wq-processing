@@ -254,6 +254,7 @@ class WaterQuality(Base):
 		Each instance of this class is an observation in the database
 	"""
 	__tablename__ = 'water_quality'
+	__table_args__ = UniqueConstraint('date_time', name='_date_gain_uc')
 
 	id = Column(Integer, primary_key=True)
 
