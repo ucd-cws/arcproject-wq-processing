@@ -13,7 +13,7 @@ class Toolbox(object):
 	def __init__(self):
 		"""Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
 		self.label = "ArcWQ"
-		self.alias = ""
+		self.alias = "ArcWQ"
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch, GenerateWQLayer, GainToDB, ]
 
@@ -228,9 +228,9 @@ class JoinTimestamp(object):
 		"""Define parameter definitions"""
 
 		# parameter info for selecting multiple csv water quality files
-		csvs = arcpy.Parameter(
+		wqt = arcpy.Parameter(
 			displayName="Transect Water Quality Data",
-			name="csv_files",
+			name="wqt",
 			datatype="DEFile",
 			multiValue=True,
 			direction="Input"
@@ -260,7 +260,7 @@ class JoinTimestamp(object):
 			parameterType="Optional"
 		)
 
-		params = [csvs, bc, site, out]
+		params = [wqt, bc, site, out]
 
 		return params
 
@@ -281,10 +281,9 @@ class JoinTimestamp(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		wq_transect_list = parameters[0].value
+		wq_transect_list = parameters[0].valueAsText.split(";")
 
 		pts = parameters[1].valueAsText
-		arcpy.AddMessage(pts)
 
 		site_code = parameters[2].valueAsText
 		if not site_code or site_code == "":
@@ -297,9 +296,7 @@ class JoinTimestamp(object):
 		# run wq_join_match
 		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function)
 
-		if output_path:
-			parameters[3].value = output_path
-			pass
+		pass
 
 
 class CheckMatch(object):
@@ -314,9 +311,9 @@ class CheckMatch(object):
 		"""Define parameter definitions"""
 
 		# parameter info for selecting multiple csv water quality files
-		csvs = arcpy.Parameter(
+		wqt = arcpy.Parameter(
 			displayName="Transect Water Quality Data",
-			name="csv_files",
+			name="wqt_files",
 			datatype="DEFile",
 			multiValue=True,
 			direction="Input"
@@ -337,7 +334,8 @@ class CheckMatch(object):
 			direction="Input"
 		)
 
-		params = [csvs, bc, add]
+		params = [wqt, bc, add]
+		return params
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -356,7 +354,7 @@ class CheckMatch(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		wq_transect_list = parameters[0].value
+		wq_transect_list = parameters[0].valueAsText
 
 		transect_gps = str(parameters[1].valueAsText)
 

@@ -447,7 +447,7 @@ def site_function_historic(*args, **kwargs):
 
 	filename = record.get(source_field)  # get the value of the data source field (source_field defined globally)
 	try:
-		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+		site_code = filename.split("_")[2].upper()  # the third item in the underscored part of the name has the site code
 	except IndexError:
 		raise IndexError("Filename was unable to be split based on underscore in order to parse site name - be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
 
