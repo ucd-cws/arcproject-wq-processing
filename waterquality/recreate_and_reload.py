@@ -21,13 +21,7 @@ gps_data = os.path.join(base_path, os.path.split(os.path.split(os.path.abspath(_
 ### MAKE SITE FOR DATA ###
 #site_code = "wqt"
 print("Adding default sloughs to sites")
-site_names = {"NS": "Nurse Slough",
-			"MZ": "Montezuma Slough",
-            "CC": "Calhoun Cut Canal",
-            "CB": "Cabin Slough",
-            "NSDV": "Nurse Slough DV",
-            "SB": "",
-            "UL": "Ulatis Creek"}
+site_names = {"wqt": "Test Site"}
 
 session = classes.get_new_session()
 for site in site_names:
@@ -43,8 +37,9 @@ session.close()
 
 ### Add vertical profile default sites ###
 print("Adding default vertical profiles to profile_sites")
-vert_profiles = {"MZ1": "MZ",
-                 "NS3": "NS"}
+vert_profiles = {
+"TS1": "WQT"
+}
 
 session = classes.get_new_session()
 
@@ -59,7 +54,7 @@ session.close()
 
 ### LOAD WQ DATA ###
 print("Loading Water Quality Data")
-#wqt_timestamp_match.main([wq_data,], gps_data,)
+wqt_timestamp_match.main([wq_data,], gps_data,)
 
 ### LOAD REGRESSION DATA ###
 print("Loading Regression Data")
