@@ -3,11 +3,11 @@ import os
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
-from sqlalchemy import exc
+from sqlalchemy import exc, func, distinct, extract
 from waterquality import classes
 from string import digits
-from datetime import timedelta
-
+import datetime
+import calendar
 
 class Toolbox(object):
 	def __init__(self):
@@ -15,7 +15,7 @@ class Toolbox(object):
 		self.label = "ArcWQ"
 		self.alias = "ArcWQ"
 		# List of tool classes associated with this toolbox
-		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch, GenerateWQLayer, GainToDB, ]
+		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch, GenerateWQLayer, GainToDB, GenerateMonth,]
 
 
 class AddSite(object):
@@ -210,7 +210,7 @@ class GenerateWQLayer(object):
 
 		arcpy.AddMessage("Using Date {}".format(type(date_to_use)))
 
-		upper_bound = date_to_use.date() + timedelta(days=1)
+		upper_bound = date_to_use.date() + datetime.timedelta(days=1)
 
 		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
 		mapping.query_to_features(query, output_location)
@@ -549,3 +549,107 @@ class GainToDB(object):
 
 
 
+class GenerateMonth(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Generate Water Quality Data for specific month + year"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Mapping"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+
+		year_to_generate = arcpy.Parameter(
+			displayName="Year",
+			name="year_to_generate",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		month_to_generate = arcpy.Parameter(
+			displayName="Month",
+			name="month_to_generate",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		month_to_generate.filter.type = 'ValueList'
+		t = list(calendar.month_name)
+		t.pop(0)
+		month_to_generate.filter.list = t
+
+		# shapefile for the transects GPS breadcrumbs
+		fc = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="output_feature_class",
+			datatype="DEFeatureClass",
+			direction="Output"
+		)
+
+		params = [year_to_generate, month_to_generate, fc, ]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		session = classes.get_new_session()
+		try:
+			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
+
+			print(q)
+			years = []
+			# add profile name to site list
+			for year in q:
+				print(year[0])
+				years.append(year[0])
+			parameters[0].filter.type = 'ValueList'
+			parameters[0].filter.list = years
+
+		finally:
+			session.close()
+
+		# TODO parse valid months with data
+
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		year_to_use = parameters[0].value
+		month = parameters[1].value
+		# look up index position in calander.monthname
+		t = list(calendar.month_name)
+		month_to_use = t.index(month)
+
+		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
+
+		output_location = parameters[2].valueAsText
+
+		wq = classes.WaterQuality
+		session = classes.get_new_session()
+
+
+		lower_bound = datetime.date(int(year_to_use), int(month_to_use), 1)
+		upper_bound = datetime.date(int(year_to_use), int(month_to_use), 31)
+
+		arcpy.AddMessage("Using Dates {} - {}".format(lower_bound, upper_bound))
+
+		# upper_bound = date_to_use.date() + timedelta(days=1)
+		#
+		# query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
+		# mapping.query_to_features(query, output_location)
