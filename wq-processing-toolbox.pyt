@@ -552,8 +552,8 @@ class GainToDB(object):
 class GenerateMonth(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Generate Water Quality Data for specific month + year"
-		self.description = ""
+		self.label = "All WQ Transects for Single Month"
+		self.description = "Generate a layer of all the water quality transects for a given month and year"
 		self.canRunInBackground = False
 		self.category = "Mapping"
 
@@ -603,6 +603,7 @@ class GenerateMonth(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
+		# get years with data from the database to use as selection for tool input
 		session = classes.get_new_session()
 		try:
 			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
@@ -619,8 +620,26 @@ class GenerateMonth(object):
 		finally:
 			session.close()
 
-		# TODO parse valid months with data
+		# get valid months for the selected year as the options for the tool input
+		if parameters[0].value:
+			Y = int(parameters[0].value)
 
+			session = classes.get_new_session()
+			try:
+
+				q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
+					extract('year', classes.WaterQuality.date_time) == Y).distinct()
+				months = []
+				t = list(calendar.month_name)
+				for month in q2:
+					print(month[0])
+					months.append(t[month[0]])
+
+				print(months)
+				parameters[1].filter.type = 'ValueList'
+				parameters[1].filter.list = months
+			finally:
+				session.close()
 		return
 
 	def updateMessages(self, parameters):
