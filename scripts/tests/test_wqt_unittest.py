@@ -11,7 +11,7 @@ import arcpy
 
 from scripts import wqt_timestamp_match
 from waterquality import classes
-
+from sqlalchemy import exc
 
 class BaseDBTest(unittest.TestCase):
 	"""
@@ -21,7 +21,7 @@ class BaseDBTest(unittest.TestCase):
 	def setUp(self):
 		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 		self.gps = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
-		self.site_code = "wqt"
+		self.site_code = "WQT"
 		self.session = classes.get_new_session()
 		self._make_site()
 
@@ -152,7 +152,12 @@ class TestDBInsert(BaseDBTest):
 
 		expected = len(matched)
 		added = len(self.session.new)
-		self.session.commit()
+		try:
+			self.session.commit()
+		except exc.IntegrityError as e:
+			print(e)
+			print("Water quality data already exists in database.")
+
 		self.session.close()
 		self.assertEqual(expected, added)  # assert at end so that database commit occurs and we can inspect
 
@@ -248,7 +253,13 @@ class CheckJoin(BaseDBTest):
 		# join using time stamps with exact match
 		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
 		self.matches = wqt_timestamp_match.splitunmatched(self.joined_data)[0]
-		wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
+
+		try:
+			wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
+		except exc.IntegrityError as e:
+			print(e)
+			print("Water quality data already exists in database.")
+
 
 	def test_data_insert(self):
 
@@ -264,7 +275,7 @@ class CheckJoin(BaseDBTest):
 			self.assertIsNotNone(record.y_coord)
 
 	def tearDown(self):
-		self.session.commit()
+		#self.session.commit()
 		self.session.close()
 
 class CheckReprojection(BaseDBTest):
@@ -280,7 +291,11 @@ class CheckReprojection(BaseDBTest):
 		# join using time stamps with exact match
 		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(self.wq, self.pts)
 		self.matches = wqt_timestamp_match.splitunmatched(self.joined_data)[0]
-		wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
+		try:
+			wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
+		except exc.IntegrityError as e:
+			print(e)
+			print("Water quality data already exists in database.")
 
 	def test_spatial_reference_code_in_db(self):
 
