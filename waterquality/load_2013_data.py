@@ -80,7 +80,9 @@ s = slurp_globber.Slurper()
 s.gain_setting = 0
 s.filename_part_site = 3
 s.slurp_gains(jan)
-s.slurp_trans(jan)
+
+s.filename_part_site = 3
+#s.slurp_trans(jan)
 
 
 
@@ -91,3 +93,4 @@ s = slurp_globber.Slurper()
 s.filename_part_site = 3
 s.gain_setting = 0
 s.slurp_gains(feb)
+s.slurp_trans(feb)

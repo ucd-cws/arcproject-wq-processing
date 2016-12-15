@@ -87,13 +87,9 @@ def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map, s
 
 	try:
 		records = data.iterrows()
-		print(records)
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
 		for row in records:  # iterates over all of the rows in the data frames the fast way
-			print(row)
 			gain_make_record(field_map, row[1], session) # row[1] is the actual data included in the row
-
-		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
 			session.commit()  # saves all new objects
 	finally:
@@ -185,7 +181,7 @@ def main(gain_file, site, gain, sample_sites_shp=None):
 
 		# check that there is data in the join
 		if gain_w_xy.size == 0:
-			print("Unable to add XY coords using the site id to join for the vertical profile gain file")
+			logging.warning("Unable to add XY coords. Make sure GPS file has {} as an attribute in Site field".format(site))
 		else:
 			avg_1m = gain_w_xy
 
