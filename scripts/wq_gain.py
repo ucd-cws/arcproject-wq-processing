@@ -5,6 +5,7 @@ from waterquality import utils
 import logging
 import traceback
 from sqlalchemy import exc
+import six
 
 def convert_wq_dtypes(df):  # TODO check to see if the wq_from_file function can do this
 	"""
@@ -173,8 +174,11 @@ def main(gain_file, site, gain, sample_sites_shp=None):
 
 	# if shapefile provided try joining using the site field
 	if sample_sites_shp is not None:
-		# convert shapefile into pandas dataframe using function from wqt_timestamp_match
-		sites_shp_df = wqt.wqtshp2pd(sample_sites_shp)
+		if isinstance(sample_sites_shp, list):
+			sites_shp_df = wqt.gps_append_fromlist(sample_sites_shp)
+		else:
+			# convert shapefile into pandas dataframe using function from wqt_timestamp_match
+			sites_shp_df = wqt.wqtshp2pd(sample_sites_shp)
 
 		# join using the site names from an attribute field
 		gain_w_xy = gain_join_gps_by_site(avg_1m, sites_shp_df)
