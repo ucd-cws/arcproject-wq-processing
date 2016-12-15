@@ -644,7 +644,7 @@ def dst_closest_match(wq, pts):
 	return offset_df
 
 
-def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic):
+def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic, dst_adjustment=False):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
 	:param transect_gps: gps shapefile of transect tract
@@ -656,10 +656,14 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 	wq = wq_append_fromlist(water_quality_files)
 
 	# shapefile for transect
-	pts = wqtshp2pd(transect_gps)
+	if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
+		pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
+	else:
+		pts = wqtshp2pd(transect_gps)
 
 	# DST adjustment
-	wq = dst_closest_match(wq, pts)
+	if dst_adjustment:
+		wq = dst_closest_match(wq, pts)
 
 	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)
