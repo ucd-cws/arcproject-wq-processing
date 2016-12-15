@@ -630,11 +630,11 @@ class GenerateMonth(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		year_to_use = parameters[0].value
+		year_to_use = int(parameters[0].value)
 		month = parameters[1].value
-		# look up index position in calander.monthname
+		# look up index position in calender.monthname
 		t = list(calendar.month_name)
-		month_to_use = t.index(month)
+		month_to_use = int(t.index(month))
 
 		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
 
@@ -643,13 +643,10 @@ class GenerateMonth(object):
 		wq = classes.WaterQuality
 		session = classes.get_new_session()
 
+		lower_bound = datetime.date(year_to_use, month_to_use, 1)
+		upper_bound = datetime.date(year_to_use, month_to_use,  int(calendar.monthrange(year_to_use, month_to_use)[1]))
 
-		lower_bound = datetime.date(int(year_to_use), int(month_to_use), 1)
-		upper_bound = datetime.date(int(year_to_use), int(month_to_use), 31)
+		arcpy.AddMessage("Pulling data for {} through {}".format(lower_bound, upper_bound))
 
-		arcpy.AddMessage("Using Dates {} - {}".format(lower_bound, upper_bound))
-
-		# upper_bound = date_to_use.date() + timedelta(days=1)
-		#
-		# query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
-		# mapping.query_to_features(query, output_location)
+		query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
+		mapping.query_to_features(query, output_location)
