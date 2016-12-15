@@ -40,8 +40,8 @@ unit_conversion = {
 		u"meters": None,
 		u"feet": 0.3048,
 	},
-	"Temp": {
-		"°C": None,
+	u"Temp": {
+		u"°C": None,
 	},
 	u"SpCond": {
 		u"µS/cm": None,
@@ -92,6 +92,7 @@ def get_unit_conversion_scale(field, current_units):
 	:param current_units: the units as described in the sonde data file
 	:return: scaling value to be multiplied against entire field or None
 	"""
+	print(field, current_units)
 	if field in unit_conversion:
 		if unit_conversion[field] is None:
 			return None
@@ -167,8 +168,8 @@ def wq_from_file(water_quality_raw_data):
 	:return: water quality as pandas dataframe
 	"""
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	# if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
-	water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
+		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
 
 	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#')  # TODO add other error values (2000000.00 might be error for CHL)
 
@@ -178,12 +179,12 @@ def wq_from_file(water_quality_raw_data):
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
 
-	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+	#units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
 
 	# handles any unit scaling/converting we need to do for fields that aren't always in the same units
-	wq = check_and_convert_units(wq, units)
+	#wq = check_and_convert_units(wq, units)
 
 	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)
@@ -446,7 +447,7 @@ def site_function_historic(*args, **kwargs):
 
 	filename = record.get(source_field)  # get the value of the data source field (source_field defined globally)
 	try:
-		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+		site_code = filename.split("_")[2].upper()  # the third item in the underscored part of the name has the site code
 	except IndexError:
 		raise IndexError("Filename was unable to be split based on underscore in order to parse site name - be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
 
@@ -456,6 +457,7 @@ def site_function_historic(*args, **kwargs):
 		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.get("Index"), site_code))
 
 	return q  # return the session object
+
 
 
 def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic, session=None):
@@ -517,7 +519,7 @@ def make_record(field_map, row, session, site_function):
 	wq = classes.WaterQuality()  # instantiates a new object
 
 	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
-		if type(site_function) == six.text_type:
+		if isinstance(site_function, six.string_types):
 			wq.site = site_from_text(site_code=site_function, session=session)
 		else:
 			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
