@@ -21,7 +21,7 @@ gps_data = os.path.join(base_path, os.path.split(os.path.split(os.path.abspath(_
 ### MAKE SITE FOR DATA ###
 #site_code = "wqt"
 print("Adding default sloughs to sites")
-site_names = {"wqt": "Test Site"}
+site_names = {"WQT": "Test Site"}
 
 session = classes.get_new_session()
 for site in site_names:
