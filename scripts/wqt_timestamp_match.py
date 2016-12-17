@@ -116,7 +116,11 @@ def check_and_convert_units(data_frame, units):
 	for field in fields:
 		scaling_value = get_unit_conversion_scale(field, units[field])
 		if scaling_value:
-			data_frame[field] = pd.to_numeric(data_frame[field])  # before multiplying, we have to cast the data to numeric
+			if pd.__version__ >= "0.17.0":
+				data_frame[field] = pd.to_numeric(data_frame[field])  # before multiplying, we have to cast the data to numeric
+			else:
+				data_frame[field] = data_frame[field].convert_objects(convert_numeric=True)
+
 			data_frame[field] = data_frame[field].multiply(scaling_value)
 
 	return data_frame

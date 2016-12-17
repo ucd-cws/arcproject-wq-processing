@@ -79,12 +79,12 @@ class TestUnitConversion(unittest.TestCase):
 
 		converted_df = wqt_timestamp_match.check_and_convert_units(self.df, self.units)
 
-		if sys.maxsize > 2**32:  # basically, if we're running in 64 bit Python (checks if the largest number is larger than the max number a 32 bit integer can hold
-			dtype = "float64"
-		else:
-			dtype = "float32"
+		#if sys.maxsize > 2**32:  # basically, if we're running in 64 bit Python (checks if the largest number is larger than the max number a 32 bit integer can hold
+		#	dtype = "float64"
+		#else:
+		#	dtype = "float32"
 
-		self.assertEqual(converted_df["DEP25"].dtype, dtype)  # check the data type since it would have had to be converted to change the units
+		self.assertEqual(converted_df["DEP25"].dtype, "float64")  # check the data type since it would have had to be converted to change the units
 		for index, value in enumerate(self.unmodified_data):  # make sure that
 			self.assertEqual(float(value) * 0.3048, converted_df["DEP25"][index+1])  # records aren't 0 indexed - multiplies the one value * 0.3048 to confirm the other transformation was correct - doesn't test other cases yet, but we don't have any
 
