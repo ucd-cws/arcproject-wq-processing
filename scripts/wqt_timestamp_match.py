@@ -40,8 +40,8 @@ unit_conversion = {
 		u"meters": None,
 		u"feet": 0.3048,
 	},
-	"Temp": {
-		"°C": None,
+	u"Temp": {
+		u"°C": None,
 	},
 	u"SpCond": {
 		u"µS/cm": None,
@@ -167,10 +167,13 @@ def wq_from_file(water_quality_raw_data):
 	:return: water quality as pandas dataframe
 	"""
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	# if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
-	water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
+		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+		encoding = "utf-8"
+	else:
+		encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
 
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#')  # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#', encoding=encoding)  # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
