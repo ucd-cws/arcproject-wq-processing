@@ -117,7 +117,11 @@ def check_and_convert_units(data_frame, units):
 	for field in fields:
 		scaling_value = get_unit_conversion_scale(field, units[field])
 		if scaling_value:
-			data_frame[field] = pd.to_numeric(data_frame[field])  # before multiplying, we have to cast the data to numeric
+			if pd.__version__ >= "0.17.0":
+				data_frame[field] = pd.to_numeric(data_frame[field])  # before multiplying, we have to cast the data to numeric
+			else:
+				data_frame[field] = data_frame[field].convert_objects(convert_numeric=True)
+
 			data_frame[field] = data_frame[field].multiply(scaling_value)
 
 	return data_frame
@@ -170,8 +174,11 @@ def wq_from_file(water_quality_raw_data):
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
 	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
 		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+		encoding = "utf-8"
+	else:
+		encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
 
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#')  # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*'], encoding=encoding)  # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
@@ -179,12 +186,13 @@ def wq_from_file(water_quality_raw_data):
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
 
-	#units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
 
 	# handles any unit scaling/converting we need to do for fields that aren't always in the same units
-	#wq = check_and_convert_units(wq, units)
+	wq = check_and_convert_units(wq, units)
 
 	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)
@@ -198,7 +206,6 @@ def wq_from_file(water_quality_raw_data):
 		raise ValueError("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
 
 	return wq
-
 
 
 def feature_class_to_pandas_data_frame(feature_class, field_list):
@@ -682,4 +689,4 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 
 		# convert structured array to output feature class
 		np2feature(match_np, output_feature, spatial_ref)
-
+	return
