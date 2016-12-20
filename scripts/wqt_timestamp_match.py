@@ -92,6 +92,7 @@ def get_unit_conversion_scale(field, current_units):
 	:param current_units: the units as described in the sonde data file
 	:return: scaling value to be multiplied against entire field or None
 	"""
+	print(field, current_units)
 	if field in unit_conversion:
 		if unit_conversion[field] is None:
 			return None
@@ -177,7 +178,7 @@ def wq_from_file(water_quality_raw_data):
 	else:
 		encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
 
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#', encoding=encoding)  # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*'], encoding=encoding)  # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
@@ -186,6 +187,7 @@ def wq_from_file(water_quality_raw_data):
 	wq = replaceIllegalFieldnames(wq)
 
 	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
 
@@ -204,7 +206,6 @@ def wq_from_file(water_quality_raw_data):
 		raise ValueError("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
 
 	return wq
-
 
 
 def feature_class_to_pandas_data_frame(feature_class, field_list):
@@ -453,7 +454,7 @@ def site_function_historic(*args, **kwargs):
 
 	filename = record.get(source_field)  # get the value of the data source field (source_field defined globally)
 	try:
-		site_code = filename.split("_")[2]  # the third item in the underscored part of the name has the site code
+		site_code = filename.split("_")[2].upper()  # the third item in the underscored part of the name has the site code
 	except IndexError:
 		raise IndexError("Filename was unable to be split based on underscore in order to parse site name - be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
 
@@ -463,6 +464,7 @@ def site_function_historic(*args, **kwargs):
 		raise ValueError("Skipping record with index {}. Site code [{}] not found.".format(record.get("Index"), site_code))
 
 	return q  # return the session object
+
 
 
 def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic, session=None):
@@ -524,7 +526,7 @@ def make_record(field_map, row, session, site_function):
 	wq = classes.WaterQuality()  # instantiates a new object
 
 	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
-		if type(site_function) == six.text_type:
+		if isinstance(site_function, six.string_types):
 			wq.site = site_from_text(site_code=site_function, session=session)
 		else:
 			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
@@ -649,7 +651,7 @@ def dst_closest_match(wq, pts):
 	return offset_df
 
 
-def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic):
+def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic, dst_adjustment=False):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
 	:param transect_gps: gps shapefile of transect tract
@@ -661,10 +663,14 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 	wq = wq_append_fromlist(water_quality_files)
 
 	# shapefile for transect
-	pts = wqtshp2pd(transect_gps)
+	if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
+		pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
+	else:
+		pts = wqtshp2pd(transect_gps)
 
 	# DST adjustment
-	wq = dst_closest_match(wq, pts)
+	if dst_adjustment:
+		wq = dst_closest_match(wq, pts)
 
 	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)
@@ -683,4 +689,4 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 
 		# convert structured array to output feature class
 		np2feature(match_np, output_feature, spatial_ref)
-
+	return

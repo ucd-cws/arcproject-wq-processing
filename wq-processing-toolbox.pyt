@@ -3,26 +3,28 @@ import os
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
-from sqlalchemy import exc
+from sqlalchemy import exc, func, distinct, extract
 from waterquality import classes
 from string import digits
-from datetime import timedelta
+import datetime
+import calendar
 
 class Toolbox(object):
 	def __init__(self):
 		"""Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
 		self.label = "ArcWQ"
-		self.alias = ""
-
+		self.alias = "ArcWQ"
 		# List of tool classes associated with this toolbox
-		self.tools = [CheckMatch, GenerateWQLayer, GainToDB, AddSite, JoinTimestamp, AddGainSite]
+		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch, GenerateWQLayer, GainToDB, GenerateMonth,]
+
 
 class AddSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add New Site"
-		self.description = ""
+		self.label = "New - Site (slough)"
+		self.description = "Add a new site to the database. Each slough should have it's own unique site id."
 		self.canRunInBackground = False
+		self.category = "Create New Sites"
 
 	def getParameterInfo(self):
 
@@ -65,10 +67,89 @@ class AddSite(object):
 		session = classes.get_new_session()
 		try:
 			site = classes.Site()
-			site.code = parameters[1].valueAsText
+			site.code = parameters[1].valueAsText.upper()
 			site.name = parameters[0].valueAsText
 			session.add(site)
 			session.commit()
+		except exc.IntegrityError as e:
+			arcpy.AddMessage("{} already exists. Site IDs must be unique.".format(site.code))
+		finally:
+			session.close()
+
+
+class AddGainSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "New - Profile Site"
+		self.description = "Create a new vertical profile site to add to the database"
+		self.canRunInBackground = False
+		self.category = "Create New Sites"
+
+	def getParameterInfo(self):
+
+		abbr = arcpy.Parameter(
+			displayName="Profile Abbreviation",
+			name="abbr",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		slough = arcpy.Parameter(
+			displayName="Slough?",
+			name="slough",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		params = [abbr, slough]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		# fill in the sloughs with options already in the database
+		if parameters[0].valueAsText:
+			session = classes.get_new_session()
+			try:
+				q = session.query(classes.Site.code).distinct().all()
+				sites = []
+				# add profile name to site list
+				for site in q:
+					print(site[0])
+					sites.append(site[0])
+				parameters[1].filter.type = 'ValueList'
+				parameters[1].filter.list = sites
+			finally:
+				session.close()
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		abbr = parameters[0].valueAsText
+		slough = parameters[1].valueAsText
+		ps = classes.ProfileSite()
+		ps.abbreviation = abbr.upper()
+		ps.slough = slough.upper()
+
+		# add to db
+		session = classes.get_new_session()
+		try:
+			session.add(ps)
+			session.commit()
+		except exc.IntegrityError as e:
+			arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
 		finally:
 			session.close()
 
@@ -79,6 +160,7 @@ class GenerateWQLayer(object):
 		self.label = "Generate Map Layer from Water Quality Data"
 		self.description = ""
 		self.canRunInBackground = False
+		self.category = "Mapping"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -128,7 +210,7 @@ class GenerateWQLayer(object):
 
 		arcpy.AddMessage("Using Date {}".format(type(date_to_use)))
 
-		upper_bound = date_to_use.date() + timedelta(days=1)
+		upper_bound = date_to_use.date() + datetime.timedelta(days=1)
 
 		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
 		mapping.query_to_features(query, output_location)
@@ -140,14 +222,15 @@ class JoinTimestamp(object):
 		self.label = "Transect - Join on Timestamp"
 		self.description = "Join water quality transect to gps using time stamp and add to database"
 		self.canRunInBackground = False
+		self.category = "Add Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
 
 		# parameter info for selecting multiple csv water quality files
-		csvs = arcpy.Parameter(
+		wqt = arcpy.Parameter(
 			displayName="Transect Water Quality Data",
-			name="csv_files",
+			name="wqt",
 			datatype="DEFile",
 			multiValue=True,
 			direction="Input"
@@ -177,7 +260,7 @@ class JoinTimestamp(object):
 			parameterType="Optional"
 		)
 
-		params = [csvs, bc, site, out]
+		params = [wqt, bc, site, out]
 
 		return params
 
@@ -198,10 +281,9 @@ class JoinTimestamp(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		wq_transect_list = parameters[0].value
+		wq_transect_list = parameters[0].valueAsText.split(";")
 
 		pts = parameters[1].valueAsText
-		arcpy.AddMessage(pts)
 
 		site_code = parameters[2].valueAsText
 		if not site_code or site_code == "":
@@ -214,9 +296,7 @@ class JoinTimestamp(object):
 		# run wq_join_match
 		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function)
 
-		if output_path:
-			parameters[3].value = output_path
-			pass
+		pass
 
 
 class CheckMatch(object):
@@ -225,14 +305,15 @@ class CheckMatch(object):
 		self.label = "Percent Match - Water Quality data with Transect"
 		self.description = "Reports the percent match for multiple water quality dataset with transect shapefile"
 		self.canRunInBackground = False
+		self.category = "Add Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
 
 		# parameter info for selecting multiple csv water quality files
-		csvs = arcpy.Parameter(
+		wqt = arcpy.Parameter(
 			displayName="Transect Water Quality Data",
-			name="csv_files",
+			name="wqt_files",
 			datatype="DEFile",
 			multiValue=True,
 			direction="Input"
@@ -253,7 +334,8 @@ class CheckMatch(object):
 			direction="Input"
 		)
 
-		params = [csvs, bc, add]
+		params = [wqt, bc, add]
+		return params
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -272,7 +354,7 @@ class CheckMatch(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		wq_transect_list = parameters[0].value
+		wq_transect_list = parameters[0].valueAsText
 
 		transect_gps = str(parameters[1].valueAsText)
 
@@ -319,6 +401,7 @@ class GainToDB(object):
 		self.label = "Add Gain profile to database"
 		self.description = "Takes average of water quality parameters of the top 1m of the vertical profile"
 		self.canRunInBackground = False
+		self.category = "Add Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -465,32 +548,50 @@ class GainToDB(object):
 		return
 
 
-class AddGainSite(object):
+
+class GenerateMonth(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "New Vertical Gain Profile Sites"
-		self.description = ""
+		self.label = "All WQ Transects for Single Month"
+		self.description = "Generate a layer of all the water quality transects for a given month and year"
 		self.canRunInBackground = False
+		self.category = "Mapping"
 
 	def getParameterInfo(self):
+		"""Define parameter definitions"""
 
-		ZoopChlW = arcpy.Parameter(
-			displayName="Vertical Profile GPS points",
-			name="ZoopChlW",
-			datatype="GPFeatureLayer",
-			multiValue=False,
-			direction="Input"
-		)
+		# parameter info for selecting multiple csv water quality files
 
-		site_codes = arcpy.Parameter(
-			displayName="Field with site codes",
-			name="site_codes",
+		year_to_generate = arcpy.Parameter(
+			displayName="Year",
+			name="year_to_generate",
 			datatype="GPString",
 			multiValue=False,
 			direction="Input"
 		)
 
-		params = [ZoopChlW, site_codes]
+		month_to_generate = arcpy.Parameter(
+			displayName="Month",
+			name="month_to_generate",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		month_to_generate.filter.type = 'ValueList'
+		t = list(calendar.month_name)
+		t.pop(0)
+		month_to_generate.filter.list = t
+
+		# shapefile for the transects GPS breadcrumbs
+		fc = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="output_feature_class",
+			datatype="DEFeatureClass",
+			direction="Output"
+		)
+
+		params = [year_to_generate, month_to_generate, fc, ]
 		return params
 
 	def isLicensed(self):
@@ -502,10 +603,43 @@ class AddGainSite(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		# populate the field selection using the fields from the shapefile
-		if parameters[0].value:
-			parameters[1].filter.list = [f.name for f in arcpy.Describe(parameters[0].value).fields]
+		# get years with data from the database to use as selection for tool input
+		session = classes.get_new_session()
+		try:
+			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
 
+			print(q)
+			years = []
+			# add profile name to site list
+			for year in q:
+				print(year[0])
+				years.append(year[0])
+			parameters[0].filter.type = 'ValueList'
+			parameters[0].filter.list = years
+
+		finally:
+			session.close()
+
+		# get valid months for the selected year as the options for the tool input
+		if parameters[0].value:
+			Y = int(parameters[0].value)
+
+			session = classes.get_new_session()
+			try:
+
+				q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
+					extract('year', classes.WaterQuality.date_time) == Y).distinct()
+				months = []
+				t = list(calendar.month_name)
+				for month in q2:
+					print(month[0])
+					months.append(t[month[0]])
+
+				print(months)
+				parameters[1].filter.type = 'ValueList'
+				parameters[1].filter.list = months
+			finally:
+				session.close()
 		return
 
 	def updateMessages(self, parameters):
@@ -514,38 +648,24 @@ class AddGainSite(object):
 		return
 
 	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		year_to_use = int(parameters[0].value)
+		month = parameters[1].value
+		# look up index position in calender.monthname
+		t = list(calendar.month_name)
+		month_to_use = int(t.index(month))
 
-		# project to CA teale albers
-		feature_class = parameters[0].valueAsText
-		desc = arcpy.Describe(feature_class)
-		try:
-			if desc.spatialReference.factoryCode != 3310:
-				feature_class = wqt_timestamp_match.reproject_features(feature_class)
-		finally:
-			del desc
+		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
 
-		profile_field = parameters[1].valueAsText
+		output_location = parameters[2].valueAsText
 
-		# TODO linear reference to get the slough id and m_value
+		wq = classes.WaterQuality
+		session = classes.get_new_session()
 
-		# iterate through rows and add to profile sites
-		cursor = arcpy.da.SearchCursor(feature_class, [profile_field, "SHAPE@Y", "SHAPE@X"])
-		for row in cursor:
-			ps = classes.ProfileSite()
-			arcpy.AddMessage(row)
-			ps.abbreviation = row[0].upper()
-			ps.y_coord = row[1]
-			ps.x_coord = row[2]
+		lower_bound = datetime.date(year_to_use, month_to_use, 1)
+		upper_bound = datetime.date(year_to_use, month_to_use,  int(calendar.monthrange(year_to_use, month_to_use)[1]))
 
-			# add to db
-			session = classes.get_new_session()
-			try:
-				session.add(ps)
-				session.commit()
-			except exc.IntegrityError as e:
-				#arcpy.AddMessage(e)
-				arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
-			finally:
-				session.close()
+		arcpy.AddMessage("Pulling data for {} through {}".format(lower_bound, upper_bound))
 
-		# TODO add m_value (maybe add to lin ref tool function?)
+		query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
+		mapping.query_to_features(query, output_location)

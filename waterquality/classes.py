@@ -7,7 +7,7 @@ from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Numeric, Date, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, UniqueConstraint, CheckConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, validates
 
 db_name = "wqdb.sqlite"
 db_location = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), db_name)
@@ -59,6 +59,10 @@ class Site(Base):
 	# vertical_profiles = relationship("VerticalProfile", backref="site")
 	# water_quality_records = relationship("WaterQuality", backref="site")
 
+	@validates('code')
+	def convert_upper(self, key, value):
+		return value.upper()
+
 
 class ProfileSite(Base):
 	__tablename__ = "profile_sites"
@@ -68,9 +72,12 @@ class ProfileSite(Base):
 	y_coord = Column(Float)
 	x_coord = Column(Float)
 	m_value = Column(Float)
-	site_id = Column(Integer, ForeignKey("sites.id"))
-	site = relationship(Site, backref="profile_sites")
+	slough = Column(String, ForeignKey("sites.code"))
+	site_id = relationship(Site, backref="profile_sites")
 
+	@validates('abbreviation', 'slough')
+	def convert_upper(self, key, value):
+		return value.upper()
 
 gain_water_quality_header_map = {
 	"Temp": "temp",
@@ -128,6 +135,10 @@ class VerticalProfile(Base):
 	# @gain_setting.setter
 	# def gain_setting(self, value_list):
 	# 	self._gain_setting = numpy.mean(value_list)
+
+	@validates('profile_site_abbreviation')
+	def convert_upper(self, key, value):
+		return value.upper()
 
 
 regression_field_map = {
@@ -254,6 +265,7 @@ class WaterQuality(Base):
 		Each instance of this class is an observation in the database
 	"""
 	__tablename__ = 'water_quality'
+	__table_args__ = (UniqueConstraint('date_time', name='_time_uc'),)
 
 	id = Column(Integer, primary_key=True)
 
