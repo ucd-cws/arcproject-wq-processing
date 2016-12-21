@@ -1,13 +1,12 @@
 from scripts import wqt_timestamp_match as wqt
 import pandas as pd
 from waterquality import classes
-from waterquality import utils
 import logging
 import traceback
-from sqlalchemy import exc
 import six
 from string import digits
 import os
+
 
 def convert_wq_dtypes(df):  # TODO check to see if the wq_from_file function can do this
 	"""
@@ -45,7 +44,7 @@ def avg_vert_profile(vert_profile):
 	"""
 
 	# get the average values of all the rows in the vertical profile
-	avg_series = vert_profile.mean() # returns a pandas series
+	avg_series = vert_profile.mean()  # returns a pandas series
 
 	# convert series to dataframe
 	avg_df = avg_series.to_frame().transpose()
@@ -86,85 +85,85 @@ def profile_function_historic(*args, **kwargs):
 		part_code = filename.split("_")[int(part)].upper()  # get the selected underscored part of the name
 	except IndexError:
 		raise IndexError("Filename was unable to be split based on underscore in order to parse site name -"
-		                 " be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
+		                 " be sure your filename format matches the site function used, or that you're using "
+		                 "the correct site retrieval function")
 	return part_code
 
 
-# def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map,  site_function=profile_function_historic,
-#                    site_func_params=site_function_params, session=None):
-# 	"""
-# 	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
-#
-# 	:param data: a pandas data frame of water quality records
-# 	:param field_map: a field map (dictionary) that translates keys in the data frame (as the dict keys) to the keys used
-# 		in the ORM - uses a default, but when the schema of the data files is different, a new field map will be necessary
-# 	:param site_function: the object of a function that, given a record from the data frame and a session, returns the
-# 		site object from the database that should be associated with the record
-# 	:param site_func_params: parameters to pass to the site function
-# 	:param session: a SQLAlchemy session to use - for tests, we often want the session passed so it can be inspected,
-# 		otherwise, we'll likely just create it. If a session is passed, this function will NOT commit new records - that
-# 		becomes the responsibility of the caller.
-# 	:return:
-# 	"""
-#
-# 	if not session:  # if no session was passed, create our own
-# 		session = classes.get_new_session()
-# 		session_created = True
-# 	else:
-# 		session_created = False
-#
-# 	try:
-# 		records = data.iterrows()
-# 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
-# 		for row in records:  # iterates over all of the rows in the data frames the fast way
-# 			gain_make_record(field_map, row[1], session) # row[1] is the actual data included in the row
-# 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
-# 			session.commit()  # saves all new objects
-# 	finally:
-# 		if session_created:
-# 			session.close()
+def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map, session=None):
+	"""
+	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
+
+	:param data: a pandas data frame of water quality records
+	:param field_map: a field map (dictionary) that translates keys in the data frame (as the dict keys) to the keys used
+		in the ORM - uses a default, but when the schema of the data files is different, a new field map will be necessary
+	:param session: a SQLAlchemy session to use - for tests, we often want the session passed so it can be inspected,
+		otherwise, we'll likely just create it. If a session is passed, this function will NOT commit new records - that
+		becomes the responsibility of the caller.
+	:return:
+	"""
+
+	if not session:  # if no session was passed, create our own
+		session = classes.get_new_session()
+		session_created = True
+	else:
+		session_created = False
+
+	try:
+		records = data.iterrows()
+		for row in records:  # iterates over all of the rows in the data frames the fast way
+			gain_make_record(field_map, row[1], session)  # row[1] is the actual data included in the row
+		if session_created:  # only commit if this function created the session - otherwise leave it to caller
+			session.commit()  # saves all new objects
+	finally:
+		if session_created:
+			session.close()
 
 
-# def gain_make_record(field_map, row, session):
-# 	"""
-# 	 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame, translates it into a waterquality object
-# 	:param field_map: A field map dictionary with keys based on the data frame fields and values of the corresponding database field
-# 	:param row: a named tuple of the row in the data frame to translate into the WaterQuality object
-# 	:param session: an open SQLAlchemy database session
-# 	:return:
-# 	"""
-#
-# 	profile = classes.VerticalProfile()  # instantiates a new object
-#
-# 	for key in row.index:  # converts named_tuple to a Dict-like and gets the keys
-# 		# look up the field that is used in the ORM/database using the key from the namedtuple. If it doesn't exist, throw a warning and move on to next field
-# 		try:
-# 			class_field = field_map[key]
-# 		except KeyError:
-# 			logging.warning("Skipping field {} with value {}. Field not found in field map.".format(key, getattr(row, key)))
-# 			continue
-#
-# 		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
-# 			continue
-#
-# 		try:
-# 			setattr(profile, class_field, getattr(row, key))  # for each value, it sets the object's value to match
-# 		except AttributeError:
-# 			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
-#
-# 	else:  # if we don't break for a bad site code or something else, then add the object
-# 		session.add(profile)  # and adds the object for creation in the DB - will be committed later before the session is closed.
-# 	return
+def gain_make_record(field_map, row, session):
+	"""
+	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame,
+	 translates it into a waterquality object
+	:param field_map: A field map dictionary with keys based on the data frame fields and values of the database field
+	:param row: a named tuple of the row in the data frame to translate into the WaterQuality object
+	:param session: an open SQLAlchemy database session
+	:return:
+	"""
+
+	profile = classes.VerticalProfile()  # instantiates a new object
+
+	for key in row.index:  # converts named_tuple to a Dict-like and gets the keys
+		# look up the field that is used in the ORM/database using the key from the namedtuple.
+		try:
+			class_field = field_map[key]
+		except KeyError:
+			logging.warning("Skipping field {} with value {}. Field not found in field map.".format(key, getattr(row, key)))
+			continue
+
+		if class_field is None:  # if it's an explicitly defined None and not nonexistent, then skip it silently
+			continue
+
+		try:
+			setattr(profile, class_field, getattr(row, key))  # for each value, it sets the object's value to match
+		except AttributeError:
+			print("Incorrect field map - original message was {}".format(traceback.format_exc()))
+
+	else:  # if we don't break for a bad site code or something else, then add the object
+		session.add(profile)  # adds the object for creation in the DB - will be committed later.
+	return
 
 
-def main(gain_file, site=profile_function_historic, gain=profile_function_historic, sample_sites_shp=None, site_gain_params=wqt.site_function_params):
+def main(gain_file, site=profile_function_historic, gain=profile_function_historic, sample_sites_shp=None,
+         site_gain_params=wqt.site_function_params):
 	"""
 	Takes a water quality vertical profile at a specific site, date, and gain setting and returns the average values
 	for the top 1m of the water column
 	:param gain_file: vertical gain profile
-	:param site: a unique identifier for the site (two/four letter character string) or a function to parse the profile name
-	:param gain: the gain setting used when recording the water quality data ("0", "1", "10", "100") or a function to parse the gain setting
+	:param site: a unique identifier for the site (2-4 letter character string) or a function to parse the profile name
+	:param gain: the gain setting used when recording the water quality data ("0", "1", "10", "100") or a function to
+	parse the gain setting
 	:param sample_sites_shp: OPTIONAL shapefile with field called "Site" to add XY coords to gain sample
+	:param site_gain_params: parameters to pass to the site function
 	:return:
 	"""
 
@@ -210,7 +209,6 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 			avg_1m['Gain'] = gain
 		else:
 			avg_1m['Gain'] = gain(filename=base, part=site_gain_params["gain_part"])
-			#digits_only = ''.join(c for c in gain_code if c in digits)
 	except ValueError:
 		traceback.print_exc()
 
@@ -237,7 +235,6 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 			avg_1m = gain_w_xy
 
 	# add row to database table vertical_profiles
-	#gain_wq_df2database(avg_1m) # TODO see if we can pass the vertical profile class into the wq_df2database fucntion
+	gain_wq_df2database(avg_1m)
 
 	return
-
