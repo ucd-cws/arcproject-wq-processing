@@ -16,6 +16,7 @@ import pandas as pd
 import numpy as np
 import arcpy
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import exc
 
 # import CWS modules
 import geodatabase_tempfile
@@ -92,7 +93,6 @@ def get_unit_conversion_scale(field, current_units):
 	:param current_units: the units as described in the sonde data file
 	:return: scaling value to be multiplied against entire field or None
 	"""
-	print(field, current_units)
 	if field in unit_conversion:
 		if unit_conversion[field] is None:
 			return None
@@ -335,7 +335,7 @@ def replaceIllegalFieldnames(df):
 	:param df: dataframe with bad fieldnames
 	:return: dataframe with replaced fieldnames
 	"""
-	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT'})  # TODO make this catch other potential errors
+	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT', 'DEPX': 'DEP25'})  # TODO make this catch other potential errors
 	return df
 
 
@@ -497,7 +497,10 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 
 		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
-			session.commit()  # saves all new objects
+			try:
+				session.commit()  # saves all new objects
+			except exc.IntegrityError as e:
+				print("The water quality data you are adding to the database already exists in the database. If only some of your data is in the database, you may need to remove the overlapping data and only add the unique data.")
 	finally:
 		if session_created:
 			session.close()

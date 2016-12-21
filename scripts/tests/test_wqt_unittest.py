@@ -174,10 +174,10 @@ class TestDBInsert(BaseDBTest):
 	# This test fails since the data does not get added to the database if it already exists since
 	# test_data_insert catches the IntegrityError
 
-	# def test_records_in_db(self):
-	# 	self.test_data_insert()
-	# 	num_records = self.session.query(classes.WaterQuality.id).filter(classes.Site.code == self.site_code).count()
-	# 	self.assertEqual(977, num_records - self.pre_test_num_records)
+	def test_records_in_db(self):
+		self.test_data_insert()
+		num_records = self.session.query(classes.WaterQuality.id).filter(classes.Site.code == self.site_code).count()
+		self.assertEqual(977, num_records)
 
 
 class LoadWQ(unittest.TestCase):
@@ -267,11 +267,7 @@ class CheckJoin(BaseDBTest):
 		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
 		self.matches = wqt_timestamp_match.splitunmatched(self.joined_data)[0]
 
-		try:
-			wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
-		except exc.IntegrityError as e:
-			print(e)
-			print("Water quality data already exists in database.")
+		wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
 
 
 	def test_data_insert(self):
@@ -304,11 +300,8 @@ class CheckReprojection(BaseDBTest):
 		# join using time stamps with exact match
 		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(self.wq, self.pts)
 		self.matches = wqt_timestamp_match.splitunmatched(self.joined_data)[0]
-		try:
-			wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
-		except exc.IntegrityError as e:
-			print(e)
-			print("Water quality data already exists in database.")
+		wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
+
 
 	def test_spatial_reference_code_in_db(self):
 

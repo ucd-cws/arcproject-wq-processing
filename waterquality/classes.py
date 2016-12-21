@@ -87,6 +87,7 @@ gain_water_quality_header_map = {
 	"DO_PCT": "dissolved_oxygen_percent",
 	"DO": "dissolved_oxygen",
 	"DEP25": "dep_25",
+	"DEPX": "dep_25",
 	"PAR": "par",
 	"RPAR": "rpar",
 	"TurbSC": "turbidity_sc",
@@ -276,7 +277,7 @@ class WaterQuality(Base):
 	# file = relationship(WaterQualityFile,
 	#					backref="water_quality_records")
 
-	date_time = Column(DateTime)
+	date_time = Column(DateTime)  # unique constraint - see __table_args__
 
 	y_coord = Column(Float)  # currently assumes consistent projections
 	x_coord = Column(Float)
