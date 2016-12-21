@@ -7,6 +7,7 @@ import numpy
 import pandas
 
 from waterquality import classes, shorten_float
+from sqlalchemy import exc
 
 format_string = "%Y-%m-%d"
 
@@ -56,8 +57,11 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 				setattr(regression, class_field, value)
 
 			session.add(regression)
+			try:  # committing here instead of in a batch so that if we have a mix of new and old, the new values get committed
+				session.commit()
+			except exc.IntegrityError as e:
+				session.rollback()  # need to rollback so can proceed, but it's fine to have this error - means row already exists
 
-		session.commit()
 	finally:
 		session.close()
 
