@@ -35,7 +35,7 @@ class LoadGainWQ(unittest.TestCase):
 		self.assertGreaterEqual(min_value, 0)
 
 	def test_df_len(self):
-		self.assertEqual(self.gain_data, (75, 12))
+		self.assertEqual(self.gain_data.shape, (75, 12))
 
 		# there should be 13 records between 0 and 1m
 		one_meter = wq_gain.depth_top_meter(self.gain_data, self.depth_field)
