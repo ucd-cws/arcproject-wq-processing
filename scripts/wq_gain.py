@@ -78,7 +78,6 @@ def profile_function_historic(*args, **kwargs):
 	:param kwargs:
 	:return: site object
 	"""
-	print(kwargs)
 	part = kwargs["part"]
 	filename = kwargs["filename"]  # get the value of the data source field (source_field defined globally)
 	try:
