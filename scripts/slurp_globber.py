@@ -24,22 +24,9 @@ class Slurper(object):
 		self.transect_gps_pattern = '*PosnPnt.shp'  # pattern to find the water quality transect GPS files
 		self.zoop_shp_pattern = '*ZoopChlW.shp'  # pattern to find the ZoopChl gps files to join with the gains
 		self.dst = False  # adjust for daylight saving time
-		self.filename_part_gain = 1  # part of the filename that contains the gain setting info
-		self.filename_part_site = 3  # part of the filename that contains the site id
-		self.site = None  # if provided overrides parsing filename
-		self.gain_setting = None  # if provided overrides parsing filename
+		self.site = wq_gain.profile_function_historic  # if provided overrides parsing filename
+		self.gain_setting = wq_gain.profile_function_historic  # if provided overrides parsing filename
 
-	def parse_filename_site(self, filename):
-		basename = os.path.basename(filename)
-		split = basename.split("_")
-		site = split[self.filename_part_site]
-		return site
-
-	def parse_filename_gain_setting(self, filename):
-		basename = os.path.basename(filename)
-		split = basename.split("_")
-		gain_setting = split[self.filename_part_gain]
-		return gain_setting
 
 	def find_files(self, directory, pattern='*', exclude=None):
 		"""http://stackoverflow.com/questions/14798220/how-can-i-search-sub-folders-using-glob-glob-module-in-python"""
@@ -60,20 +47,8 @@ class Slurper(object):
 	def slurp_gains(self, base_path):
 		zoop_files = self.find_files(base_path, self.zoop_shp_pattern, self.exclude)
 		for gain_file in self.find_files(base_path, self.gain_pattern, self.exclude):
-
-			if self.gain_setting is None:
-				print(self.gain_setting)
-				gain_setting = self.parse_filename_gain_setting(gain_file)
-			else:
-				gain_setting = self.gain_setting
-			if self.site is None:
-				site = self.parse_filename_site(gain_file)
-			else:
-				site = self.site
-			print("{}, {}, {}, {}".format(gain_file, zoop_files, gain_setting, site))
-
 			try:
-				wq_gain.main(gain_file, site, gain_setting, zoop_files)
+				wq_gain.main(gain_file, self.site, self.gain_setting, zoop_files)
 			except exc.IntegrityError:
 				print("Gain file already in database.")
 			except Exception as e:
