@@ -437,7 +437,8 @@ def gps_append_fromlist(list_gps_files):
 	return master_pts
 
 # set the default settings for parsing the site codes (and gain settings) from the filename spliting on underscores
-site_function_params = {"site_part": 2}
+site_function_params = {"site_part": 2,
+                        "gain_part": 4}
 
 
 def site_function_historic(*args, **kwargs):
