@@ -150,5 +150,21 @@ def nov():
 	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
+def oct():
+	print("October 2013")
+	path = os.path.join(data, "Oct_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_101513_GPS', 'Arc_101713_GPS']
+
+	# daylight saving adjustment
+	s.dst = True
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+oct()
 nov()
-#dec()
+dec()

@@ -81,6 +81,7 @@ unit_conversion = {
 	u"GPS_Date": None,
 	u"POINT_Y": None,
 	u"POINT_X": None,
+	u"IBatt": None
 }
 
 
@@ -92,7 +93,7 @@ def get_unit_conversion_scale(field, current_units):
 	:param current_units: the units as described in the sonde data file
 	:return: scaling value to be multiplied against entire field or None
 	"""
-	print(field, current_units)
+	# print(field, current_units)
 	if field in unit_conversion:
 		if unit_conversion[field] is None:
 			return None
@@ -546,7 +547,7 @@ def make_record(field_map, row, session, site_function, site_func_params):
 		try:
 			class_field = field_map[key]
 		except KeyError:
-			logging.warning("Skipping field {} with value {} for record {}. Field not found in field map.".format(key, row.get(key), row))
+			#logging.warning("Skipping field {} with value {} for record {}. Field not found in field map.".format(key, row.get(key), row))
 			continue
 
 		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
