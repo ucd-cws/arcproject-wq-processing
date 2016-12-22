@@ -136,7 +136,7 @@ def gain_make_record(field_map, row, session):
 		try:
 			class_field = field_map[key]
 		except KeyError:
-			logging.warning("Skipping field {} with value {}. Field not found in field map.".format(key, getattr(row, key)))
+			# logging.warning("Skipping field {} with value {}. Field not found in field map.".format(key, getattr(row, key)))
 			continue
 
 		if class_field is None:  # if it's an explicitly defined None and not nonexistent, then skip it silently
@@ -190,14 +190,14 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 
 	# basename of the source gain file
 	base = os.path.basename(gain_file)
-
+	print(base)
 	# try parsing the site from the filename
 	try:
 		# If it's a text code, use the text, otherwise call the function
 		if isinstance(site, six.string_types):
 			avg_1m['Site'] = site.upper()
 		else:
-			avg_1m['site'] = site(filename=base, part=site_gain_params["site_part"])
+			avg_1m['Site'] = site(filename=base, part=site_gain_params["site_part"])
 	except ValueError:
 		traceback.print_exc()
 
@@ -205,21 +205,28 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 	try:
 		# If gain setting the gain is provided use it, otherwise call the function
 		if isinstance(gain, six.integer_types) or isinstance(gain, six.string_types):
-			avg_1m['Gain'] = gain
+			# strip all letters from gain setting ("GN10" -> 10)
+			digits_only = ''.join(c for c in str(gain) if c in digits)
+			gain_digits = int(digits_only)
+			avg_1m['Gain'] = gain_digits
 		else:
-			avg_1m['Gain'] = gain(filename=base, part=site_gain_params["gain_part"])
+			gain_setting_from_name = gain(filename=base, part=site_gain_params["gain_part"])
+			digits_only = ''.join(c for c in str(gain_setting_from_name) if c in digits)
+			gain_digits = int(digits_only)
+			avg_1m['Gain'] = gain_digits
+
 	except ValueError:
 		traceback.print_exc()
 
 	# strip out any characters in the gain file (ie "gn1" becomes "1")
-	gain_code = avg_1m['Gain'][0]
-	digits_only = ''.join(c for c in str(gain_code) if c in digits)
-	avg_1m['Gain'][0] = digits_only
+
 
 	# if shapefile provided try joining using the site field
 	if sample_sites_shp is not None:
 		if isinstance(sample_sites_shp, list):
 			sites_shp_df = wqt.gps_append_fromlist(sample_sites_shp)
+		elif isinstance(sample_sites_shp, pd.DataFrame):
+			sites_shp_df = sample_sites_shp
 		else:
 			# convert shapefile into pandas dataframe using function from wqt_timestamp_match
 			sites_shp_df = wqt.wqtshp2pd(sample_sites_shp)
