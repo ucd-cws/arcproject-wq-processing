@@ -67,6 +67,22 @@ def gain_join_gps_by_site(gain_avg_df, shp_df):
 	return joined
 
 
+def gain_gps_timediff(gain_avg_df):
+	"""
+	Calculates the difference between each of the timestamps in the shapefile and the middle time in the vertical profile
+	:param gain_avg_df: mean water quality values for vertical profile (must have start_time and end_time)
+	:param shp_df: dataframe from a shapefile of multiple Chl/Zoop sampling sites
+	:return: dataframe from shapefile attribute table with a new field storing the absolute time difference
+	"""
+	# calculate the difference between the start time and the end time of the gain file to get mid point
+	mid_time = (gain_avg_df['Start_Time'] + (gain_avg_df['Start_Time'] - gain_avg_df['End_Time']) / 2)[0]
+
+	# for each row of the shapefile df what is the time difference compared to the mid point?
+	gain_avg_df["TimeDelta"] = abs(gain_avg_df["Date_Time"] - mid_time)  # absolute diff of time difference
+
+	return gain_avg_df
+
+
 def profile_function_historic(*args, **kwargs):
 	"""
 	Site functions are passed to wq_df2database so that it can determine which site a record is from. Historic data
@@ -238,7 +254,12 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 		if gain_w_xy.size == 0:
 			logging.warning("Unable to add XY coords. Make sure GPS file has {} as an attribute in Site field".format(site))
 		elif gain_w_xy.shape[0] != 1:
-			logging.warning("Multiple rows in the shapefile match the site code. Make sure sure there is only one match.")
+			logging.warning("Multiple rows in the shapefile match the site code. Matching based on closest time stamp")
+
+			# calculate time diff for all rows
+			gps_timediff = gain_gps_timediff(gain_w_xy)
+			gps_closest_row = gps_timediff.sort('TimeDelta', ascending=True).head(1)
+			avg_1m = gps_closest_row
 		else:
 			avg_1m = gain_w_xy
 
