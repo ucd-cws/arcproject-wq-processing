@@ -237,6 +237,8 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 		# check that there is data in the join
 		if gain_w_xy.size == 0:
 			logging.warning("Unable to add XY coords. Make sure GPS file has {} as an attribute in Site field".format(site))
+		elif gain_w_xy.shape[0] != 1:
+			logging.warning("Multiple rows in the shapefile match the site code. Make sure sure there is only one match.")
 		else:
 			avg_1m = gain_w_xy
 

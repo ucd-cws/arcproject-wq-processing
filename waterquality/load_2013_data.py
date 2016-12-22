@@ -1,12 +1,10 @@
 import os
 from waterquality import classes
-from scripts import slurp_globber
-
+from scripts import slurp
 
 ### DEFINE DATA PATHS ###
 base_path = os.path.split(os.path.split(os.path.abspath(__file__))[0])[0]
 print(base_path)
-
 
 # path to location with data
 data = r"C:\Users\Andy\Desktop\ArcData" # or location on x drive
@@ -25,7 +23,10 @@ site_names = {"NS": "Nurse Slough",
             "LN": "",
             "BN": "",
             "SH": "",
-            "UL": "Ulatis Creek"}
+            "UL": "Ulatis Creek",
+            "DV": "",
+            "LC": "",
+            "CACHE": "Cache"}
 
 session = classes.get_new_session()
 for site in site_names:
@@ -50,13 +51,24 @@ vert_profiles = {
 "UL1": "UL",
 "CC1": "CC",
 "BK1": "BK",
-"LNCA": "LN", # CHECK
+"LNCA": "LN",  # CHECK
 "BN1": "BN",
 "BN2": "BN",
 "SH1": "SH",
+"SH2": "SH",
 "SH4": "SH",
 "SH5": "SH",
+"SH6": "SH",
 "SH7": "SH",
+"BK0": "BK",
+"CA3": "CA",
+"LN2": "LN",
+"UL0": "UL",
+"DV1": "DV",
+"LCW": "LCW",
+"NS3": "NS",
+"SB1": "SB",
+"LC": "LC"
 }
 
 session = classes.get_new_session()
@@ -72,25 +84,71 @@ session.close()
 
 #############################################################
 
+
 ##### JAN ######
+def jan():
+	print("January 2013")
 
-jan = os.path.join(data, "Jan_2013")
+	jan = os.path.join(data, "Jan_2013")
+	s = slurp.Slurper()
 
-s = slurp_globber.Slurper()
-s.gain_setting = 0
-s.filename_part_site = 3
-s.slurp_gains(jan)
+	# gain file like "Arc_010713_wqp_cs3" and all gain settings should be zero
+	s.site_function_params = {"site_part": 3}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_011813'] # weird site names for this folder
+	s.gain_setting = 0
 
-s.filename_part_site = 3
-#s.slurp_trans(jan)
+	print("Adding gain files to database")
+	s.slurp_gains(jan)
+	print("Adding water quality transects to database")
+	s.slurp_trans(jan)
 
 
+def mar():
+	print("March 2013")
+	path = os.path.join(data, "Mar_2013")
+	s = slurp.Slurper()
 
-##### FEB ######
+	# gain file like "arc_020413_ca1_wqp" and all gain settings should be zero
+	s.site_function_params = {"site_part": 3}
+	s.gain_setting = 0
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
 
-feb = os.path.join(data, "Feb_2013")
-s = slurp_globber.Slurper()
-s.filename_part_site = 3
-s.gain_setting = 0
-s.slurp_gains(feb)
-s.slurp_trans(feb)
+
+def dec():
+	print("December 2013")
+	path = os.path.join(data, "Dec_2013")
+	s = slurp.Slurper()
+	# gain file like "arc_12113_wqp_ln2_gn1"
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+
+	# daylight saving adjustment
+	s.dst = True
+
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+
+def nov():
+	print("November 2013")
+	path = os.path.join(data, "Nov_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+
+	# daylight saving adjustment
+	s.dst = True
+
+	# exclude the shapefile in Arc_111313_GPS since it messs with the gain site mathc
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_111313_GPS']
+
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+nov()
+#dec()
