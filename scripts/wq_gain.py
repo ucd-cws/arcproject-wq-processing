@@ -16,7 +16,13 @@ def convert_wq_dtypes(df):  # TODO check to see if the wq_from_file function can
 	"""
 	for column in list(df.columns.values):
 		if df[column].dtype == object:
-			df[column] = df[column].convert_objects(convert_numeric=True)
+			if pd.__version__ >= "0.17":  # separate ways to convert to numeric before and after version 0.17
+				try:
+					df[column] = pd.to_numeric(df[column])
+				except ValueError:  # try coercing the numeric fields - if it an exception is raised, we should be able to continue becuase we just need to numbers to act like numbers - it's ok if text stays text
+					pass
+			else:
+				df[column] = df[column].convert_objects(convert_numeric=True)
 	return df
 
 
