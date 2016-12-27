@@ -1,17 +1,10 @@
 import os
-import glob
-from sqlalchemy import exc, orm
-from scripts import wq_gain
-from waterquality import utils
 from waterquality import classes
-from scripts import wqt_timestamp_match
+from scripts import slurp
 
 ### DEFINE DATA PATHS ###
 base_path = os.path.split(os.path.split(os.path.abspath(__file__))[0])[0]
 print(base_path)
-
-# import the project's toolbox
-#arcpy.ImportToolbox(os.path.join(base_path, "wq-processing-toolbox.pyt"))
 
 # path to location with data
 data = r"C:\Users\Andy\Desktop\ArcData" # or location on x drive
@@ -30,7 +23,10 @@ site_names = {"NS": "Nurse Slough",
             "LN": "",
             "BN": "",
             "SH": "",
-            "UL": "Ulatis Creek"}
+            "UL": "Ulatis Creek",
+            "DV": "",
+            "LC": "",
+            "CACHE": "Cache"}
 
 session = classes.get_new_session()
 for site in site_names:
@@ -55,13 +51,24 @@ vert_profiles = {
 "UL1": "UL",
 "CC1": "CC",
 "BK1": "BK",
-"LNCA": "LN", # CHECK
+"LNCA": "LN",  # CHECK
 "BN1": "BN",
 "BN2": "BN",
 "SH1": "SH",
+"SH2": "SH",
 "SH4": "SH",
 "SH5": "SH",
+"SH6": "SH",
 "SH7": "SH",
+"BK0": "BK",
+"CA3": "CA",
+"LN2": "LN",
+"UL0": "UL",
+"DV1": "DV",
+"LCW": "LCW",
+"NS3": "NS",
+"SB1": "SB",
+"LC": "LC"
 }
 
 session = classes.get_new_session()
@@ -75,51 +82,89 @@ for vp in vert_profiles:
 session.close()
 
 
-
 #############################################################
 
-# Jan 2013
-# gain files
-gains_list = glob.glob(os.path.join(data, "Jan_2013", "*", "*", "*wqp*"))
-print(gains_list)
 
-for wq_gain_file in gains_list:
-	try:
-		basename = os.path.basename(wq_gain_file)
-		site_id = basename.split("_")[3].upper() # site code is the forth part when split by underscores
-		gain_setting = 0 # TODO check
+##### JAN ######
+def jan():
+	print("January 2013")
 
-		# find the shapefiles to try to match
-		two_up = os.path.dirname(os.path.dirname(wq_gain_file))
+	jan = os.path.join(data, "Jan_2013")
+	s = slurp.Slurper()
 
-		gps_pts = glob.glob(os.path.join(two_up, "*", "*ZoopChlW.shp"))[0]
-		print("{} {} {} {}".format(basename, site_id, gain_setting, gps_pts))
+	# gain file like "Arc_010713_wqp_cs3" and all gain settings should be zero
+	s.site_function_params = {"site_part": 3}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_011813'] # weird site names for this folder
+	s.gain_setting = 0
 
-		# run gain_wq function
-		try:
-			wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
-		except exc.IntegrityError as e:
-			print("Unable to import gain file. Record for this gain file "
-			                 "already exists in the vertical_profiles table.")
+	print("Adding gain files to database")
+	s.slurp_gains(jan)
+	print("Adding water quality transects to database")
+	s.slurp_trans(jan)
 
-	except:
-		print("Error")
 
-# water quality transects
+def mar():
+	print("March 2013")
+	path = os.path.join(data, "Mar_2013")
+	s = slurp.Slurper()
 
-transect_list = glob.glob(os.path.join(data, "Jan_2013", "Arc*", "*_WQ", "*wqt*"))
-print(transect_list)
+	# gain file like "arc_020413_ca1_wqp" and all gain settings should be zero
+	s.site_function_params = {"site_part": 3}
+	s.gain_setting = 0
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
 
-for wqt in transect_list:
-	try:
-		basename = os.path.basename(wqt)
-		site_id = basename.split("_")[3].upper()  # site code is the forth part when split by underscores
-		# find the shapefiles to try to match
-		two_up = os.path.dirname(os.path.dirname(wqt))
-		gps_pts = glob.glob(os.path.join(two_up, "*", "*PosnPnt.shp"))[0]
-		print("{} {} {}".format(wqt, gps_pts, site_id))
-		wqt_timestamp_match.main([wqt], gps_pts, site_function=site_id)
-	except exc.IntegrityError as e:
-		print("This transect is already in the database")
-	except orm.exc.NoResultFound:
-		print("The site for this file needs to be added to the database before adding data: {}".format(site_id))
+
+def dec():
+	print("December 2013")
+	path = os.path.join(data, "Dec_2013")
+	s = slurp.Slurper()
+	# gain file like "arc_12113_wqp_ln2_gn1"
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+
+	# daylight saving adjustment
+	s.dst = True
+
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+
+def nov():
+	print("November 2013")
+	path = os.path.join(data, "Nov_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+
+	# daylight saving adjustment
+	s.dst = True
+
+	# exclude the shapefile in Arc_111313_GPS since it messs with the gain site mathc
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_111313_GPS']
+
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+def oct():
+	print("October 2013")
+	path = os.path.join(data, "Oct_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_101513_GPS', 'Arc_101713_GPS']
+
+	# daylight saving adjustment
+	s.dst = True
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+oct()
+nov()
+dec()

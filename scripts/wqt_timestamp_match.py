@@ -81,6 +81,7 @@ unit_conversion = {
 	u"GPS_Date": None,
 	u"POINT_Y": None,
 	u"POINT_X": None,
+	u"IBatt": None
 }
 
 
@@ -92,7 +93,7 @@ def get_unit_conversion_scale(field, current_units):
 	:param current_units: the units as described in the sonde data file
 	:return: scaling value to be multiplied against entire field or None
 	"""
-	print(field, current_units)
+	# print(field, current_units)
 	if field in unit_conversion:
 		if unit_conversion[field] is None:
 			return None
@@ -117,7 +118,11 @@ def check_and_convert_units(data_frame, units):
 	for field in fields:
 		scaling_value = get_unit_conversion_scale(field, units[field])
 		if scaling_value:
-			data_frame[field] = pd.to_numeric(data_frame[field])  # before multiplying, we have to cast the data to numeric
+			if pd.__version__ >= "0.17.0":
+				data_frame[field] = pd.to_numeric(data_frame[field])  # before multiplying, we have to cast the data to numeric
+			else:
+				data_frame[field] = data_frame[field].convert_objects(convert_numeric=True)
+
 			data_frame[field] = data_frame[field].multiply(scaling_value)
 
 	return data_frame
@@ -170,8 +175,11 @@ def wq_from_file(water_quality_raw_data):
 	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
 	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
 		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+		encoding = "utf-8"
+	else:
+		encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
 
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values='#')  # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*'], encoding=encoding)  # TODO add other error values (2000000.00 might be error for CHL)
 
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
@@ -179,12 +187,13 @@ def wq_from_file(water_quality_raw_data):
 	# replace illegal fieldnames
 	wq = replaceIllegalFieldnames(wq)
 
-	#units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
 
 	# handles any unit scaling/converting we need to do for fields that aren't always in the same units
-	#wq = check_and_convert_units(wq, units)
+	wq = check_and_convert_units(wq, units)
 
 	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)
@@ -198,7 +207,6 @@ def wq_from_file(water_quality_raw_data):
 		raise ValueError("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
 
 	return wq
-
 
 
 def feature_class_to_pandas_data_frame(feature_class, field_list):
@@ -429,6 +437,10 @@ def gps_append_fromlist(list_gps_files):
 
 	return master_pts
 
+# set the default settings for parsing the site codes (and gain settings) from the filename spliting on underscores
+site_function_params = {"site_part": 2,
+                        "gain_part": 4}
+
 
 def site_function_historic(*args, **kwargs):
 	"""
@@ -444,10 +456,10 @@ def site_function_historic(*args, **kwargs):
 
 	record = kwargs["record"]  # unpacking this way because I want it to be able to accept the kinds of args another function might receive too, since the caller will pass a bunch
 	session = kwargs["session"]  # database session from caller
-
+	site_part = kwargs["site_part"]
 	filename = record.get(source_field)  # get the value of the data source field (source_field defined globally)
 	try:
-		site_code = filename.split("_")[2].upper()  # the third item in the underscored part of the name has the site code
+		site_code = filename.split("_")[int(site_part)].upper()  # the third item in the underscored part of the name has the site code
 	except IndexError:
 		raise IndexError("Filename was unable to be split based on underscore in order to parse site name - be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
 
@@ -459,8 +471,8 @@ def site_function_historic(*args, **kwargs):
 	return q  # return the session object
 
 
-
-def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic, session=None):
+def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic,
+                   site_func_params=site_function_params, session=None):
 	"""
 	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
 
@@ -469,6 +481,7 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 		in the ORM - uses a default, but when the schema of the data files is different, a new field map will be necessary
 	:param site_function: the object of a function that, given a record from the data frame and a session, returns the
 		site object from the database that should be associated with the record
+	:param site_func_params: parameters to pass to the site function
 	:param session: a SQLAlchemy session to use - for tests, we often want the session passed so it can be inspected,
 		otherwise, we'll likely just create it. If a session is passed, this function will NOT commit new records - that
 		becomes the responsibility of the caller.
@@ -486,7 +499,7 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
 		for row in records:  # iterates over all of the rows in the data frames the fast way
-			make_record(field_map, row[1], session, site_function,)  # row[1] is the actual data included in the row
+			make_record(field_map, row[1], session, site_function, site_func_params)  # row[1] is the actual data included in the row
 
 		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
@@ -506,23 +519,23 @@ def site_from_text(site_code, session):
 	return session.query(classes.Site).filter(classes.Site.code == site_code).one()
 
 
-def make_record(field_map, row, session, site_function):
+def make_record(field_map, row, session, site_function, site_func_params):
 	"""
 	 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame, translates it into a waterquality object
 	:param field_map: A field map dictionary with keys based on the data frame fields and values of the corresponding database field
 	:param row: a named tuple of the row in the data frame to translate into the WaterQuality object
 	:param session: an open SQLAlchemy database session
 	:param site_function: A site code or function that identifies the site and returns the site object for the record.
+	:param site_func_params: parameters to pass to the site function
 	:return:
 	"""
-
 	wq = classes.WaterQuality()  # instantiates a new object
 
 	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
 		if isinstance(site_function, six.string_types):
 			wq.site = site_from_text(site_code=site_function, session=session)
 		else:
-			wq.site = site_function(record=row, session=session)  # run the function to determine the record's site code
+			wq.site = site_function(record=row, session=session, **site_func_params)  # run the function to determine the record's site code
 	except ValueError:
 		traceback.print_exc()
 		return  # breaks out of this loop, which forces a skip of adding this object
@@ -534,7 +547,7 @@ def make_record(field_map, row, session, site_function):
 		try:
 			class_field = field_map[key]
 		except KeyError:
-			logging.warning("Skipping field {} with value {} for record {}. Field not found in field map.".format(key, row.get(key), row))
+			#logging.warning("Skipping field {} with value {} for record {}. Field not found in field map.".format(key, row.get(key), row))
 			continue
 
 		if class_field is None:  # if it's an explicitly defined None and not nonexistent (handled in above exception), then skip it silently
@@ -644,22 +657,30 @@ def dst_closest_match(wq, pts):
 	return offset_df
 
 
-def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic):
+def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic,
+         site_func_params=site_function_params, dst_adjustment=False):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
 	:param transect_gps: gps shapefile of transect tract
-	:param output_feature: location to save the water quality shapefile
-	:return: shapefile with water quality data matched by time stamps
+	:param output_feature: OPTIONAL location to save the water quality  shapefile with data matched by timestamps
+	:param site_function: A site code or function that identifies the site and returns the site object for the record.
+	:param site_func_params: parameters to pass to the site function
+	:param dst_adjustment: boolean to control if to adjust for daylight saving time
+	:return:
 	"""
 
 	# water quality
 	wq = wq_append_fromlist(water_quality_files)
 
 	# shapefile for transect
-	pts = wqtshp2pd(transect_gps)
+	if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
+		pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
+	else:
+		pts = wqtshp2pd(transect_gps)
 
 	# DST adjustment
-	wq = dst_closest_match(wq, pts)
+	if dst_adjustment:
+		wq = dst_closest_match(wq, pts)
 
 	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)
@@ -667,7 +688,7 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	wq_df2database(matches, site_function=site_function)
+	wq_df2database(matches, site_function=site_function, site_func_params=site_func_params)
 
 	if output_feature:
 		# Define a spatial reference for the output feature class by copying the input
@@ -678,4 +699,4 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 
 		# convert structured array to output feature class
 		np2feature(match_np, output_feature, spatial_ref)
-
+	return

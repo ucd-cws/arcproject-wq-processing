@@ -17,6 +17,10 @@ class MeasTableTests(unittest.TestCase):
 		self.assertEqual(linear_ref.ID_MeasurePair("in_memory/out_table1", 'ID'), {64: 12060.5, 25: 2060.5})
 		pass
 
+	def tearDown(self):
+		arcpy.Delete_management(r"in_memory\out_table1")
+		pass
+
 
 class LinRefTests(unittest.TestCase):
 
@@ -56,6 +60,11 @@ class LinRefTests(unittest.TestCase):
 		self.assertEqual(results[0], (64, u'CA', 5198.630391043295))  # why so many sig figs???
 		self.assertEqual(results[1], (25, u'F1', 3321.5817420431454))
 
+		pass
+
+	def tearDown(self):
+		arcpy.Delete_management(r"in_memory\np_table2")
+		arcpy.Delete_management(r"in_memory\np_table")
 		pass
 
 if __name__ == '__main__':
