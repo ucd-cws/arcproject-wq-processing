@@ -3,7 +3,6 @@
 import os
 import unittest
 from datetime import datetime
-import sys
 import six
 
 import pandas

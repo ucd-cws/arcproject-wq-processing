@@ -3,12 +3,20 @@ import os
 import arcpy
 import pandas as pd
 
-from waterquality import classes
 from scripts.wqt_timestamp_match import pd2np
 
-def export_points_to_features():
-	# this function meant to actual compose a SQLAlchemy query
-	pass
+arcgis_pro_layer_symbology = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wq_points.lyrx")
+arcgis_10_layer_symbology = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wq_points.lyr")
+
+
+def set_output_symbology(parameter):
+	## Output symbology
+	if arcpy.GetInstallInfo()["ProductName"] == "ArcGISPro":
+		parameter.symbology = arcgis_pro_layer_symbology
+	else:
+		parameter.symbology = arcgis_10_layer_symbology
+
+	return parameter
 
 
 def query_to_features(query, export_path):

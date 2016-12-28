@@ -1,19 +1,21 @@
-import arcpy
 import os
+import datetime
+from string import digits
+import calendar
+
+import arcpy
+from sqlalchemy import exc, func, distinct, extract
+
+from waterquality import classes
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
-from sqlalchemy import exc, func, distinct, extract
-from waterquality import classes
-from string import digits
-import datetime
-import calendar
 
 class Toolbox(object):
 	def __init__(self):
 		"""Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
-		self.label = "ArcWQ"
-		self.alias = "ArcWQ"
+		self.label = "ArcProject WQ Toolbox"
+		self.alias = "ArcProject WQ Toolbox"
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch, GenerateWQLayer, GainToDB, GenerateMonth,]
 
@@ -21,7 +23,7 @@ class Toolbox(object):
 class AddSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "New - Site (slough)"
+		self.label = "New Site (slough)"
 		self.description = "Add a new site to the database. Each slough should have it's own unique site id."
 		self.canRunInBackground = False
 		self.category = "Create New Sites"
@@ -80,7 +82,7 @@ class AddSite(object):
 class AddGainSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "New - Profile Site"
+		self.label = "New Profile Site"
 		self.description = "Create a new vertical profile site to add to the database"
 		self.canRunInBackground = False
 		self.category = "Create New Sites"
@@ -182,6 +184,7 @@ class GenerateWQLayer(object):
 			direction="Output"
 		)
 
+		fc = mapping.set_output_symbology(fc)
 		params = [date_to_generate, fc, ]
 		return params
 
@@ -472,7 +475,7 @@ class GainToDB(object):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
-		if parameters[0].valueAsText:
+		if parameters[0].valueAsText and len(parameters[0].filters[1].list) == 0:
 
 			# validate site name by pulling creating filter with names from profile_sites table
 			# get list of sites from the database profile sites table
@@ -590,6 +593,8 @@ class GenerateMonth(object):
 			datatype="DEFeatureClass",
 			direction="Output"
 		)
+
+		fc = mapping.set_output_symbology(fc)
 
 		params = [year_to_generate, month_to_generate, fc, ]
 		return params
