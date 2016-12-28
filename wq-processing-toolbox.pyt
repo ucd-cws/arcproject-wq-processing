@@ -208,15 +208,7 @@ class GenerateWQLayer(object):
 		date_to_use = parameters[0].value
 		output_location = parameters[1].valueAsText
 
-		wq = classes.WaterQuality
-		session = classes.get_new_session()
-
-		arcpy.AddMessage("Using Date {}".format(type(date_to_use)))
-
-		upper_bound = date_to_use.date() + datetime.timedelta(days=1)
-
-		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
-		mapping.query_to_features(query, output_location)
+		mapping.layer_from_date(date_to_use, output_location)
 
 
 class JoinTimestamp(object):
