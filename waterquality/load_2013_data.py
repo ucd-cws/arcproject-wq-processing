@@ -71,7 +71,17 @@ vert_profiles = {
 "LCW": "LCW",
 "NS3": "NS",
 "SB1": "SB",
-"LC": "LC"
+"LC": "LC",
+"BK": "BK", # check
+"CC": "CC", # check
+"BR1": "BR",
+"BR2": "BR",
+"SI1": "SI",
+"SI2": "SI",
+"SI4": "SI",
+"SI6": "SI",
+"SI7": "SI",
+"NSDV": "NSDV" # check
 }
 
 session = classes.get_new_session()
