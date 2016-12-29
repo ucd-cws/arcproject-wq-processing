@@ -26,6 +26,9 @@ site_names = {"NS": "Nurse Slough",
             "UL": "Ulatis Creek",
             "DV": "",
             "LC": "",
+            "CO": "",
+            "SI": "",
+            "BR": "",
             "CACHE": "Cache"}
 
 session = classes.get_new_session()
@@ -165,6 +168,23 @@ def oct():
 	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
-oct()
-nov()
-dec()
+
+def sep():
+	print("September 2013")
+	path = os.path.join(data, "Sep_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+
+	# daylight saving adjustment
+	s.dst = True
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+sep()
+# oct()
+# nov()
+# dec()

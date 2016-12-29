@@ -12,6 +12,9 @@ from scripts import wqt_timestamp_match
 from scripts import wq_gain
 import fnmatch
 from sqlalchemy import exc
+from sqlalchemy.orm.exc import NoResultFound
+# import project modules
+from waterquality import classes
 
 
 class Slurper(object):
@@ -62,6 +65,23 @@ class Slurper(object):
 				print(e)
 		pass
 
+	def check_wqt_site_codes(self, filename, site_func_params):
+		# validates site codes against database before trying to import transect
+		base = os.path.basename(filename)
+		site_part = site_func_params.get("site_part")
+		# split basename into parts using the underscore as deliminator
+		site_code = base.split("_")[int(site_part)].upper()
+
+		# new database session
+		try:
+			session = classes.get_new_session()
+			q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
+		except NoResultFound:
+			raise ValueError("Site code [{}] not found.".format(site_code))
+		finally:
+			session.close()
+		return
+
 	def slurp_trans(self, base_path):
 
 		transect_gps = self.find_files(base_path, self.transect_gps_pattern, self.exclude)
@@ -69,8 +89,43 @@ class Slurper(object):
 
 		print(wq_files, transect_gps)
 
+		for wq in wq_files:
+			print(wq)
+			self.check_wqt_site_codes(wq, self.site_function_params)
+
 		wqt_timestamp_match.main(wq_files, transect_gps, output_feature=None,
 		                         site_function=wqt_timestamp_match.site_function_historic,
 		                         site_func_params=self.site_function_params,
 		                         dst_adjustment=self.dst)
 		pass
+
+#
+# ex = ([r'C:\\Users\\Andy\\Desktop\\ArcData\\Sep_2013\\Arc_091613\\Arc_091613_WQ\\Arc_091613_wqt_bk',
+#        r'C:\\Users\\Andy\\Desktop\\ArcData\\Sep_2013\\Arc_091613\\Arc_091613_WQ\\Arc_091613_wqt_bk_1',
+#        r'C:\\Users\\Andy\\Desktop\\ArcData\\Sep_2013\\Arc_091613\\Arc_091613_WQ\\Arc_091613_wqt_bk_upper',
+#        r'C:\\Users\\Andy\\Desktop\\ArcData\\Sep_2013\\Arc_091613\\Arc_091613_WQ\\Arc_091613_wqt_ca1',
+#        r'C:\\Users\\Andy\\Desktop\\ArcData\\Sep_2013\\Arc_091613\\Arc_091613_WQ\\Arc_091613_wqt_cc1'])
+#
+#
+# site_function_params = {"site_part": 3,
+#                                      "gain_part": 4}
+#
+# def check_site_codes(filename, site_func_params):
+# 	# base name of the file
+# 	base = os.path.basename(filename)
+# 	site_part = site_func_params.get("site_part")
+# 	# split basename into parts using the underscore as deliminator
+# 	site_code = base.split("_")[int(site_part)].upper()
+# 	# new database session
+#
+# 	try:
+# 		session = classes.get_new_session()
+# 		q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
+# 	except NoResultFound:
+# 		raise ValueError("Site code [{}] not found.".format(site_code))
+# 	finally:
+# 		session.close()
+# 	return
+#
+# for e in ex:
+# 	check_site_codes(e, site_function_params)
