@@ -29,7 +29,9 @@ site_names = {"NS": "Nurse Slough",
             "CO": "",
             "SI": "",
             "BR": "",
-            "CACHE": "Cache"}
+            "CACHE": "Cache",
+            "SI7": "",  # check
+              }
 
 session = classes.get_new_session()
 for site in site_names:
@@ -81,7 +83,11 @@ vert_profiles = {
 "SI4": "SI",
 "SI6": "SI",
 "SI7": "SI",
-"NSDV": "NSDV" # check
+"NSDV": "NSDV",
+"BK2": "BK", # check
+"LN3": "LN",
+"LC1": "LC",
+"LC2": "LC"
 }
 
 session = classes.get_new_session()
@@ -195,6 +201,6 @@ def sep():
 	s.slurp_trans(path)
 
 sep()
-# oct()
-# nov()
-# dec()
+oct()
+nov()
+dec()

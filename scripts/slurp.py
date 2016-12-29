@@ -16,7 +16,6 @@ from sqlalchemy.orm.exc import NoResultFound
 # import project modules
 from waterquality import classes
 import six
-from string import digits
 
 
 class Slurper(object):
@@ -64,7 +63,7 @@ class Slurper(object):
 			session = classes.get_new_session()
 			q = session.query(classes.ProfileSite).filter(classes.ProfileSite.abbreviation == site_code).one()
 		except NoResultFound:
-			raise ValueError("Site code [{}] not found.".format(site_code))
+			raise ValueError("Vertical profile site code [{}] not found.".format(site_code))
 		finally:
 			session.close()
 		return
