@@ -46,6 +46,7 @@ unit_conversion = {
 	},
 	u"SpCond": {
 		u"µS/cm": None,
+		u"mS/cm": 1000,
 	},
 	u"DO%": {
 		u"Sat": None
@@ -188,7 +189,6 @@ def wq_from_file(water_quality_raw_data):
 	wq = replaceIllegalFieldnames(wq)
 
 	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
-
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
 
@@ -506,6 +506,7 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 			try:
 				session.commit()  # saves all new objects
 			except exc.IntegrityError as e:
+				print(e)
 				print("The water quality data you are adding to the database already exists in the database. If only some of your data is in the database, you may need to remove the overlapping data and only add the unique data.")
 	finally:
 		if session_created:
