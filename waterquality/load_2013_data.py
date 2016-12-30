@@ -16,21 +16,21 @@ site_names = {"NS": "Nurse Slough",
             "CC": "Calhoun Cut Canal",
             "CB": "Cabin Slough",
             "NSDV": "Nurse Slough DV",
-            "SB": "",
-            "BK": "",
-            "CA": "",
-            "HS": "",
-            "LN": "",
-            "BN": "",
-            "SH": "",
-            "UL": "Ulatis Creek",
-            "DV": "",
-            "LC": "",
-            "CO": "",
-            "SI": "",
-            "BR": "",
-            "CACHE": "Cache",
-            "SI7": "",  # check
+            # "SB": "",
+            # "BK": "",
+            # "CA": "",
+            # "HS": "",
+            # "LN": "",
+            # "BN": "",
+            # "SH": "",
+            # "UL": "Ulatis Creek",
+            # "DV": "",
+            # "LC": "",
+            # "CO": "",
+            # "SI": "",
+            # "BR": "",
+            # "CACHE": "Cache",
+            # "SI7": "",  # check
               }
 
 session = classes.get_new_session()
@@ -56,38 +56,38 @@ vert_profiles = {
 "UL1": "UL",
 "CC1": "CC",
 "BK1": "BK",
-"LNCA": "LN",  # CHECK
-"BN1": "BN",
-"BN2": "BN",
-"SH1": "SH",
-"SH2": "SH",
-"SH4": "SH",
-"SH5": "SH",
-"SH6": "SH",
-"SH7": "SH",
-"BK0": "BK",
-"CA3": "CA",
-"LN2": "LN",
-"UL0": "UL",
-"DV1": "DV",
-"LCW": "LCW",
-"NS3": "NS",
-"SB1": "SB",
-"LC": "LC",
-"BK": "BK", # check
-"CC": "CC", # check
-"BR1": "BR",
-"BR2": "BR",
-"SI1": "SI",
-"SI2": "SI",
-"SI4": "SI",
-"SI6": "SI",
-"SI7": "SI",
-"NSDV": "NSDV",
-"BK2": "BK", # check
-"LN3": "LN",
-"LC1": "LC",
-"LC2": "LC"
+# "LNCA": "LN",  # CHECK
+# "BN1": "BN",
+# "BN2": "BN",
+# "SH1": "SH",
+# "SH2": "SH",
+# "SH4": "SH",
+# "SH5": "SH",
+# "SH6": "SH",
+# "SH7": "SH",
+# "BK0": "BK",
+# "CA3": "CA",
+# "LN2": "LN",
+# "UL0": "UL",
+# "DV1": "DV",
+# "LCW": "LCW",
+# "NS3": "NS",
+# "SB1": "SB",
+# "LC": "LC",
+# "BK": "BK", # check
+# "CC": "CC", # check
+# # "BR1": "BR",
+# # "BR2": "BR",
+# # "SI1": "SI",
+# # "SI2": "SI",
+# # "SI4": "SI",
+# # "SI6": "SI",
+# # "SI7": "SI",
+# # "NSDV": "NSDV",
+# # "BK2": "BK", # check
+# # "LN3": "LN",
+# # "LC1": "LC",
+# # "LC2": "LC"
 }
 
 session = classes.get_new_session()
@@ -130,9 +130,7 @@ def mar():
 	# gain file like "arc_020413_ca1_wqp" and all gain settings should be zero
 	s.site_function_params = {"site_part": 3}
 	s.gain_setting = 0
-	print("Adding gain files to database")
 	s.slurp_gains(path)
-	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
 
@@ -142,13 +140,10 @@ def dec():
 	s = slurp.Slurper()
 	# gain file like "arc_12113_wqp_ln2_gn1"
 	s.site_function_params = {"site_part": 3, "gain_part": 4}
-
+	s.add_new_sites = True
 	# daylight saving adjustment
 	s.dst = True
-
-	print("Adding gain files to database")
 	s.slurp_gains(path)
-	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
 
@@ -157,31 +152,23 @@ def nov():
 	path = os.path.join(data, "Nov_2013")
 	s = slurp.Slurper()
 	s.site_function_params = {"site_part": 3, "gain_part": 4}
-
-	# daylight saving adjustment
+	s.add_new_sites = True
 	s.dst = True
-
 	# exclude the shapefile in Arc_111313_GPS since it messs with the gain site mathc
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_111313_GPS']
-
-	print("Adding gain files to database")
 	s.slurp_gains(path)
-	print("Adding water quality transects to database")
 	s.slurp_trans(path)
+
 
 def oct():
 	print("October 2013")
 	path = os.path.join(data, "Oct_2013")
 	s = slurp.Slurper()
 	s.site_function_params = {"site_part": 3, "gain_part": 4}
-
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_101513_GPS', 'Arc_101713_GPS']
-
-	# daylight saving adjustment
+	s.add_new_sites = True
 	s.dst = True
-	print("Adding gain files to database")
 	s.slurp_gains(path)
-	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
 
@@ -190,17 +177,74 @@ def sep():
 	path = os.path.join(data, "Sep_2013")
 	s = slurp.Slurper()
 	s.site_function_params = {"site_part": 3, "gain_part": 4}
-
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
-
-	# daylight saving adjustment
+	s.add_new_sites = True
 	s.dst = True
 	print("Adding gain files to database")
 	s.slurp_gains(path)
 	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
-sep()
-oct()
-nov()
-dec()
+
+def aug():
+	print("August 2013")
+	path = os.path.join(data, "Aug_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.add_new_sites = True
+	s.dst = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+
+def jul():
+	print("July 2013")
+	path = os.path.join(data, "Jul_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.add_new_sites = True
+	s.dst = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+
+def jun():
+	print("June 2013")
+
+	# Arc_060313
+	path = os.path.join(data, "Jun_2013", "Arc_060313")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 2}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.add_new_sites = True
+	s.gain_setting = 0
+	s.dst = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+
+	# The other folders in June
+	path = os.path.join(data, "Jun_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3, "gain_part": 0}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', "Arc_060313"]  # see above
+	s.zoop_shp_pattern = "*ZoopChl2.shp"
+	s.add_new_sites = True
+	s.gain_setting = 0
+	s.dst = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+
+
+
+
+jun()
+# jul()
+# aug()
+# sep()
+# oct()
+# nov()
+# dec()

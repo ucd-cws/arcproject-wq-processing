@@ -32,7 +32,7 @@ class Slurper(object):
 		self.gain_setting = wq_gain.profile_function_historic  # if provided overrides parsing filename
 		self.site_function_params = {"site_part": 2,
                                      "gain_part": 4}  # parsing the site codes and gains using underscores
-
+		self.add_new_sites = False  # adds unknown sites to the database
 
 	def find_files(self, directory, pattern='*', exclude=None):
 		"""http://stackoverflow.com/questions/14798220/how-can-i-search-sub-folders-using-glob-glob-module-in-python"""
@@ -50,7 +50,7 @@ class Slurper(object):
 					matches.append(os.path.join(root, filename))
 		return matches
 
-	def check_wqp_names(self, filename):
+	def check_wqp_names(self, filename, add=False):
 		# validates profile codes against database before trying to import gain file
 		if isinstance(self.site, six.string_types):
 			site_code = self.site.upper()
@@ -63,7 +63,15 @@ class Slurper(object):
 			session = classes.get_new_session()
 			q = session.query(classes.ProfileSite).filter(classes.ProfileSite.abbreviation == site_code).one()
 		except NoResultFound:
-			raise ValueError("Vertical profile site code [{}] not found.".format(site_code))
+			if add:
+				# when true add unknown vertical profile code as a new profile site
+				ps = classes.ProfileSite()
+				ps.abbreviation = site_code
+				session.add(ps)
+				session.commit()
+				print("Adding profile site code [{}] to vertical_profiles.".format(site_code))
+			else:
+				raise ValueError("Vertical profile site code [{}] not found.".format(site_code))
 		finally:
 			session.close()
 		return
@@ -74,9 +82,9 @@ class Slurper(object):
 		sites_shp_df = wqt_timestamp_match.gps_append_fromlist(zoop_files)
 
 		for gain_file in self.find_files(base_path, self.gain_pattern, self.exclude):
-
+			print(gain_file)
 			# validate that we have the site in VerticalProfile table
-			self.check_wqp_names(gain_file)
+			self.check_wqp_names(gain_file, self.add_new_sites)
 
 			try:
 				wq_gain.main(gain_file, site=self.site, gain=self.gain_setting, sample_sites_shp=sites_shp_df,
@@ -88,7 +96,7 @@ class Slurper(object):
 				print(e)
 		pass
 
-	def check_wqt_site_codes(self, filename, site_func_params):
+	def check_wqt_site_codes(self, filename, site_func_params, add=False):
 		# validates site codes against database before trying to import transect
 		base = os.path.basename(filename)
 		site_part = site_func_params.get("site_part")
@@ -100,7 +108,14 @@ class Slurper(object):
 			session = classes.get_new_session()
 			q = session.query(classes.Site).filter(classes.Site.code == site_code).one()
 		except NoResultFound:
-			raise ValueError("Site code [{}] not found.".format(site_code))
+			if add:
+				new_site = classes.Site()
+				new_site.code = site_code
+				session.add(new_site)
+				session.commit()
+				print("Site code [{}] added to sites table.".format(site_code))
+			else:
+				raise ValueError("Site code [{}] not found.".format(site_code))
 		finally:
 			session.close()
 		return
@@ -113,7 +128,7 @@ class Slurper(object):
 		#print(wq_files, transect_gps)
 		for wq in wq_files:
 			print(wq)
-			self.check_wqt_site_codes(wq, self.site_function_params)
+			self.check_wqt_site_codes(wq, self.site_function_params, self.add_new_sites)
 
 		wqt_timestamp_match.main(wq_files, transect_gps, output_feature=None,
 		                         site_function=wqt_timestamp_match.site_function_historic,

@@ -212,7 +212,6 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 
 	# basename of the source gain file
 	base = os.path.basename(gain_file)
-	print(base)
 	# try parsing the site from the filename
 	try:
 		# If it's a text code, use the text, otherwise call the function
@@ -242,7 +241,6 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 
 	# strip out any characters in the gain file (ie "gn1" becomes "1")
 
-
 	# if shapefile provided try joining using the site field
 	if sample_sites_shp is not None:
 		if isinstance(sample_sites_shp, list):
@@ -258,7 +256,7 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 
 		# check that there is data in the join
 		if gain_w_xy.size == 0:
-			logging.warning("Unable to add XY coords. Make sure GPS file has {} as an attribute in Site field".format(site))
+			logging.warning("Unable to add XY coords.")
 		elif gain_w_xy.shape[0] != 1:
 			logging.warning("Multiple rows in the shapefile match the site code. Matching based on closest time stamp")
 
@@ -271,5 +269,4 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 
 	# add row to database table vertical_profiles
 	gain_wq_df2database(avg_1m)
-
 	return

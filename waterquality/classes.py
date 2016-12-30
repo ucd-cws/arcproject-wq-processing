@@ -253,7 +253,7 @@ water_quality_header_map = {
 	"CHL": "chl",
 	"CHL_VOLTS": "chl_volts",
 	"Date_Time": "date_time",
-	"WQ_SOURCE": None,  # a None here means it'll skip it
+	"WQ_SOURCE": "source",  # a None here means it'll skip it
 	"GPS_SOURCE": None,
 	"GPS_Time": None,
 	"GPS_Date": None,
@@ -283,7 +283,7 @@ class WaterQuality(Base):
 	x_coord = Column(Float)
 	spatial_reference_code = Column(Integer)  # stores the ESPG/factory code for the coordinate system projection
 	m_value = Column(Float)
-
+	source = Column(String)
 	temp = Column(Float)
 	ph = Column(Float)
 	sp_cond = Column(Integer)
