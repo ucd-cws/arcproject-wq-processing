@@ -69,4 +69,3 @@ def main(current, desired, remove=False):
 		session.commit()
 	finally:
 		session.close()
-		

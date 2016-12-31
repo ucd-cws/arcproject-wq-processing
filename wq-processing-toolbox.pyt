@@ -15,7 +15,8 @@ class Toolbox(object):
 		self.label = "ArcWQ"
 		self.alias = "ArcWQ"
 		# List of tool classes associated with this toolbox
-		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch, GenerateWQLayer, GainToDB, GenerateMonth,]
+		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
+		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite,]
 
 
 class AddSite(object):
@@ -669,3 +670,91 @@ class GenerateMonth(object):
 
 		query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
 		mapping.query_to_features(query, output_location)
+
+
+class ModifyWQSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Modify assigned site for WQ records"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Modify"
+
+	def getParameterInfo(self):
+
+		current_code = arcpy.Parameter(
+			displayName="Current Site Code for records",
+			name="site_code",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		new_code = arcpy.Parameter(
+			displayName="New Site Code to Assign",
+			name="new_code",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		rm = arcpy.Parameter(
+			displayName="Remove site from sites table?",
+			name="rm",
+			datatype="GPBoolean",
+			direction="Input"
+		)
+
+		params = [current_code, new_code, rm]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		if parameters[0].valueAsText:
+
+			# validate site name by pulling creating filter with names from table
+			# get list of sites from the database profile sites table
+			session = classes.get_new_session()
+			try:
+				sites = session.query(classes.Site.code).distinct().all()
+				# print(profiles)  # [(u'TES1',), (u'TES2',), (u'TS1',)]
+				site_names = []
+
+				# add profile name to site list
+				for s in sites:
+					site_names.append(s[0])
+
+				parameters[0].filter.type = 'ValueList'
+				parameters[0].filter.list = site_names
+
+			finally:
+				session.close()
+
+
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		session = classes.get_new_session()
+		try:
+			site = classes.Site()
+			site.code = parameters[1].valueAsText.upper()
+			site.name = parameters[0].valueAsText
+			session.add(site)
+			session.commit()
+		except exc.IntegrityError as e:
+			arcpy.AddMessage("{} already exists. Site IDs must be unique.".format(site.code))
+		finally:
+			session.close()
