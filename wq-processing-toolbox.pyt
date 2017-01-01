@@ -724,7 +724,6 @@ class ModifyWQSite(object):
 		session = classes.get_new_session()
 		try:
 			sites = session.query(classes.Site.code).distinct().all()
-			# print(profiles)  # [(u'TES1',), (u'TES2',), (u'TS1',)]
 			site_names = []
 
 			# add profile name to site list
@@ -740,20 +739,18 @@ class ModifyWQSite(object):
 
 		finally:
 			session.close()
-
-
 		return
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation."""
+		parameter.  This method is called after internal validation.""" 
 		return
 
 	def execute(self, parameters, messages):
 		current_code = parameters[0].value
 		new_code = parameters[1].value
 		bool_rm = parameters[2].value
-		arcpy.AddMessage("Changing records with {} -> {}.".format(current_code, new_code))
+		arcpy.AddMessage("Changing records with {} -> {}".format(current_code, new_code))
 		c = swap_site_recs.main(current_code, new_code, bool_rm)
 		arcpy.AddMessage("{} records updated".format(c))
 		return

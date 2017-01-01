@@ -53,7 +53,6 @@ def main(current, desired, remove=False):
 	:param remove: optional - remove the original site for the sites table after changing the wq recs
 	:return:
 	"""
-
 	# open new session
 	session = classes.get_new_session()
 
@@ -61,6 +60,12 @@ def main(current, desired, remove=False):
 		# get the current site id from abbrev
 		old = lookup_siteid(session, current)
 		new = lookup_siteid(session, desired)
+
+		# add exception if trying to swap with self
+		if old == new:
+			raise Exception  # TODO: figure out way to add msg to exception (self swapping)
+
+		# swap old and new while returning the count of records updated.
 		count = recs_swap_id(session, old, new)
 
 		if remove:
@@ -71,5 +76,4 @@ def main(current, desired, remove=False):
 		session.commit()
 	finally:
 		session.close()
-
 	return count
