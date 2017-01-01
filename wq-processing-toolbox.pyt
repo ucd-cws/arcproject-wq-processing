@@ -3,6 +3,7 @@ import os
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
+from scripts import swap_site_recs
 from sqlalchemy import exc, func, distinct, extract
 from waterquality import classes
 from string import digits
@@ -702,7 +703,8 @@ class ModifyWQSite(object):
 			displayName="Remove site from sites table?",
 			name="rm",
 			datatype="GPBoolean",
-			direction="Input"
+			direction="Input",
+			parameterType="Optional",
 		)
 
 		params = [current_code, new_code, rm]
@@ -717,25 +719,27 @@ class ModifyWQSite(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		if parameters[0].valueAsText:
+		# validate site name by pulling creating filter with names from table
+		# get list of sites from the database profile sites table
+		session = classes.get_new_session()
+		try:
+			sites = session.query(classes.Site.code).distinct().all()
+			# print(profiles)  # [(u'TES1',), (u'TES2',), (u'TS1',)]
+			site_names = []
 
-			# validate site name by pulling creating filter with names from table
-			# get list of sites from the database profile sites table
-			session = classes.get_new_session()
-			try:
-				sites = session.query(classes.Site.code).distinct().all()
-				# print(profiles)  # [(u'TES1',), (u'TES2',), (u'TS1',)]
-				site_names = []
+			# add profile name to site list
+			for s in sites:
+				site_names.append(s[0])
 
-				# add profile name to site list
-				for s in sites:
-					site_names.append(s[0])
+			parameters[0].filter.type = 'ValueList'
+			parameters[0].filter.list = site_names
 
-				parameters[0].filter.type = 'ValueList'
-				parameters[0].filter.list = site_names
+			# TODO if parameter[0] has value pop from the list for parameter[1] since it would map to self.
+			parameters[1].filter.type = 'ValueList'
+			parameters[1].filter.list = site_names
 
-			finally:
-				session.close()
+		finally:
+			session.close()
 
 
 		return
@@ -746,15 +750,10 @@ class ModifyWQSite(object):
 		return
 
 	def execute(self, parameters, messages):
-
-		session = classes.get_new_session()
-		try:
-			site = classes.Site()
-			site.code = parameters[1].valueAsText.upper()
-			site.name = parameters[0].valueAsText
-			session.add(site)
-			session.commit()
-		except exc.IntegrityError as e:
-			arcpy.AddMessage("{} already exists. Site IDs must be unique.".format(site.code))
-		finally:
-			session.close()
+		current_code = parameters[0].value
+		new_code = parameters[1].value
+		bool_rm = parameters[2].value
+		arcpy.AddMessage("Changing records with {} -> {}.".format(current_code, new_code))
+		c = swap_site_recs.main(current_code, new_code, bool_rm)
+		arcpy.AddMessage("{} records updated".format(c))
+		return

@@ -1,6 +1,7 @@
 from waterquality import classes
 from sqlalchemy import exc, orm
 
+
 def select_allrecs_siteid(session, site):
 	"""
 	select all water quality records for a given site id
@@ -37,9 +38,11 @@ def recs_swap_id(session, oldid, newid):
 	:return:
 	"""
 	recs = select_allrecs_siteid(session, oldid)
+	c = 0
 	for r in recs:
 		r.site_id = int(newid)
-	return recs
+		c += 1
+	return c
 
 
 def main(current, desired, remove=False):
@@ -58,14 +61,15 @@ def main(current, desired, remove=False):
 		# get the current site id from abbrev
 		old = lookup_siteid(session, current)
 		new = lookup_siteid(session, desired)
-		recs_swap_id(session, old, new)
+		count = recs_swap_id(session, old, new)
 
 		if remove:
 			s = classes.Site
-			q = session.query(s).filter(s.id == old)
-			print(q)
-			session.remove(q) # TODO: session does not have a remove func. Lookup how to rm w/ the orm
+			q = session.query(s).filter(s.id == old).one()
+			session.delete(q)
 
 		session.commit()
 	finally:
 		session.close()
+
+	return count
