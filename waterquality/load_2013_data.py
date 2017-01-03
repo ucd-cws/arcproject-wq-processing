@@ -238,10 +238,20 @@ def jun():
 	s.slurp_trans(path)
 
 
+def may():
+	print("May 2013")
+	path = os.path.join(data, "May_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.gain_setting = 0
+	s.add_new_sites = True
+	s.dst = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
 
-
-
-jun()
+may()
+#jun()
 # jul()
 # aug()
 # sep()

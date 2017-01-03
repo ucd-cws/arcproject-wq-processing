@@ -64,13 +64,16 @@ def gain_join_gps_by_site(gain_avg_df, shp_df):
 	:param shp_df: dataframe from a shapefile of multiple Chl/Zoop sampling sites
 	:return: pandas dataframe with the water quality data joined to the GPS attributes
 	"""
-	# convert both site columns to UPPER
-	gain_avg_df['Site'] = gain_avg_df['Site'].str.upper()
-	shp_df['Site'] = shp_df['Site'].str.upper()
+	try:
+			# convert both site columns to UPPER
+		gain_avg_df['Site'] = gain_avg_df['Site'].str.upper()
+		shp_df['Site'] = shp_df['Site'].str.upper()
 
-	# uses inner join to return a dataframe with a single row
-	joined = pd.merge(shp_df, gain_avg_df, how="inner", on="Site")
-	return joined
+		# uses inner join to return a dataframe with a single row
+		joined = pd.merge(shp_df, gain_avg_df, how="inner", on="Site")
+		return joined
+	except KeyError:
+		return None
 
 
 def gain_gps_timediff(gain_avg_df):
@@ -255,7 +258,9 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 		gain_w_xy = gain_join_gps_by_site(avg_1m, sites_shp_df)
 
 		# check that there is data in the join
-		if gain_w_xy.size == 0:
+		if gain_w_xy is None:
+			logging.warning("Unable to add XY coords due to a KeyError. Check that fields are named correctly.")
+		elif gain_w_xy.size == 0:
 			logging.warning("Unable to add XY coords.")
 		elif gain_w_xy.shape[0] != 1:
 			logging.warning("Multiple rows in the shapefile match the site code. Matching based on closest time stamp")
