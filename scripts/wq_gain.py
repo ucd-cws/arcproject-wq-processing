@@ -106,6 +106,7 @@ def profile_function_historic(*args, **kwargs):
 	part = kwargs["part"]
 	filename = kwargs["filename"]  # get the value of the data source field (source_field defined globally)
 	try:
+		filename = os.path.splitext(filename)[0]
 		part_code = filename.split("_")[int(part)].upper()  # get the selected underscored part of the name
 	except IndexError:
 		raise IndexError("Filename was unable to be split based on underscore in order to parse site name -"

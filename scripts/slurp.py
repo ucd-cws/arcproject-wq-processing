@@ -25,8 +25,8 @@ class Slurper(object):
 		self.exclude = ['StatePlaneCAII', 'SummaryFiles']  # folder to exclude from the pattern matching
 		self.gain_pattern = '*wqp*'  # pattern to match to find the gain water quality files
 		self.transect_pattern = '*wqt*'  # pattern to match to find the transect water quality files
-		self.transect_gps_pattern = '*PosnPnt.shp'  # pattern to find the water quality transect GPS files
-		self.zoop_shp_pattern = '*ZoopChlW.shp'  # pattern to find the ZoopChl gps files to join with the gains
+		self.transect_gps_pattern = '*PosnPnt*.shp'  # pattern to find the water quality transect GPS files
+		self.zoop_shp_pattern = '*ZoopChlW*.shp'  # pattern to find the ZoopChl gps files to join with the gains
 		self.dst = False  # adjust for daylight saving time
 		self.site = wq_gain.profile_function_historic  # if provided overrides parsing filename
 		self.gain_setting = wq_gain.profile_function_historic  # if provided overrides parsing filename
@@ -56,6 +56,7 @@ class Slurper(object):
 			site_code = self.site.upper()
 		else:
 			base = os.path.basename(filename)
+			filename = os.path.splitext(base)[0]
 			site_code = self.site(filename=base, part=self.site_function_params["site_part"])
 
 		# new database session
@@ -99,6 +100,7 @@ class Slurper(object):
 	def check_wqt_site_codes(self, filename, site_func_params, add=False):
 		# validates site codes against database before trying to import transect
 		base = os.path.basename(filename)
+		base = os.path.splitext(base)[0]
 		site_part = site_func_params.get("site_part")
 		# split basename into parts using the underscore as deliminator
 		site_code = base.split("_")[int(site_part)].upper()

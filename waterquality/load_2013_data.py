@@ -230,7 +230,6 @@ def jun():
 	s = slurp.Slurper()
 	s.site_function_params = {"site_part": 3, "gain_part": 0}
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles', "Arc_060313"]  # see above
-	s.zoop_shp_pattern = "*ZoopChl2.shp"
 	s.add_new_sites = True
 	s.gain_setting = 0
 	s.dst = True
@@ -244,14 +243,42 @@ def may():
 	s = slurp.Slurper()
 	s.site_function_params = {"site_part": 2, "gain_part": 4}
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.transect_gps_pattern = '*PosnPnt*.shp'
 	s.gain_setting = 0
 	s.add_new_sites = True
 	s.dst = True
 	s.slurp_gains(path)
 	s.slurp_trans(path)
 
-may()
-#jun()
+
+def apr():
+	print("April 2013")
+
+	path = os.path.join(data, "Apr_2013", "Arc_040113")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 2}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.add_new_sites = True
+	s.gain_setting = 0
+	s.dst = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+
+	# The other folders in april
+	path = os.path.join(data, "Apr_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3, "gain_part": 0}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', "Arc_040113"]  # see above
+	s.add_new_sites = True
+	s.gain_setting = 0
+	s.dst = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+# apr()
+# may()
+# jun()
 # jul()
 # aug()
 # sep()
