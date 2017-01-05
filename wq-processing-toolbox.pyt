@@ -290,6 +290,8 @@ class JoinTimestamp(object):
 		site_code = parameters[2].valueAsText
 		if not site_code or site_code == "":
 			site_function = wqt_timestamp_match.site_function_historic
+		else:
+			site_function = site_code
 
 		output_path = parameters[3].valueAsText
 		if output_path == "":
@@ -743,7 +745,7 @@ class ModifyWQSite(object):
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation.""" 
+		parameter.  This method is called after internal validation."""
 		return
 
 	def execute(self, parameters, messages):
