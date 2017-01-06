@@ -122,16 +122,7 @@ def jan():
 	s.slurp_trans(jan)
 
 
-def mar():
-	print("March 2013")
-	path = os.path.join(data, "Mar_2013")
-	s = slurp.Slurper()
 
-	# gain file like "arc_020413_ca1_wqp" and all gain settings should be zero
-	s.site_function_params = {"site_part": 3}
-	s.gain_setting = 0
-	s.slurp_gains(path)
-	s.slurp_trans(path)
 
 
 def dec():
@@ -276,12 +267,63 @@ def apr():
 	s.slurp_gains(path)
 	s.slurp_trans(path)
 
-# apr()
-# may()
-# jun()
-# jul()
-# aug()
-# sep()
-# oct()
-# nov()
-# dec()
+
+def mar():
+	print("March 2013")
+	path = os.path.join(data, "Mar_2013")
+	s = slurp.Slurper()
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', "Arc_030413"]  # see github issue
+	s.site_function_params = {"site_part": 3}
+	s.gain_setting = 0
+	s.dst = True
+	s.add_new_sites = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+
+def feb():
+	print("Feb 2013")
+	path = os.path.join(data, "Feb_2013", "Arc_020713")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3}
+	s.gain_setting = 0
+	s.dst = True
+	s.add_new_sites = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+	# folders for site part 2
+	s = slurp.Slurper()
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', "Arc_020713"]
+	path = os.path.join(data, "Feb_2013")
+	s.site_function_params = {"site_part": 2}
+	s.gain_setting = 0
+	s.dst = True
+	s.add_new_sites = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+
+def jan():
+	print("Jan 2013")
+	path = os.path.join(data, "Jan_2013")
+	s = slurp.Slurper()
+	s.site_function_params = {"site_part": 3}
+	s.gain_setting = 0
+	s.dst = True
+	s.add_new_sites = True
+	s.slurp_gains(path)
+	s.slurp_trans(path)
+
+jan()
+feb()
+mar()
+apr()
+may()
+jun()
+jul()
+aug()
+sep()
+oct()
+nov()
+dec()

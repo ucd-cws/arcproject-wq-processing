@@ -41,6 +41,15 @@ unit_conversion = {
 		u"meters": None,
 		u"feet": 0.3048,
 	},
+	u"DEP200": {
+		u"meters": None,
+		u"feet": 0.3048,
+	},
+	u"DepthX": {
+		u"meters": None,
+		u"feet": 0.3048,
+		u"volts": 0,  # check if can just pass Null value
+	},
 	u"Temp": {
 		u"°C": None,
 	},
@@ -64,7 +73,8 @@ unit_conversion = {
 		u"µE/s/m²": None
 	},
 	u"TurbSC": {
-		u"NTU": None
+		u"NTU": None,
+		# u"Volts": 0,  # check if can just pass Null value
 	},
 	u"CHL": {
 		u"µg/l": None
@@ -83,7 +93,10 @@ unit_conversion = {
 	u"GPS_Date": None,
 	u"POINT_Y": None,
 	u"POINT_X": None,
-	u"IBatt": None
+	u"IBatt": None,
+	u"EBatt": None,
+	u"TurbSCV": None,
+
 }
 
 
@@ -167,6 +180,19 @@ def convert_file_encoding(in_file, target_encoding="utf-8"):
 	return new_file
 
 
+def rename_depthfield(wq_df, depth_synonyms):
+	"""
+	Replaces depth field synonymes (DEPX, DEP200, etc) with DEP25
+	:param wq_df: raw data frame of water quality values
+	:param depth_synonyms: list of synonyms for the depth field (note must all be equivelent units)
+	:return: wq_df with the depth field renamed to DEP25
+	"""
+	for syn in depth_synonyms:
+		if syn in wq_df.columns:
+			wq_df['DEP25'] = wq_df[syn]
+	return wq_df
+
+
 # load a water quality file
 def wq_from_file(water_quality_raw_data):
 	"""
@@ -194,6 +220,9 @@ def wq_from_file(water_quality_raw_data):
 
 	# handles any unit scaling/converting we need to do for fields that aren't always in the same units
 	wq = check_and_convert_units(wq, units)
+
+	# rename depth field
+	wq = rename_depthfield(wq, ["DEPX", "DEP200", "DepthX"])
 
 	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)

@@ -198,6 +198,10 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 	# convert data types to float
 	num = convert_wq_dtypes(gain_df)  # TODO see if this step could be done in wq_from_file()
 
+
+	# rename depth column if not currently "DEP25"
+
+
 	# select the top 1m of the water column
 	dep_1m = depth_top_meter(num, "DEP25")
 
