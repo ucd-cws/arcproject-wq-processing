@@ -13,6 +13,7 @@ class Point(object):
 		self.x = x
 		self.y = y
 		self._date_time = date_time
+		self.date_time = None  # will be set when extract_time is called
 
 		if format_string:
 			if format_string == "default":  # doing it this way so we don't have to hardcode the default in multiple places
@@ -28,15 +29,19 @@ class Point(object):
 
 
 class SummaryFile(object):
-	def __init__(self, path, date_field, setup_and_load=True):
+	def __init__(self, path, date_field, time_format_string=None, setup_and_load=True):
 		self.path = path
 		self.points = []
 		self.crs_code = None
 		self.date_field = date_field
+		self.time_format_string = time_format_string
 
 		if setup_and_load:
 			self.get_crs()
 			self.load_points()
+
+			if time_format_string:
+				self.extract_time()
 
 	def get_crs(self):
 		desc = arcpy.Describe(self.path)
@@ -52,8 +57,13 @@ class SummaryFile(object):
 								)
 							)
 
-def verify_date(verification_date, summary_file):
-	pass
+	def extract_time(self):
+		for point in self.points:
+			point.extract_time(self.time_format_string)
+
+
+def verify_date(verification_date, summary_file, date_field="Date_Time", time_format_string=None):
+	v = SummaryFile(summary_file, date_field, time_format_string)
 
 
 
