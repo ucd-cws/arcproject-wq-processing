@@ -63,7 +63,7 @@ def main(current, desired, remove=False):
 
 		# add exception if trying to swap with self
 		if old == new:
-			raise Exception  # TODO: figure out way to add msg to exception (self swapping)
+			raise Exception("Unable to swap with self")
 
 		# swap old and new while returning the count of records updated.
 		count = recs_swap_id(session, old, new)

@@ -96,6 +96,10 @@ unit_conversion = {
 	u"IBatt": None,
 	u"EBatt": None,
 	u"TurbSCV": None,
+	u"pHVolts": None,
+	u"Circ": None,
+	u"Wiper": None,
+	u"SpCond1": None,
 
 }
 
