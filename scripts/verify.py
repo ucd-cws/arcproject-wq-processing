@@ -2,7 +2,9 @@ from datetime import datetime
 
 import arcpy
 
+import waterquality
 from waterquality import classes
+from waterquality import api
 from scripts import wqt_timestamp_match
 
 class Point(object):
@@ -63,12 +65,25 @@ class SummaryFile(object):
 
 
 def verify_date(verification_date, summary_file, date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p"):
+
+	# gets all the points loaded in with x/y values
 	v = SummaryFile(summary_file, date_field, time_format_string)
 
+	# loads the water quality data from the database for that same day
+	wq = api.get_wq_for_date(verification_date)
 
-	return v
+	for point in v.points:
+		short_x = waterquality.shorten_float(point.x, places=7)
+		short_y = waterquality.shorten_float(point.y, places=7)
 
-def get_wq_for_date
+		records_at_x = wq.loc[wq["x_coord"] == short_x]
+		matching_records = records_at_x.loc[records_at_x["y_coord"] == short_y]
+
+	if len(v.points) == 0:
+		raise ValueError("No points found for date")
+	else:
+		return matching_records
+
 
 def read_summary_file_points(summary_file):
 	pass
