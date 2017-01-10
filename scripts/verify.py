@@ -22,7 +22,7 @@ class Point(object):
 				self.extract_time(format_string)
 
 	def extract_time(self, format_string="%m/%d/%Y_%H:%M:%S%p"):
-		self.date_time = datetime.strptime(self._date_time, format_string=format_string)
+		self.date_time = datetime.strptime(self._date_time, format_string)
 
 	def __repr__(self):
 		return "Point taken at {} at location {}, {}".format(self.date_time, self.x, self.y)
@@ -62,10 +62,13 @@ class SummaryFile(object):
 			point.extract_time(self.time_format_string)
 
 
-def verify_date(verification_date, summary_file, date_field="Date_Time", time_format_string=None):
+def verify_date(verification_date, summary_file, date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p"):
 	v = SummaryFile(summary_file, date_field, time_format_string)
 
 
+	return v
+
+def get_wq_for_date
 
 def read_summary_file_points(summary_file):
 	pass
