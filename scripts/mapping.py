@@ -4,6 +4,7 @@ import datetime
 import arcpy
 import pandas as pd
 
+from waterquality import api
 from waterquality import classes
 from scripts.wqt_timestamp_match import pd2np
 

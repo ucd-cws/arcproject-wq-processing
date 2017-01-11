@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import arcpy
+import pandas as pd
 
 import waterquality
 from waterquality import classes
@@ -64,26 +65,56 @@ class SummaryFile(object):
 			point.extract_time(self.time_format_string)
 
 
-def verify_date(verification_date, summary_file, date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p"):
+def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p",):
+	"""
+		Given a path to a file and a list of datetime objects, loads the summary file data and verifies the data for each date has been entered into the DB
+	:param summary_file_path:
+	:param dates:
+	:param date_field:
+	:param time_format_string:
+	:return:
+	"""
 
 	# gets all the points loaded in with x/y values
-	v = SummaryFile(summary_file, date_field, time_format_string)
+	v = SummaryFile(summary_file_path, date_field, time_format_string)
+	print("Summary file has {} points".format(len(v.points)))
+
+	for day in dates:
+		verify_date(day, v,)
+
+
+def get_records_to_examine(wq, summary_file):
+	s = wq.loc[wq["spatial_reference_code"] == summary_file.crs_code]
+	return s.loc[s["Matched"] == 0]
+
+
+def get_df_size(df):
+	return int(df.size/df.shape[1])  # divide the size by the number of columns
+
+
+def verify_date(verification_date, summary_file):  # TODO: Possibly reproject summary file to match data
 
 	# loads the water quality data from the database for that same day
 	wq = api.get_wq_for_date(verification_date)
+	print("{} records in database for date".format(get_df_size(wq)))
+	wq["Matched"] = pd.Series(0, name="Matched")  # add a matched items flag
 
-	for point in v.points:
+	records_in_coordinate_system = get_records_to_examine(wq, summary_file)
+	print("{} records in the same coordinate system as summary file".format(get_df_size(records_in_coordinate_system)))
+
+	for point in summary_file.points:
 		short_x = waterquality.shorten_float(point.x, places=7)
 		short_y = waterquality.shorten_float(point.y, places=7)
 
-		records_at_x = wq.loc[wq["x_coord"] == short_x]
+		records_at_x = records_in_coordinate_system.loc[records_in_coordinate_system["x_coord"] == short_x]
 		matching_records = records_at_x.loc[records_at_x["y_coord"] == short_y]
+		matching_records["Matched"] = 1
+		records_in_coordinate_system = get_records_to_examine(wq, summary_file)
 
-	if len(v.points) == 0:
+	matched = wq.loc[wq["Matched"] == 1]
+	print("{} Matched locationes".format(get_df_size(matched)))
+
+	if len(summary_file.points) == 0:
 		raise ValueError("No points found for date")
 	else:
-		return matching_records
-
-
-def read_summary_file_points(summary_file):
-	pass
+		return wq

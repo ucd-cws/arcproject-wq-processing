@@ -2,7 +2,6 @@ import datetime
 
 import pandas
 
-import waterquality
 from waterquality import classes
 from waterquality.classes import WaterQuality as wq
 
