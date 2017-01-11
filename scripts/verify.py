@@ -116,7 +116,8 @@ def verify_date(verification_date, summary_file):  # TODO: Possibly reproject su
 	# loads the water quality data from the database for that same day
 	wq = api.get_wq_for_date(verification_date)
 	print("{} records in database for date".format(get_df_size(wq)))
-	wq["Matched"] = pd.Series(0, name="Matched")  # add a matched items flag
+	df_len = get_df_size(wq)
+	wq["Matched"] = pd.Series([0] * df_len, name="Matched")  # add a matched items flag with a default of 0 - [0] * df_len produces a list with df_len values.
 
 	records_in_coordinate_system = get_records_to_examine(wq, summary_file)
 	print("{} records in the same coordinate system as summary file".format(get_df_size(records_in_coordinate_system)))
