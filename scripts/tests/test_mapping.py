@@ -1,6 +1,7 @@
 import os
 import unittest
 
+import scripts
 from scripts import mapping
 from waterquality import classes
 import datetime
@@ -27,4 +28,4 @@ class BaseMapTest(unittest.TestCase):
 
 		mapping.layer_from_date(date_with_records, os.path.join("test_export_folder", "test_export_for_date.shp"))
 
-		self.assertRaises(mapping.NoRecordsError, mapping.layer_from_date, date_without_records, os.path.join("test_export_folder", "test_export_for_date.shp"))
+		self.assertRaises(scripts.NoRecordsError, mapping.layer_from_date, date_without_records, os.path.join("test_export_folder", "test_export_for_date.shp"))

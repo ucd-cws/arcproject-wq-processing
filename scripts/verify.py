@@ -4,9 +4,10 @@ import arcpy
 import pandas as pd
 
 import waterquality
-from waterquality import classes
+from waterquality import classes, funcs as wq_funcs
 from waterquality import api
 from scripts import wqt_timestamp_match
+import scripts
 
 class Point(object):
 	"""
@@ -65,6 +66,21 @@ class SummaryFile(object):
 			point.extract_time(self.time_format_string)
 
 
+def check_in_same_projection(summary_file, verification_date):
+	"""
+		Checks the summary file against the spatial reference of the records for a provided date - returns a reprojected version of it that matches the spatial reference of the stored features
+	:param summary_file:
+	:param verification_date:
+	:return:
+	"""
+
+	# get some records
+	wq = api.get_wq_for_date(verification_date)
+
+	sr_code = wq_funcs.get_wq_df_spatial_reference(wq)
+	return scripts.reproject_features(summary_file, sr_code)
+
+
 def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p",):
 	"""
 		Given a path to a file and a list of datetime objects, loads the summary file data and verifies the data for each date has been entered into the DB
@@ -74,6 +90,9 @@ def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", tim
 	:param time_format_string:
 	:return:
 	"""
+
+	# reprojects the summary file to be in the same projection as the stored data
+	summary_file_path = check_in_same_projection(summary_file_path, dates[0])
 
 	# gets all the points loaded in with x/y values
 	v = SummaryFile(summary_file_path, date_field, time_format_string)
@@ -112,7 +131,7 @@ def verify_date(verification_date, summary_file):  # TODO: Possibly reproject su
 		records_in_coordinate_system = get_records_to_examine(wq, summary_file)
 
 	matched = wq.loc[wq["Matched"] == 1]
-	print("{} Matched locationes".format(get_df_size(matched)))
+	print("{} Matched locations".format(get_df_size(matched)))
 
 	if len(summary_file.points) == 0:
 		raise ValueError("No points found for date")

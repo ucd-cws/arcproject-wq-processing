@@ -1,23 +1,15 @@
-import os
 import datetime
+import os
 
 import arcpy
 import pandas as pd
 
-from waterquality import api
-from waterquality import classes
+from scripts import NoRecordsError, SpatialReferenceError
 from scripts.wqt_timestamp_match import pd2np
+from waterquality import classes, funcs as wq_funcs
 
 arcgis_pro_layer_symbology = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wq_points.lyrx")
 arcgis_10_layer_symbology = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wq_points.lyr")
-
-
-class NoRecordsError(ValueError):
-	pass
-
-
-class SpatialReferenceError(ValueError):
-	pass
 
 
 def set_output_symbology(parameter):
@@ -69,16 +61,7 @@ def query_to_features(query, export_path):
 	# confirm that all of the items are in the same spatial reference - this should always be the case, but we should
 	# make sure so nothing weird happens
 
-	sr_codes = df.spatial_reference_code.unique()  # get all of the codes in use in this query
-	if sr_codes.size > 1:  # if we have more than one code, sound the alarm
-		raise SpatialReferenceError("Records have non-matching spatial reference - can't map.")
-	elif sr_codes.size == 1:
-		sr_code = sr_codes[0]  # get what should be the only item in the sr_codes array
-	else:  # aka, if sr_codes.size == 0
-		if df.size == 0:
-			raise NoRecordsError("No records for query")
-		else:
-			raise SpatialReferenceError("No Spatial Reference attached to records in query - can't map!")
+	sr_code = wq_funcs.get_wq_df_spatial_reference(df)
 
 	sr = arcpy.SpatialReference(sr_code)  # make a spatial reference object
 
