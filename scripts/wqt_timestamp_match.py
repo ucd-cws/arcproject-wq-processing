@@ -100,6 +100,7 @@ unit_conversion = {
 	u"Circ": None,
 	u"Wiper": None,
 	u"SpCond1": None,
+	u"DepthY": None,
 
 }
 

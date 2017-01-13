@@ -23,6 +23,7 @@ class Slurper(object):
 	def __init__(self):
 		# default settings for slurper
 		self.exclude = ['StatePlaneCAII', 'SummaryFiles']  # folder to exclude from the pattern matching
+		self.skipext = None  # list of file extension to exclude from the pattern matching (like excel files)
 		self.gain_pattern = '*wqp*'  # pattern to match to find the gain water quality files
 		self.transect_pattern = '*wqt*'  # pattern to match to find the transect water quality files
 		self.transect_gps_pattern = '*PosnPnt*.shp'  # pattern to find the water quality transect GPS files
@@ -34,19 +35,22 @@ class Slurper(object):
                                      "gain_part": 4}  # parsing the site codes and gains using underscores
 		self.add_new_sites = False  # adds unknown sites to the database
 
-	def find_files(self, directory, pattern='*', exclude=None):
+	def find_files(self, directory, pattern='*', exclude=None, skipext=None):
 		"""http://stackoverflow.com/questions/14798220/how-can-i-search-sub-folders-using-glob-glob-module-in-python"""
 		if not os.path.exists(directory):
 			raise ValueError("Directory not found {}".format(directory))
 
 		matches = []
 		for root, dirnames, filenames in os.walk(directory):
-			skipfolders = exclude
-			dirnames[:] = [d for d in dirnames if d not in skipfolders]
+			if exclude is not None:
+				dirnames[:] = [d for d in dirnames if d not in exclude]
 
 			for filename in filenames:
 				full_path = os.path.join(root, filename)
-				if fnmatch.filter([full_path], pattern):
+
+				if skipext is not None and os.path.splitext(full_path)[1] in skipext:
+					pass
+				elif fnmatch.filter([full_path], pattern):
 					matches.append(os.path.join(root, filename))
 		return matches
 
@@ -82,7 +86,7 @@ class Slurper(object):
 		zoop_files = self.find_files(base_path, self.zoop_shp_pattern, self.exclude)
 		sites_shp_df = wqt_timestamp_match.gps_append_fromlist(zoop_files)
 
-		for gain_file in self.find_files(base_path, self.gain_pattern, self.exclude):
+		for gain_file in self.find_files(base_path, self.gain_pattern, self.exclude, self.skipext):
 			print(gain_file)
 			# validate that we have the site in VerticalProfile table
 			self.check_wqp_names(gain_file, self.add_new_sites)
@@ -125,7 +129,7 @@ class Slurper(object):
 	def slurp_trans(self, base_path):
 
 		transect_gps = self.find_files(base_path, self.transect_gps_pattern, self.exclude)
-		wq_files = self.find_files(base_path, self.transect_pattern, self.exclude)
+		wq_files = self.find_files(base_path, self.transect_pattern, self.exclude, self.skipext)
 
 		#print(wq_files, transect_gps)
 		for wq in wq_files:
