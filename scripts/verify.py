@@ -117,7 +117,11 @@ def get_df_size(df):
 def verify_date_v2(verification_date, summary_file, max_point_distance, max_missing_points):
 
 	temp_points = geodatabase_tempfile.create_gdb_name("arcroject", scratch=True)
-	mapping.layer_from_date(verification_date, temp_points)
+	try:
+		mapping.layer_from_date(verification_date, temp_points)
+	except scripts.NoRecordsError:
+		print("DATE FAILED: {} - no records found for that date".format(datetime.strftime(verification_date, "%x")))
+		return
 
 	print('Running Near to Find Missing Locations')
 	arcpy.Near_analysis(temp_points, summary_file.path, max_point_distance)
