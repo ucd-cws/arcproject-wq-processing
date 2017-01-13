@@ -125,13 +125,13 @@ def verify_date_v2(verification_date, summary_file, max_point_distance, max_miss
 
 	# copy it out so we can add the Near fields
 	temp_summary_file_location = geodatabase_tempfile.create_gdb_name("arcrproject_summary_file", scratch=True)
-	arcpy.Copy_management(summary_file.path, temp_summary_file_location)
+	arcpy.CopyFeatures_management(summary_file.path, temp_summary_file_location)
 	print('Running Near to Find Missing Locations')
 	arcpy.Near_analysis(temp_summary_file_location, temp_points, max_point_distance)
 
 	print("Reading Results for Missing Locations")
 	missing_locations = arcpy.da.SearchCursor(
-		in_table=temp_points,
+		in_table=temp_summary_file_location,
 		field_names=["GPS_Date", "NEAR_FID"],
 		where_clause="NEAR_FID is NULL",
 	)
