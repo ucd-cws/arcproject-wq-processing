@@ -93,26 +93,22 @@ gain_water_quality_header_map = {
 	"TurbSC": "turbidity_sc",
 	"CHL": "chl",
 	"CHL_VOLTS": "chl_volts",
-	"Start_Time": "start_time",
-	"End_Time": "end_time",
 	"WQ_SOURCE": "source",  # a None here means it'll skip it
 	"Gain": "gain_setting",
 	"Site": "profile_site_abbreviation",
-	"POINT_Y": "y_coord",
-	"POINT_X": "x_coord"
+	"Date_Time": "date_time",
 }
 
 class VerticalProfile(Base):
 	__tablename__ = "vertical_profiles"
-	__table_args__ = (UniqueConstraint('start_time', 'end_time', name='_time_uc'),)
+	__table_args__ = (UniqueConstraint('date_time', name='_time_uc'),)
 	id = Column(Integer, primary_key=True)
 
 	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
 	gain_setting = Column(Float)
-	start_time = Column(DateTime)
-	end_time = Column(DateTime)
+	date_time = Column(DateTime)
 	temp = Column(Float)
 	ph = Column(Float)
 	sp_cond = Column(Float)
@@ -126,9 +122,6 @@ class VerticalProfile(Base):
 	chl = Column(Float)  # raw measurement by sonde
 	chl_volts = Column(Float)
 	source = Column(String)
-	y_coord = Column(Numeric)
-	x_coord = Column(Float)
-
 	# @property
 	# def gain_setting(self):
 	# 	return self._gain_setting
