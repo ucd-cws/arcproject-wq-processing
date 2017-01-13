@@ -123,13 +123,16 @@ def verify_date_v2(verification_date, summary_file, max_point_distance, max_miss
 		print("DATE FAILED: {} - no records found for that date".format(datetime.strftime(verification_date, "%x")))
 		return
 
+	# copy it out so we can add the Near fields
+	temp_summary_file_location = geodatabase_tempfile.create_gdb_name("arcrproject_summary_file", scratch=True)
+	arcpy.Copy_management(summary_file.path, temp_summary_file_location)
 	print('Running Near to Find Missing Locations')
-	arcpy.Near_analysis(temp_points, summary_file.path, max_point_distance)
+	arcpy.Near_analysis(temp_summary_file_location, temp_points, max_point_distance)
 
 	print("Reading Results for Missing Locations")
 	missing_locations = arcpy.da.SearchCursor(
 		in_table=temp_points,
-		field_names=["date_time", "NEAR_FID"],
+		field_names=["GPS_Date", "NEAR_FID"],
 		where_clause="NEAR_FID is NULL",
 	)
 
@@ -138,7 +141,7 @@ def verify_date_v2(verification_date, summary_file, max_point_distance, max_miss
 
 	for point in missing_locations:
 		num_missing += 1
-		missing_dates[datetime.strftime(point[1], "%x")] = 1  # use the locale-appropriate date as the key in the dictionary
+		missing_dates[datetime.strftime(point[0], "%x")] = 1  # use the locale-appropriate date as the key in the dictionary
 
 	if num_missing > max_missing_points:  # if we cross the threshold for notification
 		print("CROSSED THRESHOLD: Possibly missing transects")
