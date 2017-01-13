@@ -25,7 +25,7 @@ def set_output_symbology(parameter):
 def layer_from_date(date_to_use, output_location):
 	"""
 		Given a date and output location, exports records to a feature class
-	:param date_to_use: date in MM/DD/YYYY format
+	:param date_to_use: date in MM/DD/YYYY format or a datetime object
 	:param output_location: full path to output feature class
 	:return: returns nothing
 	"""

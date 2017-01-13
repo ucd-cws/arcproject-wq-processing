@@ -3,11 +3,21 @@ from datetime import datetime
 import arcpy
 import pandas as pd
 
+import geodatabase_tempfile
+
 import waterquality
 from waterquality import classes, funcs as wq_funcs
 from waterquality import api
 from scripts import wqt_timestamp_match
 import scripts
+from scripts import mapping
+
+try:
+	from tqdm import tqdm
+	has_tqdm = True
+	print("Using progress bars")
+except ImportError:
+	has_tqdm = False
 
 class Point(object):
 	"""
@@ -81,7 +91,7 @@ def check_in_same_projection(summary_file, verification_date):
 	return scripts.reproject_features(summary_file, sr_code)
 
 
-def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p",):
+def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p", max_point_distance="1.5 meters", max_missing_points=25):
 	"""
 		Given a path to a file and a list of datetime objects, loads the summary file data and verifies the data for each date has been entered into the DB
 	:param summary_file_path:
@@ -99,7 +109,7 @@ def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", tim
 	print("Summary file has {} points".format(len(v.points)))
 
 	for day in dates:
-		verify_date(day, v,)
+		verify_date_v2(day, v, max_point_distance, max_missing_points)
 
 
 def get_records_to_examine(wq, summary_file):
@@ -109,6 +119,34 @@ def get_records_to_examine(wq, summary_file):
 
 def get_df_size(df):
 	return int(df.size/df.shape[1])  # divide the size by the number of columns
+
+
+def verify_date_v2(verification_date, summary_file, max_point_distance, max_missing_points):
+
+	temp_points = geodatabase_tempfile.create_gdb_name("arcroject", scratch=True)
+	mapping.layer_from_date(verification_date, temp_points)
+
+	print('Running Near to Find Missing Locations')
+	arcpy.Near_analysis(temp_points, summary_file, search_radius=max_point_distance)
+
+	print("Reading Results for Missing Locations")
+	missing_locations = arcpy.da.SearchCursor(
+		in_table=temp_points,
+		field_names=["id", "date_time", "y_coord", "x_coord", "NEAR_FID"],
+		where_clause="NEAR_FID is NULL",
+	)
+
+	num_missing = 0
+	missing_dates = {}
+	for point in missing_locations:
+		num_missing += 1
+		missing_dates[datetime.strftime(point[1], "%x")] = 1  # use the locale-appropriate date as the key in the dictionary
+
+	if num_missing > max_missing_points:  # if we cross the threshold for notification
+		print("CROSSED THRESHOLD: Possibly missing transects")
+		for key in missing_dates.keys():
+			print("Unmatched point(s) on {}".format(key))
+
 
 
 def verify_date(verification_date, summary_file):  # TODO: Possibly reproject summary file to match data
@@ -122,7 +160,12 @@ def verify_date(verification_date, summary_file):  # TODO: Possibly reproject su
 	records_in_coordinate_system = get_records_to_examine(wq, summary_file)
 	print("{} records in the same coordinate system as summary file".format(get_df_size(records_in_coordinate_system)))
 
-	for point in summary_file.points:
+	if has_tqdm:
+		points = tqdm(summary_file.points)
+	else:
+		points = summary_file.points
+
+	for point in points:
 		short_x = waterquality.shorten_float(point.x, places=7)
 		short_y = waterquality.shorten_float(point.y, places=7)
 
