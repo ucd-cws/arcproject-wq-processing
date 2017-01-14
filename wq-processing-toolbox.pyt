@@ -1,15 +1,16 @@
-import os
-import datetime
-from string import digits
 import calendar
+import os
+from string import digits
 
 import arcpy
-from sqlalchemy import exc, func, distinct, extract
+from sqlalchemy import exc, extract
 
-from waterquality import classes
-from scripts import wqt_timestamp_match
-from scripts import wq_gain
 from scripts import mapping
+from scripts import wq_gain
+from scripts import wqt_timestamp_match
+from scripts.mapping import generate_layer_for_month
+from waterquality import classes
+
 
 class Toolbox(object):
 	def __init__(self):
@@ -656,13 +657,4 @@ class GenerateMonth(object):
 
 		output_location = parameters[2].valueAsText
 
-		wq = classes.WaterQuality
-		session = classes.get_new_session()
-
-		lower_bound = datetime.date(year_to_use, month_to_use, 1)
-		upper_bound = datetime.date(year_to_use, month_to_use,  int(calendar.monthrange(year_to_use, month_to_use)[1]))
-
-		arcpy.AddMessage("Pulling data for {} through {}".format(lower_bound, upper_bound))
-
-		query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
-		mapping.query_to_features(query, output_location)
+		generate_layer_for_month(month_to_use, output_location, year_to_use)

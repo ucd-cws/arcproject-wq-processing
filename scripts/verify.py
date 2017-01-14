@@ -94,24 +94,8 @@ def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", tim
 	:return:
 	"""
 
-	# reprojects the summary file to be in the same projection as the stored data
-	# summary_file_path = check_in_same_projection(summary_file_path, dates[0])
-
-	# gets all the points loaded in with x/y values;
-	v = SummaryFile(summary_file_path, date_field, time_format_string, setup_and_load=setup_and_load_summary_file)
-	print("Summary file has {} points".format(len(v.points)))
-
 	for day in dates:
-		verify_date_v2(day, v, max_point_distance, max_missing_points)
-
-
-def get_records_to_examine(wq, summary_file):
-	s = wq.loc[wq["spatial_reference_code"] == summary_file.crs_code]
-	return s.loc[s["Matched"] == 0]
-
-
-def get_df_size(df):
-	return int(df.size/df.shape[1])  # divide the size by the number of columns
+		verify_date_v2(day, summary_file_path, max_point_distance, max_missing_points)
 
 
 def verify_date_v2(verification_date, summary_file, max_point_distance, max_missing_points):
@@ -120,16 +104,17 @@ def verify_date_v2(verification_date, summary_file, max_point_distance, max_miss
 	try:
 		mapping.layer_from_date(verification_date, temp_points)
 	except scripts.NoRecordsError:
-		print("DATE FAILED: {} - no records found for that date".format(datetime.strftime(verification_date, "%x")))
+		print("DATE FAILED: {} - no records found for that date\n".format(datetime.strftime(verification_date, "%x")))
 		return
 
 	# copy it out so we can add the Near fields
 	temp_summary_file_location = geodatabase_tempfile.create_gdb_name("arcrproject_summary_file", scratch=True)
-	arcpy.CopyFeatures_management(summary_file.path, temp_summary_file_location)
+	arcpy.CopyFeatures_management(summary_file, temp_summary_file_location)
 	print('Running Near to Find Missing Locations')
 	arcpy.Near_analysis(temp_summary_file_location, temp_points, max_point_distance)
 
 	print("Reading Results for Missing Locations")
+	print("")
 	missing_locations = arcpy.da.SearchCursor(
 		in_table=temp_summary_file_location,
 		field_names=["GPS_Date", "NEAR_FID"],
@@ -150,32 +135,4 @@ def verify_date_v2(verification_date, summary_file, max_point_distance, max_miss
 	else:
 		print("ALL ClEAR for {}".format(datetime.strftime(verification_date, "%x")))
 
-
-
-def verify_date(verification_date, summary_file):  # TODO: Possibly reproject summary file to match data
-
-	# loads the water quality data from the database for that same day
-	wq = api.get_wq_for_date(verification_date)
-	print("{} records in database for date".format(get_df_size(wq)))
-	df_len = get_df_size(wq)
-	wq["Matched"] = pd.Series([0] * df_len, name="Matched")  # add a matched items flag with a default of 0 - [0] * df_len produces a list with df_len values.
-
-	records_in_coordinate_system = get_records_to_examine(wq, summary_file)
-	print("{} records in the same coordinate system as summary file".format(get_df_size(records_in_coordinate_system)))
-
-	for point in summary_file.points:
-		short_x = waterquality.shorten_float(point.x, places=7)
-		short_y = waterquality.shorten_float(point.y, places=7)
-
-		records_at_x = records_in_coordinate_system.loc[records_in_coordinate_system["x_coord"] == short_x]
-		matching_records = records_at_x.loc[records_at_x["y_coord"] == short_y]
-		matching_records["Matched"] = 1
-		records_in_coordinate_system = get_records_to_examine(wq, summary_file)
-
-	matched = wq.loc[wq["Matched"] == 1]
-	print("{} Matched locations".format(get_df_size(matched)))
-
-	if len(summary_file.points) == 0:
-		raise ValueError("No points found for date")
-	else:
-		return wq
+	print("\n")
