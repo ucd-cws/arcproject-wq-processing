@@ -48,6 +48,19 @@ def layer_from_date(date_to_use, output_location):
 		session.close()
 
 
+def generate_layer_for_month(month_to_use, year_to_use, output_location):
+	wq = classes.WaterQuality
+	session = classes.get_new_session()
+	try:
+		lower_bound = datetime.date(year_to_use, month_to_use, 1)
+		upper_bound = datetime.date(year_to_use, month_to_use, int(calendar.monthrange(year_to_use, month_to_use)[1]))
+		arcpy.AddMessage("Pulling data for {} through {}".format(lower_bound, upper_bound))
+		query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
+		query_to_features(query, output_location)
+	finally:
+		session.close()
+
+
 def query_to_features(query, export_path):
 	"""
 	Given a SQLAlchemy query for water quality data, exports it to a feature class
@@ -72,16 +85,3 @@ def query_to_features(query, export_path):
 		shape_fields=["x_coord", "y_coord"],
 		spatial_reference=sr,
 	)
-
-
-def generate_layer_for_month(month_to_use, output_location, year_to_use):
-	wq = classes.WaterQuality
-	session = classes.get_new_session()
-	try:
-		lower_bound = datetime.date(year_to_use, month_to_use, 1)
-		upper_bound = datetime.date(year_to_use, month_to_use, int(calendar.monthrange(year_to_use, month_to_use)[1]))
-		arcpy.AddMessage("Pulling data for {} through {}".format(lower_bound, upper_bound))
-		query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
-		query_to_features(query, output_location)
-	finally:
-		session.close()

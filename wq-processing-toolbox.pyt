@@ -657,4 +657,4 @@ class GenerateMonth(object):
 
 		output_location = parameters[2].valueAsText
 
-		generate_layer_for_month(month_to_use, output_location, year_to_use)
+		generate_layer_for_month(month_to_use, year_to_use, output_location)

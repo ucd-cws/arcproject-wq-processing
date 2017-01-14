@@ -8,7 +8,6 @@ import geodatabase_tempfile
 import waterquality
 from waterquality import classes, funcs as wq_funcs
 from waterquality import api
-from scripts import wqt_timestamp_match
 import scripts
 from scripts import mapping
 
@@ -84,7 +83,7 @@ def check_in_same_projection(summary_file, verification_date):
 	return scripts.reproject_features(summary_file, sr_code)
 
 
-def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", time_format_string="%m/%d/%Y_%H:%M:%S%p", max_point_distance=".5 Meters", max_missing_points=0, setup_and_load_summary_file=False):
+def verify_summary_file(month, year, summary_file,max_point_distance=".5 Meters", max_missing_points=0):
 	"""
 		Given a path to a file and a list of datetime objects, loads the summary file data and verifies the data for each date has been entered into the DB
 	:param summary_file_path:
@@ -94,17 +93,11 @@ def verify_summary_file(summary_file_path, dates=(), date_field="Date_Time", tim
 	:return:
 	"""
 
-	for day in dates:
-		verify_date_v2(day, summary_file_path, max_point_distance, max_missing_points)
-
-
-def verify_date_v2(verification_date, summary_file, max_point_distance, max_missing_points):
-
 	temp_points = geodatabase_tempfile.create_gdb_name("arcroject", scratch=True)
 	try:
-		mapping.layer_from_date(verification_date, temp_points)
+		mapping.generate_layer_for_month(month, year_to_use=year, output_location=temp_points)
 	except scripts.NoRecordsError:
-		print("DATE FAILED: {} - no records found for that date\n".format(datetime.strftime(verification_date, "%x")))
+		print("DATE FAILED: {} {} - no records found for that date\n".format(month, year))
 		return
 
 	# copy it out so we can add the Near fields
@@ -133,6 +126,6 @@ def verify_date_v2(verification_date, summary_file, max_point_distance, max_miss
 		for key in missing_dates.keys():
 			print("Unmatched point(s) on {}".format(key))
 	else:
-		print("ALL ClEAR for {}".format(datetime.strftime(verification_date, "%x")))
+		print("ALL ClEAR for {} {}".format(month, year))
 
 	print("\n")
