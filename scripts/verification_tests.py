@@ -5,7 +5,6 @@
 
 import unittest
 import os
-import datetime
 
 from scripts import verify
 
@@ -14,10 +13,9 @@ test_data = r"C:\Users\dsx.AD3\Box Sync\arcproject"
 
 class Test2013(unittest.TestCase):
 	def test_jan_2013(self):
-		d1 = datetime.datetime(2013,1,7)
-		d2 = datetime.datetime(2013,1,10)
-		d3 = datetime.datetime(2013,1,11)
-		d4 = datetime.datetime(2013,1,18)
-		s = os.path.join(test_data, r"Jan_2013\SummaryFiles\Jan2013_GPS\StatePlaneCAII")
+		s = os.path.join(test_data, r"Jan_2013\SummaryFiles\Jan2013_GPS\StatePlaneCAII\Arc_Jan2013_WQt_w_finalchl.shp")
+		verify.verify_summary_file(1, 2013, s)
 
-		verify.verify_summary_file(s, [d1, d2, d3, d4])
+	def test_dec_2013(self):
+		s = os.path.join(test_data, r"Dec_2013\SummaryFiles\Dec2013_GPS\StatePlaneCAII\Arc_Dec2013_WQt_w_finalchl.shp")
+		verify.verify_summary_file(12, 2013, s)
