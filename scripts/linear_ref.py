@@ -11,11 +11,10 @@ wd = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ref_routes = os.path.join(wd, "geo", "Reference_SloughCenterlines.shp")  # routes as lines
 
 
-def data_to_linear_reference(session, query, in_memory_table):
+def data_to_linear_reference(records, in_memory_table):
 	"""
 	Turns records from session query into an arcgis table
-	:param session: session
-	:param query: a query that returns all the records that should be updated with m_values
+	:param records: result from a query that returns all the records that should be updated with m_values
 	:param in_memory_table: name of table to create in memory
 	:return:
 	"""
@@ -26,7 +25,7 @@ def data_to_linear_reference(session, query, in_memory_table):
 		recs = []
 
 		# iterate through records pulling just the id, lat, and long
-		for record in q:
+		for record in records:
 			row = [record.id, record.y_coord, record.x_coord]
 			recs.append(row)
 
@@ -74,7 +73,7 @@ def makeFeatureLayer(table):
 	return out_layer
 
 
-def LocateWQalongREF(wq_features):
+def LocateWQalongREF(wq_features, ref_route):
 	"""
 	Uses arcpy linear refereeing to locate the input features distances along the reference route
 	:param wq_features: water quality transect points as feature class
@@ -83,7 +82,7 @@ def LocateWQalongREF(wq_features):
 	#  use linear referencing to locate each point along route using arcgis's linear referencing tool set
 
 	# note wq_feature needs to FID/OID
-	ref_table_out = arcpy.LocateFeaturesAlongRoutes_lr(wq_features, ref_routes, "Slough",
+	ref_table_out = arcpy.LocateFeaturesAlongRoutes_lr(wq_features, ref_route, "Slough",
                                    "250 Meters", r"in_memory\out_table", out_event_properties="RID POINT MEAS")
 
 	return ref_table_out
@@ -109,22 +108,25 @@ def ID_MeasurePair(linear_referenced_table, ID_field):
 	return measurePairs
 
 
-def main():
+def main(session, records, reference_line, override=False):
 	"""
 	Updates all the records with null m_values in the waterquality table
+	:param records: query to pull the records to be updated
+	:param reference_line: the slough line to use as a linear reference
+	:param override: overrides existing m_values
 	:return:
 	"""
 
-	# creates new session
-	session = classes.get_new_session()
-
-	# Return all the records that do not have m values
-	q = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None,
-			classes.WaterQuality.y_coord != None, classes.WaterQuality.x_coord != None ).all()
+	# # creates new session
+	# session = classes.get_new_session()
+	#
+	# # Return all the records that do not have m values
+	# records = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None,
+	# 		classes.WaterQuality.y_coord != None, classes.WaterQuality.x_coord != None ).all()
 
 	try:
 		# turn records that need slough measurement to a table
-		data_to_linear_reference(session, q, "in_memory/recs_np_table")
+		data_to_linear_reference(session, records, "in_memory/recs_np_table")
 
 		# check that the table exists
 		if arcpy.Exists("in_memory/recs_np_table"):
@@ -135,7 +137,7 @@ def main():
 
 			# locate features along route using the slough reference lines
 			print("Locating Features along routes")
-			meas_table = LocateWQalongREF(features)
+			meas_table = LocateWQalongREF(features, reference_line)
 
 			# create data dict with ID and measurement result
 			distances = ID_MeasurePair(meas_table, "id")

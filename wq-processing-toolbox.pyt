@@ -5,6 +5,7 @@ from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
 from scripts import swap_site_recs
+from scripts import linear_ref
 from sqlalchemy import exc, func, distinct, extract
 from waterquality import classes
 from string import digits
@@ -831,8 +832,90 @@ class GenerateHeatPlot(object):
 		base_path = os.path.split(os.path.abspath(__file__))[0]
 
 		# path to R exe
-		rscript_path = r"C:\Program Files\R\R-3.2.3\bin\rscript.exe"
+		rscript_path = r"C:\Program Files\R\R-3.2.3\bin\rscript.exe" # TODO update this depending on r install local
 		gen_heat = os.path.join(base_path, "scripts", "generate_heatplots.R")
 		arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title]))
 		subprocess.call([rscript_path, gen_heat, "--args", sitecode, wq_var, title])
+		return
+
+
+class LinearRef(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Locate along reference line"
+		self.description = "Locate water quality points along a reference line"
+		self.canRunInBackground = False
+		self.category = "Modify"
+
+	def getParameterInfo(self):
+
+		query = arcpy.Parameter(
+			displayName="Query for records to modify",
+			name="query",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		query.filter.type = "ValueList"
+		query.filter.list = ["All", "Last Month"]
+
+		ref = arcpy.Parameter(
+			displayName="Reference Line",
+			name="ref",
+			datatype="GP",
+			multiValue=False,
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		over = arcpy.Parameter(
+			displayName="Override existing M Values?",
+			name="over",
+			datatype="GPBoolean",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		params = [query, ref, over]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		query = parameters[0].valueAsText
+		ref_line = parameters[1].valueAsText
+		over = parameters[2].valueAsText
+
+		session = classes.get_new_session()
+
+		if query == "All" and over is False:
+			q = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None,
+			                                           classes.WaterQuality.y_coord != None,
+			                                           classes.WaterQuality.x_coord != None).all()
+		elif query == "All" and over is True:
+			q = session.query(classes.WaterQuality).filter(classes.WaterQuality.y_coord != None,
+			                                               classes.WaterQuality.x_coord != None).all()
+		elif query == "Last Month":
+			q = "test"
+
+
+
+		linear_ref.main(session, query, ref_line)
+
 		return
