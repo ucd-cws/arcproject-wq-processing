@@ -1,5 +1,6 @@
 import arcpy
 import os
+import subprocess
 from scripts import wqt_timestamp_match
 from scripts import wq_gain
 from scripts import mapping
@@ -17,7 +18,7 @@ class Toolbox(object):
 		self.alias = "ArcWQ"
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
-		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite,]
+		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot]
 
 
 class AddSite(object):
@@ -403,7 +404,7 @@ class GainToDB(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Add Gain profile to database"
-		self.description = "Takes average of water quality parameters of the top 1m of the vertical profile"
+		self.description = ""
 		self.canRunInBackground = False
 		self.category = "Add Data"
 
@@ -455,16 +456,7 @@ class GainToDB(object):
 		gain_part.filter.type = "ValueList"
 		gain_part.filter.list = [1, 2, 3, 4, 5, 6]
 
-		# shapefile for the stationary GPS points
-		shp = arcpy.Parameter(
-			displayName="Shapefile with Vertical Profile Locations",
-			name="shp_file",
-			datatype="GPFeatureLayer",
-			direction="Input",
-			parameterType="Optional"
-		)
-
-		params = [wqp, bool, site_part, gain_part, shp]
+		params = [wqp, bool, site_part, gain_part]
 		return params
 
 
@@ -532,8 +524,6 @@ class GainToDB(object):
 		# get the parameters
 
 		vt = parameters[0].values  # values are list of lists
-		gps_pts = parameters[4].value
-		arcpy.AddMessage("gps_pts")
 
 		for i in range(0, len(vt)):
 
@@ -545,12 +535,11 @@ class GainToDB(object):
 			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
 
 			try:
-				wq_gain.main(wq_gain_file, site_id, gain_setting, gps_pts)
+				wq_gain.main(wq_gain_file, site_id, gain_setting)
 			except exc.IntegrityError as e:
 				arcpy.AddMessage("Unable to import gain file. Record for this gain file "
 				                 "already exists in the vertical_profiles table.")
 		return
-
 
 
 class GenerateMonth(object):
@@ -755,4 +744,95 @@ class ModifyWQSite(object):
 		arcpy.AddMessage("Changing records with {} -> {}".format(current_code, new_code))
 		c = swap_site_recs.main(current_code, new_code, bool_rm)
 		arcpy.AddMessage("{} records updated".format(c))
+		return
+
+
+class GenerateHeatPlot(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Generate Heatplot"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Mapping"
+
+	def getParameterInfo(self):
+
+		code = arcpy.Parameter(
+			displayName="Code for Transect",
+			name="code",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		wq_var = arcpy.Parameter(
+			displayName="Water Quality Variable",
+			name="wq_var",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		title = arcpy.Parameter(
+			displayName="Title for graph",
+			name="output",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		wq_var.filter.type = 'ValueList'
+		wq_var.filter.list = ["temp","ph","sp_cond","salinity", "dissolved_oxygen","dissolved_oxygen_percent",
+            "dep_25", "par", "rpar","turbidity_sc","chl", "chl_volts","chl_corrected","corrected_gain"]
+
+		params = [code, wq_var, title]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		# validate site name by pulling creating filter with names from table
+		# get list of sites from the database profile sites table
+		session = classes.get_new_session()
+		try:
+			sites = session.query(classes.Site.code).distinct().all()
+			site_names = []
+
+			# add profile name to site list
+			for s in sites:
+				site_names.append(s[0])
+
+			parameters[0].filter.type = 'ValueList'
+			parameters[0].filter.list = site_names
+
+		finally:
+			session.close()
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		sitecode = parameters[0].valueAsText
+		wq_var = parameters[1].valueAsText
+		title = parameters[2].valueAsText
+
+
+		### DEFINE DATA PATHS ###
+		base_path = os.path.split(os.path.abspath(__file__))[0]
+
+		# path to R exe
+		rscript_path = r"C:\Program Files\R\R-3.2.3\bin\rscript.exe"
+		gen_heat = os.path.join(base_path, "scripts", "generate_heatplots.R")
+		arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title]))
+		subprocess.call([rscript_path, gen_heat, "--args", sitecode, wq_var, title])
 		return

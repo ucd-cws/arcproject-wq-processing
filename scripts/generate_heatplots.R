@@ -7,24 +7,8 @@ setwd(project_folder)
 # source the heatplot graphing script
 source("scripts/heatplot.R")
 
-# connect to the sqlite database
-con = dbConnect(SQLite(), dbname="wqdb.sqlite")
 
-
-# get the vertical gain ref points for slough given the transect site_code.
-# Returns list of profile site names and m_values 
-vert_gain_m_locs <- function(connection, siteid){
-  statement = paste("select * from profile_sites where site_id = ", siteid, "and m_value IS NOT NULL")
-  v = dbGetQuery(connection,  statement)
-  
-  station_names = v$profile_name # TODO check the actual field name in profile_sites 
-  station_meas = v$m_value # TODO check the actual field name in profile_sites 
-  
-  stations = list(station_names, station_meas) # r can only return 1 thing at a time so zip up as a list of lists
-} 
-
-
-# get all the water quality data for a given slough site
+# get all the water quality data for a given site
 all_wq_reach <- function(connection, siteid){
   # select all water quality data for a specific  
   statement = paste("select * from water_quality where site_id =", siteid, "and m_value IS NOT NULL")
@@ -34,16 +18,19 @@ all_wq_reach <- function(connection, siteid){
 
 
 # generate a heatplot for a given slough and water quality variable
-plot_wq_var <- function(connection, siteid, sitename, water_quality_var){
-  # get the locations for the vertical gain profiles along the transect
-  vert_profile_spots <- vert_gain_m_locs(connection, siteid)
+plot_wq_var <- function(connection, site_code, title, water_quality_var){
+
+  # get the site id from the code
+  statement = paste('select id from sites where code =', '"', site_code, '"', sep="")
+  id = dbGetQuery(connection, statement)
+  siteid = as.numeric(id$id)
   
   # load data for selected transect
   data <- all_wq_reach(connection, siteid)
   
   # check if there is actually data for the selected variable
   if(sum(!is.na(data[water_quality_var]))>0){
-  p <- heatplot(data, "date_time", "m_value", water_quality_var, sitename, vert_profile_spots[[1]], vert_profile_spots[[2]])
+  p <- heatplot(data, "date_time", "m_value", water_quality_var, title)
   }
   else{print("Variable does not have enough data")}
   }
@@ -120,15 +107,25 @@ generate_all <- function(connection,list_wq_vars){
   }
 }
 
+##############################################
+# get argvs if calling from script
+args <- commandArgs(trailingOnly=TRUE)
+if(length(args) == 4){
+  
+  siteid<-args[2]
+  wqvar<-args[3]
+  title<-args[4]
 
-# wq list
-wq_list = c("temp","ph","sp_cond","salinity", "dissolved_oxygen","dissolved_oxygen_percent", 
-            "dep_25", "par", "rpar","turbidity_sc","chl", "chl_volts","chl_corrected","corrected_gain")
-
-
-# batch generates all heatplots to plots/heatplots/{sitecode}_{variable}.png
-generate_all(con, wq_list)
-
-
-# finally disconnect from the database
-dbDisconnect(con)
+  # connect to the sqlite database
+  con = dbConnect(SQLite(), dbname="wqdb.sqlite")
+  
+  p <- plot_wq_var(con, siteid, title, wqvar)
+  
+  # save the plot to disk using the title as the filename
+  # saves the plot
+  save_wq_plot(p, title, wqvar)
+  
+  # finally disconnect from the database
+  dbDisconnect(con)
+  
+}else(stop("Not right number of arguments"))
