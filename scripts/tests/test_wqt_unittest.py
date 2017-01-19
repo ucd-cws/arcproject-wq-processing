@@ -138,7 +138,7 @@ class TestDFLoading(unittest.TestCase):
 
 		for index, value in enumerate(wq["DEP25"]):
 			if index == 0:
-				print("skipping header")
+				# print("skipping header")
 			else:
 				# print(value, df["DEP25"][index])
 				self.assertEqual(value, df["DEP25"][index])
@@ -149,7 +149,7 @@ class TestDFLoading(unittest.TestCase):
 
 		for index, value in enumerate(wq["DEP25"]):
 			if index == 0:
-				print("skipping header")
+				#print("skipping header")
 			else:
 				self.assertEqual(float(value) * 0.3048, df["DEP25"][index])
 

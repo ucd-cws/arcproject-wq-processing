@@ -18,7 +18,7 @@ from waterquality import classes
 
 # define constants
 source_field = "WQ_SOURCE"
-projection_spatial_reference = 3310  # Teale Albers  # 26942  # CA State Plane II Meters
+projection_spatial_reference = 26942  # 3310  # Teale Albers  # 26942  # CA State Plane II Meters
 
 # the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
 # a dict there, then look up the unit provided. If there's a number there, it's a multiplier to convert units to the desired
@@ -33,11 +33,21 @@ unit_conversion = {
 		u"meters": None,
 		u"feet": 0.3048,
 	},
+	u"DEP200": {
+		u"meters": None,
+		u"feet": 0.3048,
+	},
+	u"DepthX": {
+		u"meters": None,
+		u"feet": 0.3048,
+		u"volts": 0,  # check if can just pass Null value
+	},
 	u"Temp": {
 		u"°C": None,
 	},
 	u"SpCond": {
 		u"µS/cm": None,
+		u"mS/cm": 1000,
 	},
 	u"DO%": {
 		u"Sat": None
@@ -55,7 +65,8 @@ unit_conversion = {
 		u"µE/s/m²": None
 	},
 	u"TurbSC": {
-		u"NTU": None
+		u"NTU": None,
+		# u"Volts": 0,  # check if can just pass Null value
 	},
 	u"CHL": {
 		u"µg/l": None
@@ -74,7 +85,15 @@ unit_conversion = {
 	u"GPS_Date": None,
 	u"POINT_Y": None,
 	u"POINT_X": None,
-	u"IBatt": None
+	u"IBatt": None,
+	u"EBatt": None,
+	u"TurbSCV": None,
+	u"pHVolts": None,
+	u"Circ": None,
+	u"Wiper": None,
+	u"SpCond1": None,
+	u"DepthY": None,
+
 }
 
 
@@ -158,6 +177,19 @@ def convert_file_encoding(in_file, target_encoding="utf-8"):
 	return new_file
 
 
+def rename_depthfield(wq_df, depth_synonyms):
+	"""
+	Replaces depth field synonymes (DEPX, DEP200, etc) with DEP25
+	:param wq_df: raw data frame of water quality values
+	:param depth_synonyms: list of synonyms for the depth field (note must all be equivelent units)
+	:return: wq_df with the depth field renamed to DEP25
+	"""
+	for syn in depth_synonyms:
+		if syn in wq_df.columns:
+			wq_df['DEP25'] = wq_df[syn]
+	return wq_df
+
+
 # load a water quality file
 def wq_from_file(water_quality_raw_data):
 	"""
@@ -180,12 +212,14 @@ def wq_from_file(water_quality_raw_data):
 	wq = replaceIllegalFieldnames(wq)
 
 	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
-
 	# drop first row which contains units with illegal characters
 	wq = wq.drop(wq.index[[0]])
 
 	# handles any unit scaling/converting we need to do for fields that aren't always in the same units
 	wq = check_and_convert_units(wq, units)
+
+	# rename depth field
+	wq = rename_depthfield(wq, ["DEPX", "DEP200", "DepthX"])
 
 	# add column with source filename
 	addsourcefield(wq, source_field, water_quality_raw_data)
@@ -438,6 +472,7 @@ def site_function_historic(*args, **kwargs):
 	site_part = kwargs["site_part"]
 	filename = record.get(source_field)  # get the value of the data source field (source_field defined globally)
 	try:
+		filename = os.path.splitext(filename)[0]
 		site_code = filename.split("_")[int(site_part)].upper()  # the third item in the underscored part of the name has the site code
 	except IndexError:
 		raise IndexError("Filename was unable to be split based on underscore in order to parse site name - be sure your filename format matches the site function used, or that you're using the correct site retrieval function")
@@ -485,6 +520,7 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 			try:
 				session.commit()  # saves all new objects
 			except exc.IntegrityError as e:
+				print(e)
 				print("The water quality data you are adding to the database already exists in the database. If only some of your data is in the database, you may need to remove the overlapping data and only add the unique data.")
 	finally:
 		if session_created:
