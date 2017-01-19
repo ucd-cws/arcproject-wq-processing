@@ -2,10 +2,6 @@ import os
 from waterquality import classes
 from scripts import slurp
 
-### DEFINE DATA PATHS ###
-base_path = os.path.split(os.path.split(os.path.abspath(__file__))[0])[0]
-print(base_path)
-
 # path to location with data
 data = r"C:\Users\Andy\Desktop\ArcData" # or location on x drive
 
@@ -294,15 +290,20 @@ def dec():
 	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
-jan()
-feb()
-mar()
-apr()
-may()
-jun()
-jul()
-aug()
-sep()
-oct()
-nov()
-dec()
+
+def main():
+	jan()
+	feb()
+	mar()
+	apr()
+	may()
+	jun()
+	jul()
+	aug()
+	sep()
+	oct()
+	nov()
+	dec()
+
+if __name__ == '__main__':
+	main()

@@ -2,10 +2,6 @@ import os
 from waterquality import classes
 from scripts import slurp
 
-### DEFINE DATA PATHS ###
-base_path = os.path.split(os.path.split(os.path.abspath(__file__))[0])[0]
-print(base_path)
-
 # path to location with data
 data = r"C:\Users\Andy\Desktop\ArcData" # or location on x drive
 

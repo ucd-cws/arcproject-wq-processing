@@ -27,7 +27,6 @@ class Slurper(object):
 		self.gain_pattern = '*wqp*'  # pattern to match to find the gain water quality files
 		self.transect_pattern = '*wqt*'  # pattern to match to find the transect water quality files
 		self.transect_gps_pattern = '*PosnPnt*.shp'  # pattern to find the water quality transect GPS files
-		self.zoop_shp_pattern = '*ZoopChlW*.shp'  # pattern to find the ZoopChl gps files to join with the gains
 		self.dst = False  # adjust for daylight saving time
 		self.site = wq_gain.profile_function_historic  # if provided overrides parsing filename
 		self.gain_setting = wq_gain.profile_function_historic  # if provided overrides parsing filename
@@ -83,17 +82,13 @@ class Slurper(object):
 
 	def slurp_gains(self, base_path):
 
-		zoop_files = self.find_files(base_path, self.zoop_shp_pattern, self.exclude)
-		sites_shp_df = wqt_timestamp_match.gps_append_fromlist(zoop_files)
-
 		for gain_file in self.find_files(base_path, self.gain_pattern, self.exclude, self.skipext):
 			print(gain_file)
 			# validate that we have the site in VerticalProfile table
 			self.check_wqp_names(gain_file, self.add_new_sites)
 
 			try:
-				wq_gain.main(gain_file, site=self.site, gain=self.gain_setting, sample_sites_shp=sites_shp_df,
-				             site_gain_params=self.site_function_params)
+				wq_gain.main(gain_file, site=self.site, gain=self.gain_setting, site_gain_params=self.site_function_params)
 			except exc.IntegrityError as e:
 				print(e)
 				print("Gain file already in database.")
