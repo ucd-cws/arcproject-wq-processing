@@ -1,27 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-# match shp and water quality data by timestamp
-
-# import standard library items
 import os
-from datetime import datetime, timedelta
-import logging
 import tempfile
 import traceback
+from datetime import datetime, timedelta
 
-# import major third party modules
-import six
-import pandas as pd
-import numpy as np
 import arcpy
-from sqlalchemy.orm.exc import NoResultFound
+import numpy as np
+import pandas as pd
+import six
 from sqlalchemy import exc
+from sqlalchemy.orm.exc import NoResultFound
 
-# import CWS modules
-import geodatabase_tempfile
-
-# import project modules
+from scripts import reproject_features
 from waterquality import classes
 
 # define constants
@@ -277,22 +269,6 @@ def TimestampFromDateTime(date, time):
 	return date_object
 
 
-def reproject_features(feature_class):
-	"""
-	Given a feature class, it make a temporary file for it and reprojects the data to that location
-
-	:param feature_class: the path to a feature class to be reprojected
-	:return: reprojected feature class
-	"""
-
-	projected = geodatabase_tempfile.create_gdb_name()
-	spatial_reference = arcpy.SpatialReference(projection_spatial_reference)
-
-	arcpy.Project_management(feature_class, projected, spatial_reference)
-
-	return projected
-
-
 def check_projection(feature_class):
 	"""
 		Does two things. First, it confirms that the input data has a defined projection. This is something that was done
@@ -310,7 +286,7 @@ def check_projection(feature_class):
 			desc = arcpy.Describe(feature_class)  # we need to refresh this afterward because it won't autoupdate and we need it for the next check
 
 		if desc.spatialReference.factoryCode != projection_spatial_reference:
-			feature_class = reproject_features(feature_class)
+			feature_class = reproject_features(feature_class, projection_spatial_reference)
 	finally:
 		del desc
 
@@ -432,7 +408,7 @@ def JoinMatchPercent(original, joined):
 	return percent_match
 
 
-def wq_append_fromlist(list_of_wq_files):
+def wq_append_fromlist(list_of_wq_files, raise_exc=True):
 	"""
 	Takes a list of water quality files and appends them to a single dataframe
 	:param list_of_wq_files: list of raw water quality files paths
@@ -446,7 +422,10 @@ def wq_append_fromlist(list_of_wq_files):
 			master_wq_df = master_wq_df.append(pwq)
 
 		except:
-			print("Unable to process: {}".format(wq))
+			if raise_exc:
+				raise
+			else:
+				print("Unable to process: {}".format(wq))
 
 	return master_wq_df
 

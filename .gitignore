@@ -98,3 +98,4 @@ ENV/
 *.Rproj
 python.bat
 tox.ini
+pip.bat

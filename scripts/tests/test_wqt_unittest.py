@@ -3,12 +3,12 @@
 import os
 import unittest
 from datetime import datetime
-import sys
 import six
 
 import pandas
 import arcpy
 
+import scripts
 from scripts import wqt_timestamp_match
 from waterquality import classes
 from sqlalchemy import exc
@@ -218,7 +218,7 @@ class LoadSHP(unittest.TestCase):
 			Ensures that the reprojection code properly returns a new dataset that matches the default coordinate system.
 		:return:
 		"""
-		projected_data = wqt_timestamp_match.reproject_features(self.data)
+		projected_data = scripts.reproject_features(self.data)
 
 		desc = arcpy.Describe(projected_data)
 		self.assertEqual(desc.spatialReference.factoryCode, wqt_timestamp_match.projection_spatial_reference)
