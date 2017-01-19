@@ -98,7 +98,7 @@ def verify_summary_file(month, year, summary_file,max_point_distance=".5 Meters"
 		mapping.generate_layer_for_month(month, year_to_use=year, output_location=temp_points)
 	except scripts.NoRecordsError:
 		print("DATE FAILED: {} {} - no records found for that date\n".format(month, year))
-		return
+		raise
 
 	# copy it out so we can add the Near fields
 	temp_summary_file_location = geodatabase_tempfile.create_gdb_name("arcrproject_summary_file", scratch=True)
@@ -121,11 +121,17 @@ def verify_summary_file(month, year, summary_file,max_point_distance=".5 Meters"
 		num_missing += 1
 		missing_dates[datetime.strftime(point[0], "%x")] = 1  # use the locale-appropriate date as the key in the dictionary
 
+	status = None
+
 	if num_missing > max_missing_points:  # if we cross the threshold for notification
 		print("CROSSED THRESHOLD: Possibly missing transects")
 		for key in missing_dates.keys():
 			print("Unmatched point(s) on {}".format(key))
+			status = False
 	else:
+		status = True
 		print("ALL ClEAR for {} {}".format(month, year))
 
 	print("\n")
+
+	return status

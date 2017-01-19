@@ -374,7 +374,7 @@ def JoinMatchPercent(original, joined):
 	return percent_match
 
 
-def wq_append_fromlist(list_of_wq_files):
+def wq_append_fromlist(list_of_wq_files, raise_exc=True):
 	"""
 	Takes a list of water quality files and appends them to a single dataframe
 	:param list_of_wq_files: list of raw water quality files paths
@@ -388,7 +388,10 @@ def wq_append_fromlist(list_of_wq_files):
 			master_wq_df = master_wq_df.append(pwq)
 
 		except:
-			print("Unable to process: {}".format(wq))
+			if raise_exc:
+				raise
+			else:
+				print("Unable to process: {}".format(wq))
 
 	return master_wq_df
 
