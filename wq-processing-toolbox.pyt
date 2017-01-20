@@ -1,22 +1,26 @@
-import arcpy
+import calendar
 import os
 import subprocess
-from scripts import wqt_timestamp_match
-from scripts import wq_gain
+from string import digits
+
+import arcpy
+from sqlalchemy import exc, func, distinct, extract
+
 from scripts import mapping
+from scripts import wq_gain
+from scripts import wqt_timestamp_match
+from scripts.mapping import generate_layer_for_month
 from scripts import swap_site_recs
 from scripts import linear_ref
-from sqlalchemy import exc, func, distinct, extract
+
 from waterquality import classes
-from string import digits
-import datetime
-import calendar
+
 
 class Toolbox(object):
 	def __init__(self):
 		"""Define the toolbox (the name of the toolbox is the name of the .pyt file)."""
-		self.label = "ArcWQ"
-		self.alias = "ArcWQ"
+		self.label = "ArcProject WQ Toolbox"
+		self.alias = "ArcProject WQ Toolbox"
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot]
@@ -25,7 +29,7 @@ class Toolbox(object):
 class AddSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "New - Site (slough)"
+		self.label = "New Site (slough)"
 		self.description = "Add a new site to the database. Each slough should have it's own unique site id."
 		self.canRunInBackground = False
 		self.category = "Create New Sites"
@@ -84,7 +88,7 @@ class AddSite(object):
 class AddGainSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "New - Profile Site"
+		self.label = "New Profile Site"
 		self.description = "Create a new vertical profile site to add to the database"
 		self.canRunInBackground = False
 		self.category = "Create New Sites"
@@ -186,6 +190,7 @@ class GenerateWQLayer(object):
 			direction="Output"
 		)
 
+		fc = mapping.set_output_symbology(fc)
 		params = [date_to_generate, fc, ]
 		return params
 
@@ -209,15 +214,7 @@ class GenerateWQLayer(object):
 		date_to_use = parameters[0].value
 		output_location = parameters[1].valueAsText
 
-		wq = classes.WaterQuality
-		session = classes.get_new_session()
-
-		arcpy.AddMessage("Using Date {}".format(type(date_to_use)))
-
-		upper_bound = date_to_use.date() + datetime.timedelta(days=1)
-
-		query = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
-		mapping.query_to_features(query, output_location)
+		mapping.layer_from_date(date_to_use, output_location)
 
 
 class JoinTimestamp(object):
@@ -469,7 +466,7 @@ class GainToDB(object):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
-		if parameters[0].valueAsText:
+		if parameters[0].valueAsText and len(parameters[0].filters[1].list) == 0:
 
 			# validate site name by pulling creating filter with names from profile_sites table
 			# get list of sites from the database profile sites table
@@ -585,6 +582,8 @@ class GenerateMonth(object):
 			direction="Output"
 		)
 
+		fc = mapping.set_output_symbology(fc)
+
 		params = [year_to_generate, month_to_generate, fc, ]
 		return params
 
@@ -653,18 +652,9 @@ class GenerateMonth(object):
 
 		output_location = parameters[2].valueAsText
 
-		wq = classes.WaterQuality
-		session = classes.get_new_session()
+		generate_layer_for_month(month_to_use, year_to_use, output_location)
 
-		lower_bound = datetime.date(year_to_use, month_to_use, 1)
-		upper_bound = datetime.date(year_to_use, month_to_use,  int(calendar.monthrange(year_to_use, month_to_use)[1]))
-
-		arcpy.AddMessage("Pulling data for {} through {}".format(lower_bound, upper_bound))
-
-		query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
-		mapping.query_to_features(query, output_location)
-
-
+    
 class ModifyWQSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
