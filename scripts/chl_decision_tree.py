@@ -8,6 +8,8 @@ import pandas
 
 from waterquality import classes, shorten_float
 from sqlalchemy import exc
+from datetime import datetime
+startTime = datetime.now()
 
 format_string = "%Y-%m-%d"
 
@@ -121,10 +123,10 @@ def lm_significant(uncorrected_chl_value, rsquared, a_coeff, b_coeff):
 	:return: corrected chl
 	"""
 	if rsquared > 0.8:
-		print("R-square value {} and significant. Using the lm to correct the chl".format(rsquared))
+		#print("R-square value {} and significant. Using the lm to correct the chl".format(rsquared))
 		corrected_chl = chl_correction(uncorrected_chl_value, a_coeff, b_coeff)
 	else:
-		print("R-square value {} and not significant. Using uncorrected Chl values".format(rsquared))
+		#print("R-square value {} and not significant. Using uncorrected Chl values".format(rsquared))
 		corrected_chl = uncorrected_chl_value
 
 	return corrected_chl
@@ -155,8 +157,8 @@ def chl_decision(uncorrected_chl_value, sample_date):
 			# use gain1 regression if significant
 			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=1)
 		else:
-			print("Unable to correct CHL since regression values don't exist in the table.")
-			print("Returning uncorrected values")
+			#print("Unable to correct CHL since regression values don't exist in the table.")
+			#print("Returning uncorrected values")
 			chl = uncorrected_chl_value
 
 	# TODO there will likely be an error if the regression values don't exist in the table
@@ -178,3 +180,41 @@ def get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain):
 	chl = lm_significant(uncorrected_chl_value, reg_values.r_squared, reg_values.a_coefficient, reg_values.b_coefficient)
 
 	return chl
+
+
+def main(update="NEW"):
+
+
+
+	wq = classes.WaterQuality
+	session = classes.get_new_session()
+
+	if update == "ALL":
+		# get all data in water_quality
+		query = session.query(wq).filter(wq.chl != None)  # all records that have chl values
+	elif update == "NEW":
+		query = session.query(wq).filter(wq.chl != None, wq.chl_corrected is None)  # all records that have chl values
+
+
+	try:
+		# iterate over each row
+		for row in query:
+
+			# get the date only from the date_time field
+			dt = row.date_time
+			date = dt.strftime('%Y-%m-%d')
+
+			# decision tree using date and uncorrectd chl value
+			updated_chl = chl_decision(row.chl, date)
+			row.chl_corrected = updated_chl
+
+		# commit session
+		session.commit()
+	except:
+		pass
+	# close session
+	session.close()
+	return
+
+main()
+print (datetime.now() - startTime)
