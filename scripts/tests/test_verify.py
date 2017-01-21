@@ -36,7 +36,7 @@ class TestVerify(unittest.TestCase):
 	def _load_data(self, wq_files, gps_data):
 		# add one set of records for Dec 2013
 		for wq_file in wq_files:
-			wqt_timestamp_match.main([wq_file], gps_data, site_func_params={"site_part": 3, "gain_part": 4})
+			wqt_timestamp_match.main([wq_file], gps_data, site_func_params={"site_part": 3, "gain_part": 4}, dst_adjustment=True)
 
 	def _make_site(self, site):
 
