@@ -83,7 +83,7 @@ def check_in_same_projection(summary_file, verification_date):
 	return scripts.reproject_features(summary_file, sr_code)
 
 
-def verify_summary_file(month, year, summary_file,max_point_distance="2 Meters", max_missing_points=0):
+def verify_summary_file(month, year, summary_file,max_point_distance="5 Meters", max_missing_points=0):
 	"""
 		Given a path to a file and a list of datetime objects, loads the summary file data and verifies the data for each date has been entered into the DB
 	:param summary_file_path:

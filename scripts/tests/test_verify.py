@@ -34,7 +34,8 @@ class TestVerify(unittest.TestCase):
 			self._make_site(site)
 
 		# add one set of records for Dec 2013
-		wqt_timestamp_match.main(wq_files, self.gps, site_func_params={"site_part": 3, "gain_part": 4})
+		for wq_file in wq_files:
+			wqt_timestamp_match.main([wq_file], self.gps, site_func_params={"site_part": 3, "gain_part": 4})
 
 	def _make_site(self, site):
 
