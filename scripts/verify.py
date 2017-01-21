@@ -83,7 +83,7 @@ def check_in_same_projection(summary_file, verification_date):
 	return scripts.reproject_features(summary_file, sr_code)
 
 
-def verify_summary_file(month, year, summary_file,max_point_distance=".5 Meters", max_missing_points=0):
+def verify_summary_file(month, year, summary_file,max_point_distance="2 Meters", max_missing_points=0):
 	"""
 		Given a path to a file and a list of datetime objects, loads the summary file data and verifies the data for each date has been entered into the DB
 	:param summary_file_path:
@@ -102,6 +102,7 @@ def verify_summary_file(month, year, summary_file,max_point_distance=".5 Meters"
 
 	# copy it out so we can add the Near fields
 	temp_summary_file_location = geodatabase_tempfile.create_gdb_name("arcrproject_summary_file", scratch=True)
+	print("Verification feature class at {}".format(temp_summary_file_location))
 	arcpy.CopyFeatures_management(summary_file, temp_summary_file_location)
 	print('Running Near to Find Missing Locations')
 	arcpy.Near_analysis(temp_summary_file_location, temp_points, max_point_distance)
@@ -111,7 +112,7 @@ def verify_summary_file(month, year, summary_file,max_point_distance=".5 Meters"
 	missing_locations = arcpy.da.SearchCursor(
 		in_table=temp_summary_file_location,
 		field_names=["GPS_Date", "NEAR_FID"],
-		where_clause="NEAR_FID is NULL",
+		where_clause="NEAR_FID IS NULL OR NEAR_FID = -1",
 	)
 
 	num_missing = 0
@@ -124,7 +125,7 @@ def verify_summary_file(month, year, summary_file,max_point_distance=".5 Meters"
 	status = None
 
 	if num_missing > max_missing_points:  # if we cross the threshold for notification
-		print("CROSSED THRESHOLD: Possibly missing transects")
+		print("CROSSED THRESHOLD: {} Missing Points. Possibly missing transects".format(num_missing))
 		for key in missing_dates.keys():
 			print("Unmatched point(s) on {}".format(key))
 			status = False

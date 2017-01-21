@@ -7,6 +7,7 @@ from scripts import NoRecordsError
 from waterquality import utils
 from waterquality import classes
 
+
 class TestVerify(unittest.TestCase):
 
 	def setUp(self):
@@ -54,7 +55,7 @@ class TestVerify(unittest.TestCase):
 		:return:
 		"""
 		self._remake_db(self.wq_12_11 + self.wq_12_13)  # load all of the december data
-		self.assertTrue(verify.verify_summary_file(12, 2013, self.dec_2013_summary_file))
+		self.assertTrue(verify.verify_summary_file(12, 2013, self.dec_2013_summary_file, max_missing_points=15))
 		# self.assertTrue(False)  # This test should be failing as constructed because not all data is loaded
 
 	def test_verify_fail_no_records_for_date(self):
@@ -71,6 +72,6 @@ class TestVerify(unittest.TestCase):
 		"""
 		self._remake_db(self.wq_12_11)
 		# run verification
-		self.assertFalse(verify.verify_summary_file(12, 2013, self.dec_2013_summary_file))
+		self.assertFalse(verify.verify_summary_file(12, 2013, self.dec_2013_summary_file, max_missing_points=15))
 
 
