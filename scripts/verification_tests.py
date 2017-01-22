@@ -25,7 +25,7 @@ class Test2013(unittest.TestCase):
 		self.assertTrue(verify.verify_summary_file(3, 2013, s))
 
 	def test_apr_2013(self):
-		s = os.path.join(test_data, r"Apr_2013\SummaryFiles\Apr2013_GPS\StatePlaneCAII\Arc_Apr2013_WQ_Trans.shp")
+		s = os.path.join(test_data, r"Apr_2013\SummaryFiles\Apr2013_GPS\StatePlaneCAII\Arc_Apr2013_WQt.shp")
 		self.assertTrue(verify.verify_summary_file(4, 2013, s))
 
 	def test_may_2013(self):
@@ -33,7 +33,7 @@ class Test2013(unittest.TestCase):
 		self.assertTrue(verify.verify_summary_file(5, 2013, s))
 
 	def test_jun_2013(self):
-		s = os.path.join(test_data, r"Jun_2013\SummaryFiles\Jun2013_GPS\StatePlaneCAII\Arc_Jun2013_WQt_w_finalchl.shp")
+		s = os.path.join(test_data, r"Jun_2013\SummaryFiles\Jun2013_GPS\StatePlaneCAII\Arc_Jun2013_WQt.shp")
 		self.assertTrue(verify.verify_summary_file(6, 2013, s))
 
 	def test_jul_2013(self):
