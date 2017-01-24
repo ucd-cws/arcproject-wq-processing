@@ -4,3 +4,4 @@ numpy >= 1.9.2
 pandas >= 0.16.1
 matplotlib
 geodatabase_tempfile
+amaptor >= 0.0.6

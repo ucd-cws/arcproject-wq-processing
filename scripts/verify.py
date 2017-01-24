@@ -1,9 +1,11 @@
 from datetime import datetime
+import tempfile
 
 import arcpy
 import pandas as pd
 
 import geodatabase_tempfile
+import amaptor
 
 import waterquality
 from waterquality import classes, funcs as wq_funcs
@@ -129,6 +131,10 @@ def verify_summary_file(month, year, summary_file,max_point_distance="5 Meters",
 		for key in missing_dates.keys():
 			print("Unmatched point(s) on {}".format(key))
 			status = False
+
+		map_output = tempfile.mktemp(prefix="missing_data_{}_{}".format(month, year), )
+		mapping.map_missing_segments(temp_summary_file_location, temp_points, map_output)
+		print("Map output to {}.{}".format(map_output, amaptor.MAP_EXTENSION))
 	else:
 		status = True
 		print("ALL ClEAR for {} {}".format(month, year))
@@ -136,3 +142,4 @@ def verify_summary_file(month, year, summary_file,max_point_distance="5 Meters",
 	print("\n")
 
 	return status
+
