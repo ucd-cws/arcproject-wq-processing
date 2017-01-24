@@ -103,12 +103,13 @@ def map_missing_segments(summary_file, loaded_data, output_location, template=os
 	"""
 
 	transect_template = os.path.join(_LAYERS_FOLDER, "added_data.lyr")
+	summary_file_template = os.path.join(_LAYERS_FOLDER, "summary_file_review.lyr")
 
 	project = amaptor.Project(template)
 	map = project.maps[0]
-	map.insert_feature_class_with_symbology(loaded_data, layer_file=transect_template, layer_name="Loaded Transects", near_name="Arc_DeltaWaterways_0402", insert_position="BEFORE")
-	map.insert_feature_class_with_symbology(summary_file, layer_file=arcgis_10_layer_symbology, layer_name="Summary File", near_name="Arc_DeltaWaterways_0402", insert_position="BEFORE")
-
-
+	map.insert_feature_class_with_symbology(summary_file, layer_file=summary_file_template, layer_name="Summary File",
+											near_name="Arc_DeltaWaterways_0402", insert_position="BEFORE")
+	map.insert_feature_class_with_symbology(loaded_data, layer_file=transect_template, layer_name="Loaded Transects",
+											near_name="Arc_DeltaWaterways_0402", insert_position="BEFORE")
 
 	project.save_a_copy(output_location)
