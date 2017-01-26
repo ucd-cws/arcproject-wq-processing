@@ -265,7 +265,13 @@ class WaterQuality(Base):
 
 	site_id = Column(Integer, ForeignKey('sites.id'))
 	site = relationship("Site", backref="water_quality_records")
+
+	# water_quality_file_id = Column(Integer, ForeignKey('water_quality_files.id'))
+	# file = relationship(WaterQualityFile,
+	#					backref="water_quality_records")
+
 	date_time = Column(DateTime)  # unique constraint - see __table_args__
+
 	y_coord = Column(Float)  # currently assumes consistent projections
 	x_coord = Column(Float)
 	spatial_reference_code = Column(Integer)  # stores the ESPG/factory code for the coordinate system projection
@@ -281,35 +287,9 @@ class WaterQuality(Base):
 	par = Column(Integer)
 	rpar = Column(Integer)
 	turbidity_sc = Column(Float)
+
 	chl = Column(Float)  # raw measurement by sonde
 	chl_volts = Column(Float)
+
 	chl_corrected = Column(Float)  # this is the value that's corrected after running the regression.
 	corrected_gain = Column(Float)  # storing this here in case we need it instead of joining back
-
-
-class UnMatchedWaterQuality(Base):
-	"""
-		Each instance of this class is an observation in the database
-	"""
-	__tablename__ = 'water_quality_missing_gps'
-	__table_args__ = (UniqueConstraint('date_time', name='_time_uc'),)
-
-	id = Column(Integer, primary_key=True)
-
-	site_id = Column(Integer, ForeignKey('sites.id'))
-	site = relationship("Site", backref="water_quality_records1")
-
-	date_time = Column(DateTime)  # unique constraint - see __table_args__
-	source = Column(String)
-	temp = Column(Float)
-	ph = Column(Float)
-	sp_cond = Column(Integer)
-	salinity = Column(Float)
-	dissolved_oxygen = Column(Float)
-	dissolved_oxygen_percent = Column(Float)
-	dep_25 = Column(Float)
-	par = Column(Integer)
-	rpar = Column(Integer)
-	turbidity_sc = Column(Float)
-	chl = Column(Float)  # raw measurement by sonde
-	chl_volts = Column(Float)
