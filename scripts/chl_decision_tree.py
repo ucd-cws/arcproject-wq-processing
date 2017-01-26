@@ -184,8 +184,6 @@ def get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain):
 
 def main(update="NEW"):
 
-
-
 	wq = classes.WaterQuality
 	session = classes.get_new_session()
 
@@ -194,7 +192,8 @@ def main(update="NEW"):
 		query = session.query(wq).filter(wq.chl != None)  # all records that have chl values
 	elif update == "NEW":
 		query = session.query(wq).filter(wq.chl != None, wq.chl_corrected is None)  # all records that have chl values
-
+	else:
+		query = update
 
 	try:
 		# iterate over each row

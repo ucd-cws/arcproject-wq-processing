@@ -203,7 +203,7 @@ def wq_from_file(water_quality_raw_data):
 	else:
 		encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
 
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*'], encoding=encoding)  # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*', '2000000.00'], encoding=encoding)
 
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
@@ -486,7 +486,7 @@ def site_function_historic(*args, **kwargs):
 
 
 def wq_df2database(data, field_map=classes.water_quality_header_map, site_function=site_function_historic,
-                   site_func_params=site_function_params, session=None):
+                   site_func_params=site_function_params, session=None, class_obj=classes.WaterQuality):
 	"""
 	Given a pandas data frame of water quality records, translates those records to ORM-mapped objects in the database.
 
@@ -513,7 +513,7 @@ def wq_df2database(data, field_map=classes.water_quality_header_map, site_functi
 
 		# this isn't the fastest approach in the world, but it will create objects for each data frame record in the database.
 		for row in records:  # iterates over all of the rows in the data frames the fast way
-			make_record(field_map, row[1], session, site_function, site_func_params)  # row[1] is the actual data included in the row
+			make_record(field_map, row[1], session, site_function, site_func_params, class_obj)  # row[1] is the actual data included in the row
 
 		# session.add_all(records)
 		if session_created:  # only commit if this function created the session - otherwise leave it to caller
@@ -537,7 +537,7 @@ def site_from_text(site_code, session):
 	return session.query(classes.Site).filter(classes.Site.code == site_code).one()
 
 
-def make_record(field_map, row, session, site_function, site_func_params):
+def make_record(field_map, row, session, site_function, site_func_params, class_obj=classes.WaterQuality):
 	"""
 	 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame, translates it into a waterquality object
 	:param field_map: A field map dictionary with keys based on the data frame fields and values of the corresponding database field
@@ -547,7 +547,8 @@ def make_record(field_map, row, session, site_function, site_func_params):
 	:param site_func_params: parameters to pass to the site function
 	:return:
 	"""
-	wq = classes.WaterQuality()  # instantiates a new object
+	#wq = classes.WaterQuality()  # instantiates a new object
+	wq = class_obj()
 
 	try:  # figure out whether we have a function or a text code to determine the site. If it's a text code, call site_from_text, otherwise call the function
 		if isinstance(site_function, six.string_types):
@@ -703,10 +704,14 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)
 	matches = splitunmatched(joined_data)[0]
+	nogpsmatch = splitunmatched(joined_data)[1]
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
 	wq_df2database(matches, site_function=site_function, site_func_params=site_func_params)
+
+	# now add the non-gps matches
+	wq_df2database(nogpsmatch, site_function=site_function, site_func_params=site_func_params, class_obj=classes.UnMatchedWaterQuality)
 
 	if output_feature:
 		# Define a spatial reference for the output feature class by copying the input
