@@ -203,7 +203,7 @@ def wq_from_file(water_quality_raw_data):
 	else:
 		encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
 
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*'], encoding=encoding)  # TODO add other error values (2000000.00 might be error for CHL)
+	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*', '2000000.00'], encoding=encoding)
 
 	# drop all columns that are blank since data in csv is separated by empty columns
 	wq = wq.dropna(axis=1, how="all")
@@ -703,17 +703,21 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 	# join using time stamps with exact match
 	joined_data = JoinByTimeStamp(wq, pts)
 	matches = splitunmatched(joined_data)[0]
+	nogpswq = splitunmatched(joined_data)[1]
 
 	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
 
-	wq_df2database(matches, site_function=site_function, site_func_params=site_func_params)
+	# concatenate matches with nogpswq
+	result = pd.concat([matches, nogpswq])
+
+	wq_df2database(result, site_function=site_function, site_func_params=site_func_params)
 
 	if output_feature:
 		# Define a spatial reference for the output feature class by copying the input
 		spatial_ref = arcpy.Describe(transect_gps).spatialReference
 
 		# convert pandas dataframe to structured numpy array
-		match_np = pd2np(matches)
+		match_np = pd2np(result)
 
 		# convert structured array to output feature class
 		np2feature(match_np, output_feature, spatial_ref)

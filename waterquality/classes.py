@@ -122,13 +122,6 @@ class VerticalProfile(Base):
 	chl = Column(Float)  # raw measurement by sonde
 	chl_volts = Column(Float)
 	source = Column(String)
-	# @property
-	# def gain_setting(self):
-	# 	return self._gain_setting
-	#
-	# @gain_setting.setter
-	# def gain_setting(self, value_list):
-	# 	self._gain_setting = numpy.mean(value_list)
 
 	@validates('profile_site_abbreviation')
 	def convert_upper(self, key, value):
@@ -192,7 +185,6 @@ class Station(Base):
 
 	id = Column(Integer, primary_key=True)
 	code = Column(String)  # the station code
-
 	y_coord = Column(Numeric(asdecimal=False))
 	x_coord = Column(Numeric(asdecimal=False))
 
@@ -203,7 +195,6 @@ class GrabSample(Base):
 	id = Column(Integer, primary_key=True)
 	internal_id = Column(String)
 	date = Column(Date)
-
 	station_id = Column(Integer, ForeignKey('stations.id'))
 	station = relationship("Station",
 					backref="grab_samples")
@@ -262,16 +253,9 @@ class WaterQuality(Base):
 	__table_args__ = (UniqueConstraint('date_time', name='_time_uc'),)
 
 	id = Column(Integer, primary_key=True)
-
 	site_id = Column(Integer, ForeignKey('sites.id'))
 	site = relationship("Site", backref="water_quality_records")
-
-	# water_quality_file_id = Column(Integer, ForeignKey('water_quality_files.id'))
-	# file = relationship(WaterQualityFile,
-	#					backref="water_quality_records")
-
 	date_time = Column(DateTime)  # unique constraint - see __table_args__
-
 	y_coord = Column(Float)  # currently assumes consistent projections
 	x_coord = Column(Float)
 	spatial_reference_code = Column(Integer)  # stores the ESPG/factory code for the coordinate system projection
@@ -292,4 +276,4 @@ class WaterQuality(Base):
 	chl_volts = Column(Float)
 
 	chl_corrected = Column(Float)  # this is the value that's corrected after running the regression.
-	corrected_gain = Column(Float)  # storing this here in case we need it instead of joining back
+	notes = Column(String)
