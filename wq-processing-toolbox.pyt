@@ -23,7 +23,7 @@ class Toolbox(object):
 		self.alias = "ArcProject WQ Toolbox"
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
-		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot]
+		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot, GenerateSite]
 
 
 class AddSite(object):
@@ -909,3 +909,79 @@ class LinearRef(object):
 		linear_ref.main(session, query, ref_line)
 
 		return
+
+
+class GenerateSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "SiteID- All WQ Transects"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Mapping"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+
+		siteid = arcpy.Parameter(
+			displayName="SiteID",
+			name="siteid",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		# shapefile for the transects GPS breadcrumbs
+		fc = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="output_feature_class",
+			datatype="DEFeatureClass",
+			direction="Output"
+		)
+
+		fc = mapping.set_output_symbology(fc)
+
+		params = [siteid, fc, ]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		# validate site name by pulling creating filter with names from table
+		# get list of sites from the database profile sites table
+		session = classes.get_new_session()
+		try:
+			sites = session.query(classes.Site).distinct().all()
+			site_names = []
+
+			# add profile name to site list
+			for s in sites:
+				combine = str(s.id) + '_' + s.code
+				site_names.append(combine)
+
+			parameters[0].filter.type = 'ValueList'
+			parameters[0].filter.list = site_names
+
+		finally:
+			session.close()
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		siteid_code = parameters[0].valueAsText
+		siteid = int(siteid_code.split("_")[0])
+
+		output_location = parameters[1].valueAsText
+
+		mapping.generate_layer_for_site(siteid, output_location)
