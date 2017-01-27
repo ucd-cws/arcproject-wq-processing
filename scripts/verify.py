@@ -1,5 +1,6 @@
 from datetime import datetime
 import tempfile
+import os
 
 import arcpy
 import pandas as pd
@@ -85,7 +86,7 @@ def check_in_same_projection(summary_file, verification_date):
 	return scripts.reproject_features(summary_file, sr_code)
 
 
-def verify_summary_file(month, year, summary_file,max_point_distance="6 Meters", max_missing_points=25):
+def verify_summary_file(month, year, summary_file, max_point_distance="6 Meters", max_missing_points=50, map_package_export_folder=r"C:\Users\dsx.AD3\Box Sync\arcproject\validation"):
 	"""
 		Given a path to a file and a list of datetime objects, loads the summary file data and verifies the data for each date has been entered into the DB
 	:param summary_file_path:
@@ -133,7 +134,8 @@ def verify_summary_file(month, year, summary_file,max_point_distance="6 Meters",
 			status = False
 
 		map_output = tempfile.mktemp(prefix="missing_data_{}_{}".format(month, year), )
-		mapping.map_missing_segments(temp_summary_file_location, temp_points, map_output)
+		project = mapping.map_missing_segments(temp_summary_file_location, temp_points, map_output)
+		export_map_package(project, map_package_export_folder, month, year)
 		print("Map output to {}.{}".format(map_output, amaptor.MAP_EXTENSION))
 	else:
 		status = True
@@ -142,4 +144,18 @@ def verify_summary_file(month, year, summary_file,max_point_distance="6 Meters",
 	print("\n")
 
 	return status
+
+
+def export_map_package(project, folder, month, year):
+
+	if not os.path.exists(folder):
+		os.mkdir(folder)
+
+	output_name = os.path.join(folder, "{}_{}.ppkx".format(month, year))
+	if os.path.exists(output_name):
+		os.remove(output_name)
+
+	print("Exporting project to {}".format(output_name))
+
+	project.to_package(output_name, summary="data verification", tags="data verify")
 

@@ -113,3 +113,5 @@ def map_missing_segments(summary_file, loaded_data, output_location, template=os
 											near_name="Arc_DeltaWaterways_0402", insert_position="BEFORE")
 
 	project.save_a_copy(output_location)
+
+	return project

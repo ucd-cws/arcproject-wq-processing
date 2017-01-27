@@ -5,6 +5,7 @@ from string import digits
 
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
+import amaptor
 
 from scripts import mapping
 from scripts import wq_gain
@@ -25,6 +26,49 @@ class Toolbox(object):
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot]
 
+
+class WQMappingBase(object):
+	"""
+		A base class for tools that want to provide a choice for how to symbolize water quality data. To use, subclass it
+		for any of the other tools, add the defined parameter to the list of params,
+		 and make sure the tool init includes a call to super(NewClassName, self).__init__() at the beginning of __init__
+	"""
+	def __init__(self):
+		self.select_wq_param = arcpy.Parameter(
+			displayName="Symbolize Data by",
+			name="symbology",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input",
+		)
+
+		self._filter_to_layer_mapping = {
+										"CHLa": "CHLa.lyr",
+										"Dissolved Oxygen": "DO.lyr",
+										"DO Percent Saturation": "DOPerCentSat.lyr",
+										"pH": "pH.lyr",
+										"RPAR": "RPAR.lyr",
+										"Salinity": "Sal.lyr",
+										"SpCond": "SpCond.lyr",
+										"Temperature": "Temp.lyr",
+										"Turbidity": "Turbid.lyr"
+									}
+
+		self.select_wq_param.filter.type = "ValueList"
+		self.select_wq_param.filter.list = ["CHLa", "Dissolved Oxygen", "DO Percent Saturation", "pH", "RPAR", "Salinity", "SpCond",
+							"Temperature", "Turbidity"]
+
+
+	def insert_layer(self, data_path, symbology_param):
+		project = amaptor.Project("CURRENT")
+		map = project.get_active_map()
+
+		layer_name = self._filter_to_layer_mapping[symbology_param.valueAsText]
+		layer_path = os.path.join(mapping._LAYERS_FOLDER, layer_name)
+
+		layer = amaptor.make_layer_with_file_symbology(data_path, layer_path)
+		layer.name = os.path.split(data_path)[1]
+		map.add_layer(layer)
 
 class AddSite(object):
 	def __init__(self):
@@ -160,61 +204,6 @@ class AddGainSite(object):
 			arcpy.AddMessage("{} already exists. Skipping.".format(ps.abbreviation))
 		finally:
 			session.close()
-
-
-class GenerateWQLayer(object):
-	def __init__(self):
-		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Generate Map Layer from Water Quality Data"
-		self.description = ""
-		self.canRunInBackground = False
-		self.category = "Mapping"
-
-	def getParameterInfo(self):
-		"""Define parameter definitions"""
-
-		# parameter info for selecting multiple csv water quality files
-		date_to_generate = arcpy.Parameter(
-			displayName="Date to Generate Layer For",
-			name="date_to_generate",
-			datatype="GPDate",
-			multiValue=False,
-			direction="Input"
-		)
-
-		# shapefile for the transects GPS breadcrumbs
-		fc = arcpy.Parameter(
-			displayName="Output Feature Class",
-			name="output_feature_class",
-			datatype="DEFeatureClass",
-			direction="Output"
-		)
-
-		fc = mapping.set_output_symbology(fc)
-		params = [date_to_generate, fc, ]
-		return params
-
-	def isLicensed(self):
-		"""Set whether tool is licensed to execute."""
-		return True
-
-	def updateParameters(self, parameters):
-		"""Modify the values and properties of parameters before internal
-		validation is performed.  This method is called whenever a parameter
-		has been changed."""
-		return
-
-	def updateMessages(self, parameters):
-		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation."""
-		return
-
-	def execute(self, parameters, messages):
-		"""The source code of the tool."""
-		date_to_use = parameters[0].value
-		output_location = parameters[1].valueAsText
-
-		mapping.layer_from_date(date_to_use, output_location)
 
 
 class JoinTimestamp(object):
@@ -540,13 +529,70 @@ class GainToDB(object):
 		return
 
 
-class GenerateMonth(object):
+class GenerateWQLayer(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Generate Map Layer from Water Quality Data"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Mapping"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+		date_to_generate = arcpy.Parameter(
+			displayName="Date to Generate Layer For",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input"
+		)
+
+		# shapefile for the transects GPS breadcrumbs
+		fc = arcpy.Parameter(
+			displayName="Output Feature Class",
+			name="output_feature_class",
+			datatype="DEFeatureClass",
+			direction="Output"
+		)
+
+		fc = mapping.set_output_symbology(fc)
+		params = [date_to_generate, fc, ]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		date_to_use = parameters[0].value
+		output_location = parameters[1].valueAsText
+
+		mapping.layer_from_date(date_to_use, output_location)
+
+
+class GenerateMonth(WQMappingBase):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "All WQ Transects for Single Month"
 		self.description = "Generate a layer of all the water quality transects for a given month and year"
 		self.canRunInBackground = False
 		self.category = "Mapping"
+		
+		super(GenerateMonth, self).__init__()
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -582,9 +628,7 @@ class GenerateMonth(object):
 			direction="Output"
 		)
 
-		fc = mapping.set_output_symbology(fc)
-
-		params = [year_to_generate, month_to_generate, fc, ]
+		params = [year_to_generate, month_to_generate, self.select_wq_param, fc, ]
 		return params
 
 	def isLicensed(self):
@@ -650,9 +694,11 @@ class GenerateMonth(object):
 
 		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
 
-		output_location = parameters[2].valueAsText
+		output_location = parameters[3].valueAsText
 
 		generate_layer_for_month(month_to_use, year_to_use, output_location)
+
+		self.insert_layer(output_location, parameters[2])
 
     
 class ModifyWQSite(object):

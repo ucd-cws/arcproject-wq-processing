@@ -4,7 +4,7 @@ import arcpy
 import os
 from waterquality import classes
 import numpy as np
-import wqt_timestamp_match
+from scripts import wqt_timestamp_match
 
 # reference routes that are used to get the slough distance
 wd = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
