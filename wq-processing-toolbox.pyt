@@ -23,7 +23,8 @@ class Toolbox(object):
 		self.alias = "ArcProject WQ Toolbox"
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
-		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot, GenerateSite]
+		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
+		              GenerateSite, ModifySelectedSite]
 
 
 class AddSite(object):
@@ -963,7 +964,7 @@ class GenerateSite(object):
 
 			# add profile name to site list
 			for s in sites:
-				combine = str(s.id) + '_' + s.code
+				combine = str(s.id) + ' - ' + s.code
 				site_names.append(combine)
 
 			parameters[0].filter.type = 'ValueList'
@@ -980,8 +981,106 @@ class GenerateSite(object):
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
 		siteid_code = parameters[0].valueAsText
-		siteid = int(siteid_code.split("_")[0])
+		siteid = int(siteid_code.split(" - ")[0])
 
 		output_location = parameters[1].valueAsText
 
 		mapping.generate_layer_for_site(siteid, output_location)
+
+
+class ModifySelectedSite(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Modify SiteID for Selected Records"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Modify"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+
+		siteid = arcpy.Parameter(
+			displayName="New SiteID",
+			name="siteid",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		wq =  arcpy.Parameter(
+			displayName="WQ points to change site code",
+			name="shp_file",
+			datatype="GPFeatureLayer",
+			direction="Input"
+		)
+
+		params = [siteid, wq]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		# validate site name by pulling creating filter with names from table
+		# get list of sites from the database profile sites table
+		session = classes.get_new_session()
+		try:
+			sites = session.query(classes.Site).distinct().all()
+			site_names = []
+
+			# add profile name to site list
+			for s in sites:
+				combine = str(s.id) + ' - ' + s.code
+				site_names.append(combine)
+
+			parameters[0].filter.type = 'ValueList'
+			parameters[0].filter.list = site_names
+
+		finally:
+			session.close()
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		siteid_code = parameters[0].valueAsText
+		siteid = int(siteid_code.split(" - ")[0])
+
+		# selected features
+		feature = parameters[1].value
+
+		desc = arcpy.Describe(feature)
+
+		if desc.FIDSet != '':
+			num = len(desc.FIDSet.split(";"))
+			arcpy.AddMessage("Updating {} records".format(num))
+			ids_2_update = []
+			with arcpy.da.SearchCursor(feature, ['id']) as cursor:
+				for row in cursor:
+					ids_2_update.append(int(row[0]))
+			arcpy.AddMessage(ids_2_update)
+
+			session = classes.get_new_session()
+
+			try:
+				for i in ids_2_update:
+					wq = classes.WaterQuality
+					q = session.query(wq).filter(wq.id == i).one()
+					q.site_id = siteid
+				session.commit()
+			finally:
+				session.close()
+		else:
+			arcpy.AddMessage("No points selected. Make a selection first!")
+
+		return
