@@ -42,8 +42,31 @@ class WQMappingBase(object):
 			direction="Input",
 		)
 
+		self.year_to_generate = arcpy.Parameter(  # optional to use, but available
+			displayName="Year",
+			name="year_to_generate",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		self.month_to_generate = arcpy.Parameter(  # optional to use, but available
+			displayName="Month",
+			name="month_to_generate",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		self.month_to_generate.filter.type = 'ValueList'
+		t = list(calendar.month_name)
+		t.pop(0)
+		self.month_to_generate.filter.list = t
+
+
 		self._filter_to_layer_mapping = {
-										"CHLa": "CHLa.lyr",
+										"CHL": "CHLa.lyr",
+										"CHL Corrected": "CHLa.lyr",
 										"Dissolved Oxygen": "DO.lyr",
 										"DO Percent Saturation": "DOPerCentSat.lyr",
 										"pH": "pH.lyr",
@@ -55,12 +78,23 @@ class WQMappingBase(object):
 									}
 
 		self.select_wq_param.filter.type = "ValueList"
-		self.select_wq_param.filter.list = ["CHLa", "Dissolved Oxygen", "DO Percent Saturation", "pH", "RPAR", "Salinity", "SpCond",
+		self.select_wq_param.filter.list = ["CHL", "Corrected CHL", "Dissolved Oxygen", "DO Percent Saturation", "pH", "RPAR", "Salinity", "SpCond",
 							"Temperature", "Turbidity"]
 
 
-	def insert_layer(self, data_path, symbology_param):
-		project = amaptor.Project("CURRENT")
+	def insert_layer(self, data_path, symbology_param, map_document_or_project="CURRENT"):
+		"""
+			Symbolizes a WQ layer based on the specified parameter and then inserts it into a map
+		:param data_path:
+		:param symbology_param:
+		:param map_document_or_project: a reference to a map document (including "CURRENT") or an instance of an amaptor project
+		:return:
+		"""
+
+		if isinstance(map_document_or_project, amaptor.Project):
+			project = map_document_or_project
+		else:
+			project = amaptor.Project(map_document_or_project)
 		map = project.get_active_map()
 
 		layer_name = self._filter_to_layer_mapping[symbology_param.valueAsText]
@@ -69,6 +103,53 @@ class WQMappingBase(object):
 		layer = amaptor.make_layer_with_file_symbology(data_path, layer_path)
 		layer.name = os.path.split(data_path)[1]
 		map.add_layer(layer)
+
+	def update_month_fields(self, parameters, year_field_index=0, month_field_index=1):
+		"""
+			Used on Generate Month and Generate Map
+		:param parameters:
+		:return:
+		"""
+
+		# get years with data from the database to use as selection for tool input
+		session = classes.get_new_session()
+		try:
+			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
+
+			print(q)
+			years = []
+			# add profile name to site list
+			for year in q:
+				print(year[0])
+				years.append(year[0])
+			parameters[year_field_index].filter.type = 'ValueList'
+			parameters[year_field_index].filter.list = years
+
+		finally:
+			session.close()
+
+		# get valid months for the selected year as the options for the tool input
+		if parameters[year_field_index].value:
+			Y = int(parameters[year_field_index].value)
+
+			session = classes.get_new_session()
+			try:
+
+				q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
+					extract('year', classes.WaterQuality.date_time) == Y).distinct()
+				months = []
+				t = list(calendar.month_name)
+				for month in q2:
+					print(month[0])
+					months.append(t[month[0]])
+
+				print(months)
+				parameters[month_field_index].filter.type = 'ValueList'
+				parameters[month_field_index].filter.list = months
+			finally:
+				session.close()
+		return
+
 
 class AddSite(object):
 	def __init__(self):
@@ -529,13 +610,15 @@ class GainToDB(object):
 		return
 
 
-class GenerateWQLayer(object):
+class GenerateWQLayer(WQMappingBase):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Generate Map Layer from Water Quality Data"
 		self.description = ""
 		self.canRunInBackground = False
 		self.category = "Mapping"
+
+		super(GenerateWQLayer, self).__init__()
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -558,7 +641,7 @@ class GenerateWQLayer(object):
 		)
 
 		fc = mapping.set_output_symbology(fc)
-		params = [date_to_generate, fc, ]
+		params = [date_to_generate, self.select_wq_param, fc, ]
 		return params
 
 	def isLicensed(self):
@@ -579,15 +662,17 @@ class GenerateWQLayer(object):
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
 		date_to_use = parameters[0].value
-		output_location = parameters[1].valueAsText
-
+		output_location = parameters[2].valueAsText
+		arcpy.AddMessage("Output Location: {}".format(output_location))
 		mapping.layer_from_date(date_to_use, output_location)
+
+		self.insert_layer(output_location, parameters[1])
 
 
 class GenerateMonth(WQMappingBase):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "All WQ Transects for Single Month"
+		self.label = "Generate Layer of WQ Transects for Single Month"
 		self.description = "Generate a layer of all the water quality transects for a given month and year"
 		self.canRunInBackground = False
 		self.category = "Mapping"
@@ -599,27 +684,6 @@ class GenerateMonth(WQMappingBase):
 
 		# parameter info for selecting multiple csv water quality files
 
-		year_to_generate = arcpy.Parameter(
-			displayName="Year",
-			name="year_to_generate",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input"
-		)
-
-		month_to_generate = arcpy.Parameter(
-			displayName="Month",
-			name="month_to_generate",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input"
-		)
-
-		month_to_generate.filter.type = 'ValueList'
-		t = list(calendar.month_name)
-		t.pop(0)
-		month_to_generate.filter.list = t
-
 		# shapefile for the transects GPS breadcrumbs
 		fc = arcpy.Parameter(
 			displayName="Output Feature Class",
@@ -628,7 +692,7 @@ class GenerateMonth(WQMappingBase):
 			direction="Output"
 		)
 
-		params = [year_to_generate, month_to_generate, self.select_wq_param, fc, ]
+		params = [self.year_to_generate, self.month_to_generate, self.select_wq_param, fc, ]
 		return params
 
 	def isLicensed(self):
@@ -640,44 +704,7 @@ class GenerateMonth(WQMappingBase):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		# get years with data from the database to use as selection for tool input
-		session = classes.get_new_session()
-		try:
-			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
-
-			print(q)
-			years = []
-			# add profile name to site list
-			for year in q:
-				print(year[0])
-				years.append(year[0])
-			parameters[0].filter.type = 'ValueList'
-			parameters[0].filter.list = years
-
-		finally:
-			session.close()
-
-		# get valid months for the selected year as the options for the tool input
-		if parameters[0].value:
-			Y = int(parameters[0].value)
-
-			session = classes.get_new_session()
-			try:
-
-				q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
-					extract('year', classes.WaterQuality.date_time) == Y).distinct()
-				months = []
-				t = list(calendar.month_name)
-				for month in q2:
-					print(month[0])
-					months.append(t[month[0]])
-
-				print(months)
-				parameters[1].filter.type = 'ValueList'
-				parameters[1].filter.list = months
-			finally:
-				session.close()
-		return
+		self.update_month_fields(parameters)
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
@@ -699,6 +726,63 @@ class GenerateMonth(WQMappingBase):
 		generate_layer_for_month(month_to_use, year_to_use, output_location)
 
 		self.insert_layer(output_location, parameters[2])
+
+
+class GenerateMap(WQMappingBase):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+
+		# call the setup first, because we want to overwrite the labels, etc
+		super(GenerateMap, self).__init__()
+
+		self.label = "Generate Map for Export"
+		self.description = "Generates a map document and optional static image/PDF maps for symbolized water quality data for a month"
+		self.canRunInBackground = False
+		self.category = "Mapping"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		### There may not be a type for this in Pro, so we should not add the parameter, and instead add a new map in the CURRENT document
+		if amaptor.PRO:
+			map_output = arcpy.Parameter(
+				displayName="Name of New Map in Current Project",
+				name="output_map",
+				datatype="GPString",
+				direction="Output"
+			)
+		else:  # using ArcMap
+			### Map Document save location
+			map_output = arcpy.Parameter(
+				displayName="Output ArcGIS Map Location",
+				name="output_map",
+				datatype="DE",
+				direction="Output"
+			)
+
+		###
+		### TODO: On processing, have it load the correct item!
+		###
+		### Static Map Export options
+
+
+		params = [self.month_to_generate, self.year_to_generate, self.select_wq_param, map_output]
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		self.update_month_fields(parameters)
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
 
     
 class ModifyWQSite(object):
