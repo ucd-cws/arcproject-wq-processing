@@ -73,8 +73,20 @@ def mar():
 	path = os.path.join(data, "Mar_2014")
 	s = slurp.Slurper()
 	s.add_new_sites = True
+	s.transect_gps_pattern = '*PosnPnt*.shp'
 	s.site_function_params = {"site_part": 3, "gain_part": 4}
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_031714', 'Arc_032014']
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+	path = os.path.join(data, "Mar_2014", "Arc_032014")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.transect_gps_pattern = '*PosnPnt2.shp'
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_031714']
 	print("Adding gain files to database")
 	s.slurp_gains(path)
 	print("Adding water quality transects to database")
@@ -291,19 +303,22 @@ def dec():
 	s.slurp_trans(path)
 
 
-def main():
-	jan()
-	feb()
-	mar()
-	apr()
-	may()
-	jun()
-	jul()
-	aug()
-	sep()
-	oct()
-	nov()
-	dec()
+def main(month="ALL"):
+	if month == "ALL":
+		jan()
+		feb()
+		mar()
+		apr()
+		may()
+		jun()
+		jul()
+		aug()
+		sep()
+		oct()
+		nov()
+		dec()
+	else:
+		month
 
 if __name__ == '__main__':
-	main()
+	main(mar())
