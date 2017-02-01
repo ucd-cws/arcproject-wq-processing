@@ -2,7 +2,7 @@ import calendar
 import os
 import subprocess
 from string import digits
-
+import datetime
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
 
@@ -24,7 +24,7 @@ class Toolbox(object):
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite]
+		              GenerateSite, ModifySelectedSite, DeleteMonth]
 
 
 class AddSite(object):
@@ -1082,5 +1082,130 @@ class ModifySelectedSite(object):
 				session.close()
 		else:
 			arcpy.AddMessage("No points selected. Make a selection first!")
+
+		return
+
+
+
+class DeleteMonth(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Deletes records for month"
+		self.description = "Deletes the water quality transects and gain files for a given month and year"
+		self.canRunInBackground = False
+		self.category = "Mapping"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		# parameter info for selecting multiple csv water quality files
+
+		year = arcpy.Parameter(
+			displayName="Year",
+			name="year",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		month = arcpy.Parameter(
+			displayName="Month",
+			name="monthe",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+		month.filter.type = 'ValueList'
+		t = list(calendar.month_name)
+		t.pop(0)
+		month.filter.list = t
+
+
+		params = [year, month, ]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		# get years with data from the database to use as selection for tool input
+		session = classes.get_new_session()
+		try:
+			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
+
+			print(q)
+			years = []
+			# add profile name to site list
+			for year in q:
+				print(year[0])
+				years.append(year[0])
+			parameters[0].filter.type = 'ValueList'
+			parameters[0].filter.list = years
+
+		finally:
+			session.close()
+
+		# get valid months for the selected year as the options for the tool input
+		if parameters[0].value:
+			Y = int(parameters[0].value)
+
+			session = classes.get_new_session()
+			try:
+
+				q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
+					extract('year', classes.WaterQuality.date_time) == Y).distinct()
+				months = []
+				t = list(calendar.month_name)
+				for month in q2:
+					print(month[0])
+					months.append(t[month[0]])
+
+				print(months)
+				parameters[1].filter.type = 'ValueList'
+				parameters[1].filter.list = months
+			finally:
+				session.close()
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		year_to_use = int(parameters[0].value)
+		month = parameters[1].value
+		# look up index position in calender.monthname
+		t = list(calendar.month_name)
+		month_to_use = int(t.index(month))
+
+		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
+
+		wq = classes.WaterQuality
+		gn = classes.VerticalProfile
+		session = classes.get_new_session()
+		try:
+			lower_bound = datetime.date(year_to_use, month_to_use, 1)
+			upper_bound = datetime.date(year_to_use, month_to_use,
+			                            int(calendar.monthrange(year_to_use, month_to_use)[1]))
+			arcpy.AddMessage("Deleting data for {} through {}".format(lower_bound, upper_bound))
+			query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound)
+
+			arcpy.AddMessage("Deleting transects")
+			session.delete(query)
+
+			query2 = session.query(gn).filter(gn.date_time > lower_bound, gn.date_time < upper_bound)
+
+			arcpy.AddMessage("Deleting Gains")
+			session.delete(query2)
+		finally:
+			session.close()
 
 		return
