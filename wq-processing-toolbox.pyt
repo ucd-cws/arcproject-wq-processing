@@ -5,7 +5,7 @@ from string import digits
 import datetime
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
-
+import time
 from scripts import mapping
 from scripts import wq_gain
 from scripts import wqt_timestamp_match
@@ -1093,7 +1093,7 @@ class DeleteMonth(object):
 		self.label = "Deletes records for month"
 		self.description = "Deletes the water quality transects and gain files for a given month and year"
 		self.canRunInBackground = False
-		self.category = "Mapping"
+		self.category = "Modify"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -1180,6 +1180,9 @@ class DeleteMonth(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
+
+
+
 		year_to_use = int(parameters[0].value)
 		month = parameters[1].value
 		# look up index position in calender.monthname
@@ -1187,6 +1190,11 @@ class DeleteMonth(object):
 		month_to_use = int(t.index(month))
 
 		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
+
+		arcpy.AddMessage("WARNING!: this will delete records. Quit now if you don't want to do this.")
+		for i in range(10, 0, -1):
+			time.sleep(1)
+			arcpy.AddMessage(i)
 
 		wq = classes.WaterQuality
 		gn = classes.VerticalProfile
@@ -1196,15 +1204,24 @@ class DeleteMonth(object):
 			upper_bound = datetime.date(year_to_use, month_to_use,
 			                            int(calendar.monthrange(year_to_use, month_to_use)[1]))
 			arcpy.AddMessage("Deleting data for {} through {}".format(lower_bound, upper_bound))
-			query = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound)
+			q_wq = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound)
 
 			arcpy.AddMessage("Deleting transects")
-			session.delete(query)
+			q_wq.delete()
 
-			query2 = session.query(gn).filter(gn.date_time > lower_bound, gn.date_time < upper_bound)
+			q_gn = session.query(gn).filter(gn.date_time > lower_bound, gn.date_time < upper_bound)
 
-			arcpy.AddMessage("Deleting Gains")
-			session.delete(query2)
+			arcpy.AddMessage("Deleting gains")
+			q_gn.delete()
+
+			# commit changes
+			arcpy.AddMessage("WARNING!: final chance to not commit database change. Exit now!")
+			for i in range(10, 0, -1):
+				time.sleep(1)
+				arcpy.AddMessage(i)
+			arcpy.AddMessage("Changes commit. Records are deleted.")
+			session.commit()
+
 		finally:
 			session.close()
 
