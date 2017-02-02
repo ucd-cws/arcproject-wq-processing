@@ -1,6 +1,7 @@
 import calendar
 import os
 import subprocess
+import shutil
 from string import digits
 
 import arcpy
@@ -753,21 +754,33 @@ class GenerateMap(WQMappingBase):
 				direction="Output"
 			)
 		else:  # using ArcMap
-			### Map Document save location
 			map_output = arcpy.Parameter(
 				displayName="Output ArcGIS Map Location",
 				name="output_map",
-				datatype="DE",
+				datatype="DEMapDocument",
 				direction="Output"
 			)
 
-		###
-		### TODO: On processing, have it load the correct item!
-		###
-		### Static Map Export options
+		export_pdf = arcpy.Parameter(
+				displayName="Output Path for PDF",
+				name="output_pdf",
+				datatype="DEFile",
+				direction="Output",
+				parameterType="Optional",
+				category="Static Map Exports",
+			)
 
+		export_png = arcpy.Parameter(
+				displayName="Output Path for PNG",
+				name="output_png",
+				datatype="DEFile",
+				direction="Output",
+				parameterType="Optional",
+				category="Static Map Exports",
+			)
 
-		params = [self.month_to_generate, self.year_to_generate, self.select_wq_param, map_output]
+		params = [self.month_to_generate, self.year_to_generate, self.select_wq_param, map_output, export_pdf, export_png]
+		return params
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -785,7 +798,20 @@ class GenerateMap(WQMappingBase):
 		parameter.  This method is called after internal validation."""
 		return
 
-    
+	def execute(self, parameters):
+
+		template = os.path.join(mapping._TEMPLATES_FOLDER, "base_template.mxd")
+		output_location = parameters[3].valueAsText
+		if amaptor.PRO:
+			map_project = amaptor.Project("CURRENT")
+			map_project.new_map(name=output_location, template=template)
+			new_map = map_project.find_map(output_location)
+		else:
+			shutil.copyfile(template, output_location)
+			map_project = amaptor.Project(output_location)
+			new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
+
+
 class ModifyWQSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""

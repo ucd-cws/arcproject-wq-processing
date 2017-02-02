@@ -6,9 +6,30 @@
 import unittest
 import os
 
+import arcpy
+
+import geodatabase_tempfile
+
 from scripts import verify
 
 test_data = r"C:\Users\dsx.AD3\Box Sync\arcproject"
+
+
+class Verification_Base(unittest.TestCase):
+	def check_and_merge_summary_files(self, files=None):
+		"""
+			Merges multiple summary files into a single one
+		:param files: a list of paths to summary files to merge
+		:return:
+		"""
+
+		for l_file in files:
+			self.assertTrue(os.path.exists(l_file))
+
+		merged_data = geodatabase_tempfile.create_fast_name()
+		arcpy.Merge_management(inputs=files, output=merged_data)
+
+		return merged_data
 
 
 class Test2013(unittest.TestCase):
@@ -183,14 +204,14 @@ class Test2015(unittest.TestCase):
 		self.assertTrue(verify.verify_summary_file(12, 2015, s))
 
 
-class Test2016(unittest.TestCase):
+class Test2016(Verification_Base):
 	def test_jan_2016(self):
 		s = os.path.join(test_data, r"Jan_2016\SummaryFiles\Jan2016_GPS\StatePlaneCAII\Arc_Jan2016_WQt_w_finalchl.shp")
 		self.assertTrue(os.path.exists(s))
 		self.assertTrue(verify.verify_summary_file(1, 2016, s))
 
 	def test_feb_2016(self):
-		s = os.path.join(test_data, r"Feb_2016\SummaryFiles\Feb2016_GPS\StatePlaneCAII\Arc_Feb2016_WQt_w_finalchl.shp")
+		s = os.path.join(test_data, r"Feb_2016\SummaryFiles\Feb2016_WQT.shp")
 		self.assertTrue(os.path.exists(s))
 		self.assertTrue(verify.verify_summary_file(2, 2016, s))
 
@@ -200,46 +221,59 @@ class Test2016(unittest.TestCase):
 		self.assertTrue(verify.verify_summary_file(3, 2016, s))
 
 	def test_apr_2016(self):
-		s = os.path.join(test_data, r"Apr_2016\SummaryFiles\Apr2016_GPS\StatePlaneCAII\Arc_Apr2016_WQt_w_finalchl.shp")
+		s = os.path.join(test_data, r"Apr_2016\SummaryFiles\ARC_Apr2016_WQT.shp")
 		self.assertTrue(os.path.exists(s))
 		self.assertTrue(verify.verify_summary_file(4, 2016, s))
 
 	def test_may_2016(self):
-		s = os.path.join(test_data, r"May_2016\SummaryFiles\May2016_GPS\StatePlaneCAII\Arc_May2016_WQt_w_finalchl.shp")
-		self.assertTrue(os.path.exists(s))
-		self.assertTrue(verify.verify_summary_file(5, 2016, s))
+		s1 = os.path.join(test_data, r"May_2016\SummaryFiles\Arc_050516_BK_CA_CC_HS1_LN_UL_WQT.shp")
+		s2 = os.path.join(test_data, r"May_2016\SummaryFiles\Arc_050516_CA_High_WQT.shp")
+		s3 = os.path.join(test_data, r"May_2016\SummaryFiles\Arc_051716_wqt.shp")
+		s4 = os.path.join(test_data, r"May_2016\SummaryFiles\Arc_051816_WQT.shp")
+		merged_data = self.check_and_merge_summary_files([s1, s2, s3, s4])
+
+		self.assertTrue(verify.verify_summary_file(5, 2016, merged_data))
 
 	def test_jun_2016(self):
-		s = os.path.join(test_data, r"Jun_2016\SummaryFiles\Jun2016_GPS\StatePlaneCAII\Arc_Jun2016_WQt_w_finalchl.shp")
+		s = os.path.join(test_data, r"Jun_2016\SummaryFiles\Arc_061616_WQT.shp")
 		self.assertTrue(os.path.exists(s))
 		self.assertTrue(verify.verify_summary_file(6, 2016, s))
 
 	def test_jul_2016(self):
-		s = os.path.join(test_data, r"Jul_2016\SummaryFiles\Jul2016_GPS\StatePlaneCAII\Arc_Jul2016_WQt_w_finalchl.shp")
+		s = os.path.join(test_data, r"Jul_2016\SummaryFiles\Arc_071916_WQT.shp")
 		self.assertTrue(os.path.exists(s))
 		self.assertTrue(verify.verify_summary_file(7, 2016, s))
 
 	def test_aug_2016(self):
-		s = os.path.join(test_data, r"Aug_2016\SummaryFiles\Aug2016_GPS\StatePlaneCAII\Arc_Aug2016_WQt_w_finalchl.shp")
-		self.assertTrue(os.path.exists(s))
-		self.assertTrue(verify.verify_summary_file(8, 2016, s))
+		s1 = os.path.join(test_data, r"Aug_2016\Summary_Files\Arc_082316_WQT.shp")
+		s2 = os.path.join(test_data, r"Aug_2016\Summary_Files\Arc_082416_WQT.shp")
+		merged_data = self.check_and_merge_summary_files([s1, s2])
+
+		self.assertTrue(verify.verify_summary_file(8, 2016, merged_data))
 
 	def test_sep_2016(self):
-		s = os.path.join(test_data, r"Sep_2016\SummaryFiles\Sep2016_GPS\StatePlaneCAII\Arc_Sep2016_WQt_w_finalchl.shp")
-		self.assertTrue(os.path.exists(s))
-		self.assertTrue(verify.verify_summary_file(9, 2016, s))
+		s1 = os.path.join(test_data, r"Sep_2016\SummaryFiles\Arc_092716_WQT.shp")
+		s2 = os.path.join(test_data, r"Sep_2016\SummaryFiles\Arc_092816_WQT.shp")
+		merged_data = self.check_and_merge_summary_files([s1, s2])
+
+		self.assertTrue(verify.verify_summary_file(9, 2016, merged_data))
 
 	def test_oct_2016(self):
-		s = os.path.join(test_data, r"Oct_2016\SummaryFiles\Oct2016_GPS\StatePlaneCAII\Arc_Oct2016_WQt_w_finalchl.shp")
-		self.assertTrue(os.path.exists(s))
-		self.assertTrue(verify.verify_summary_file(10, 2016, s))
+		s1 = os.path.join(test_data, r"Oct_2016\SummaryFiles\Arc_102516_WQT.shp")
+		s2 = os.path.join(test_data, r"Oct_2016\SummaryFiles\Arc_102616_WQT.shp")
+		merged_data = self.check_and_merge_summary_files([s1, s2])
+		self.assertTrue(verify.verify_summary_file(10, 2016, merged_data))
 
 	def test_nov_2016(self):
-		s = os.path.join(test_data, r"Nov_2016\SummaryFiles\Nov2016_GPS\StatePlaneCAII\Arc_Nov2016_WQt_w_finalchl.shp")
-		self.assertTrue(os.path.exists(s))
-		self.assertTrue(verify.verify_summary_file(11, 2016, s))
+		s1 = os.path.join(test_data, r"Nov_2016\SummaryFiles\Arc_111816_WQT.shp")
+		s2 = os.path.join(test_data, r"Nov_2016\SummaryFiles\Arc_112016_WQT.shp")
+		merged_data = self.check_and_merge_summary_files([s1, s2])
+		self.assertTrue(verify.verify_summary_file(11, 2016, merged_data))
 
 	def test_dec_2016(self):
-		s = os.path.join(test_data, r"Dec_2016\SummaryFiles\Dec2016_GPS\StatePlaneCAII\Arc_Dec2016_WQt_w_finalchl.shp")
-		self.assertTrue(os.path.exists(s))
-		self.assertTrue(verify.verify_summary_file(12, 2016, s))
+		s1 = os.path.join(test_data, r"Dec_2016\SummaryFiles\Arc_121416_WQT.shp")
+		s2 = os.path.join(test_data, r"Dec_2016\SummaryFiles\Arc_121616_WQT.shp")
+
+		merged_data = self.check_and_merge_summary_files([s1, s2])
+
+		self.assertTrue(verify.verify_summary_file(12, 2016, merged_data))
