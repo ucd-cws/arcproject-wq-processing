@@ -5,10 +5,8 @@ import os
 from waterquality import classes
 import numpy as np
 import wqt_timestamp_match
-
-# reference routes that are used to get the slough distance
-wd = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ref_routes = os.path.join(wd, "geo", "Reference_SloughCenterlines.shp")  # routes as lines
+import mapping
+import config
 
 
 def data_to_linear_reference(records, in_memory_table):
@@ -40,9 +38,13 @@ def data_to_linear_reference(records, in_memory_table):
 	return
 
 
-def subset_ref_route(reference_lines, slough):
-	# TODO select by reach name so that points at confluences get assigned properly
-	pass
+def qAllWQ(overwrite=False):
+
+	if overwrite:
+		q =
+	else:
+
+	return q
 
 
 def makeFeatureLayer(table):
@@ -108,57 +110,71 @@ def ID_MeasurePair(linear_referenced_table, ID_field):
 	return measurePairs
 
 
-def main(session, records, reference_line, override=False):
+def getMvalues(query):
 	"""
-	Updates all the records with null m_values in the waterquality table
-	:param records: query to pull the records to be updated
-	:param reference_line: the slough line to use as a linear reference
-	:param override: overrides existing m_values
-	:return:
+	Given a SQLAlchemy query for water quality data, exports a feature class to linear reference which is used to update m_values
+	:param query: a SQLAlchemy query object for records to update
+	:return: data dict with id and m-value for records in query
 	"""
-
-	# # creates new session
-	# session = classes.get_new_session()
-	#
-	# # Return all the records that do not have m values
-	# records = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None,
-	# 		classes.WaterQuality.y_coord != None, classes.WaterQuality.x_coord != None ).all()
 
 	try:
-		# turn records that need slough measurement to a table
-		data_to_linear_reference(session, records, "in_memory/recs_np_table")
+		# turn records that need measurement to a feature class in memory
+		if arcpy.Exists(r"in_memory\q_as_layer"):
+			# check if already exists and if so delete it
+			arcpy.Delete_management(r"in_memory\q_as_layer")
+		mapping.query_to_features(query, "in_memory\q_as_layer")
 
-		# check that the table exists
-		if arcpy.Exists("in_memory/recs_np_table"):
+		# locate features along route using the reference lines
+		print("Locating Features along routes")
+		meas_table = LocateWQalongREF("in_memory\q_as_layer", config.ref_line)
 
-			# turn table into feature layer using XY coords
-			print("Creating XY table")
-			features = makeFeatureLayer("in_memory/recs_np_table")
-
-			# locate features along route using the slough reference lines
-			print("Locating Features along routes")
-			meas_table = LocateWQalongREF(features, reference_line)
-
-			# create data dict with ID and measurement result
-			distances = ID_MeasurePair(meas_table, "id")
-
-			print("Updating records")
-			# update the selected records in the database with the new measurements
-			for location in distances.keys():
-				record = session.query(classes.WaterQuality).filter(classes.WaterQuality.id == location).one_or_none()
-
-				if record is None:
-					# print a warning
-					continue  # skip the record - FID not found - likly a problem - can use .one() instead of .one_or_none() above to raise an exception instead, if no record is found
-
-				record.m_value = distances[location]
-		else:
-			print("No records updated")
-
-		session.commit()
+		# create data dict with ID and measurement result
+		distances = ID_MeasurePair(meas_table, "id")
 
 	finally:
+		# clean up temp layer
+		arcpy.Delete_management(r"in_memory\q_as_layer")
+
+	return distances
+
+
+def updateM(session, idDistance):
+	"""
+	Updates the m-values using the id and measurement in the distances dict
+	:param session: an open SQLAlchemy database session
+	:param idDistance: data dict of water_quality ID and linear ref distance (output of getMvalues)
+	:return:
+	"""
+	print("Updating records")
+	# update the selected records in the database with the new measurements
+	for location in idDistance.keys():
+		record = session.query(classes.WaterQuality).filter(classes.WaterQuality.id == location).one_or_none()
+		if record is None:
+			# print a warning
+			continue  # skip the record - FID not found - likly a problem
+		record.m_value = idDistance[location]
+	else:
+		print("No records updated")
+	return
+
+
+def main():
+	wq = classes.WaterQuality
+	session = classes.get_new_session()
+
+	try:
+		print("Querying Database")
+		q = session.query(wq).filter(wq.date_time > date_to_use.date(), wq.date_time < upper_bound, wq.x_coord != None, wq.y_coord != None)  # add 1 day's worth of nanoseconds
+		print("Linear Referencing WQ - be patient....")
+		distances = getMvalues(q)
+		print("Updating records in database")
+		updateM(session, distances)
+		session.commit()
+	finally:
 		session.close()
+
+	return
+
 
 if __name__ == '__main__':
 	main()
