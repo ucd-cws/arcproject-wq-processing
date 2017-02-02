@@ -6,6 +6,8 @@ from string import digits
 
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
+
+import geodatabase_tempfile
 import amaptor
 
 from scripts import mapping
@@ -84,27 +86,31 @@ class WQMappingBase(object):
 							"Temperature", "Turbidity"]
 
 
-	def insert_layer(self, data_path, symbology_param, map_document_or_project="CURRENT"):
+	def insert_layer(self, data_path, symbology_param, map_or_project="CURRENT"):
 		"""
 			Symbolizes a WQ layer based on the specified parameter and then inserts it into a map
 		:param data_path:
 		:param symbology_param:
-		:param map_document_or_project: a reference to a map document (including "CURRENT") or an instance of an amaptor project
+		:param map_or_project: a reference to a map document (including "CURRENT"), an instance of amaptor.Project, or
+			and instance of amaptor.Map
 		:return:
 		"""
 
-		if isinstance(map_document_or_project, amaptor.Project):
-			project = map_document_or_project
+		if isinstance(map_or_project, amaptor.Project):
+			project = map_or_project
+			l_map = project.get_active_map()
+		elif isinstance(map_or_project, amaptor.Map):
+			l_map = map_or_project
 		else:
-			project = amaptor.Project(map_document_or_project)
-		map = project.get_active_map()
+			project = amaptor.Project(map_or_project)
+			l_map = project.get_active_map()
 
 		layer_name = self._filter_to_layer_mapping[symbology_param.valueAsText]
 		layer_path = os.path.join(mapping._LAYERS_FOLDER, layer_name)
 
 		layer = amaptor.make_layer_with_file_symbology(data_path, layer_path)
 		layer.name = os.path.split(data_path)[1]
-		map.add_layer(layer)
+		l_map.add_layer(layer)
 
 	def update_month_fields(self, parameters, year_field_index=0, month_field_index=1):
 		"""
@@ -799,6 +805,17 @@ class GenerateMap(WQMappingBase):
 		return
 
 	def execute(self, parameters):
+		"""
+			Generates the map and exports any necessary static maps
+		:param parameters:
+		:return:
+		"""
+
+		# TODO: STILL NEEDS TO HANDLE STATIC MAP EXPORTS
+
+		month_to_use = parameters[0].valueAsText
+		year_to_use = parameters[1].valueAsText
+		symbology_param = parameters[2]
 
 		template = os.path.join(mapping._TEMPLATES_FOLDER, "base_template.mxd")
 		output_location = parameters[3].valueAsText
@@ -806,11 +823,19 @@ class GenerateMap(WQMappingBase):
 			map_project = amaptor.Project("CURRENT")
 			map_project.new_map(name=output_location, template=template)
 			new_map = map_project.find_map(output_location)
+
+			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project._primary_document.defaultGeodatabase)
 		else:
 			shutil.copyfile(template, output_location)
 			map_project = amaptor.Project(output_location)
 			new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
 
+			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer")
+
+		arcpy.AddMessage("Map Document set up complete. Creating new layer")
+		generate_layer_for_month(month_to_use, year_to_use, output_location)
+
+		self.insert_layer(output_location, symbology_param, map_or_project=new_map)
 
 class ModifyWQSite(object):
 	def __init__(self):
