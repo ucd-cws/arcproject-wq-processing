@@ -152,6 +152,19 @@ def jun():
 	s.add_new_sites = True
 	s.dst = True
 	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'StatePlaneII', "Arc_062314"]
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+
+	print("June 2014")
+	path = os.path.join(data, "Jun_2014", "Arc_062314")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'StatePlaneII']
 	print("Adding gain files to database")
 	s.slurp_gains(path)
@@ -296,6 +309,17 @@ def dec():
 	s.add_new_sites = True
 	s.dst = True
 	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'StatePlaneII', 'Arc_121614']
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+	path = os.path.join(data, "Dec_2014", "Arc_121614")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
 	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'StatePlaneII']
 	print("Adding gain files to database")
 	s.slurp_gains(path)
@@ -321,4 +345,4 @@ def main(month="ALL"):
 		month
 
 if __name__ == '__main__':
-	main(mar())
+	main()

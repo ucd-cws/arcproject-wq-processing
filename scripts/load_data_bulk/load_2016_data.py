@@ -6,18 +6,22 @@ from scripts import slurp
 data = r"C:\Users\Andy\Desktop\ArcData" # or location on x drive
 
 
-# def jan():
-# 	print("January 2016")
-#
-# 	path = os.path.join(data, "Jan_2016")
-# 	s = slurp.Slurper()
-# 	s.add_new_sites = True
-# 	s.dst = False
-# 	s.site_function_params = {"site_part": 3, "gain_part": 4}
-# 	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
-# 	print("Adding gain files to database")
-# 	s.slurp_gains(path)
-#
+def jan():
+	print("January 2016")
+
+	path = os.path.join(data, "Jan_2016")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.gain_pattern = "*WQ_*"
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', "Arc_022016"]
+	print("Adding gain files to database")
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
 
 def feb():
 	print("Feburary 2016")
@@ -243,15 +247,23 @@ def dec():
 	print("Adding water quality transects to database")
 	s.slurp_trans(path)
 
-# jan()
-feb()
-mar()
-apr()
-may()
-jun()
-jul()
-aug()
-sep()
-oct()
-nov()
-dec()
+
+def main(month="ALL"):
+	if month == "ALL":
+		jan()
+		feb()
+		mar()
+		apr()
+		may()
+		jun()
+		jul()
+		aug()
+		sep()
+		oct()
+		nov()
+		dec()
+	else:
+		month
+
+if __name__ == '__main__':
+	main(jan())
