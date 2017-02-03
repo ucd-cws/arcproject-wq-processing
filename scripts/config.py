@@ -8,4 +8,4 @@ import os
 arcwqpro = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # path to reference lines for sloughs
-ref_line = os.path.join(arcwqpro, "geo", "Reference_SloughCenterlines.shp")
+ref_line = os.path.join(arcwqpro, "geo", "ArcLinearReferenceRoute_Lines.shp")
