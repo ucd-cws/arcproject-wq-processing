@@ -23,18 +23,19 @@ def LocateWQalongREF(wq_features, ref_route):
 	return ref_table_out
 
 
-def ID_MeasurePair(linear_referenced_table, ID_field):
+def MeasureDicts(linear_referenced_table, ID_field):
 	"""
-	Creates python dict pair with the each records FID and linear measurement along reference line
+	Creates a list of  python dict pair with the each record ID and linear measurement along reference line
 	:param linear_referenced_table: Table with linear reference results
 	:param ID_field: Field name that uniquely identifies the record
-	:return: python data dictionary with key = recond FID, value = measurement along line
+	:return: list of dictionaries with id and m_value mappings
 	"""
 	cursor = arcpy.da.SearchCursor(linear_referenced_table, [ID_field, 'MEAS'])
-	measurePairs = {}
+	dicts = []
 	for row in cursor:
-		measurePairs[row[0]] = row[1]
-	return measurePairs
+		measurePair = {'id': row[0], 'm_value': row[1]}
+		dicts.append(measurePair)
+	return dicts
 
 
 def getMvalues(query):
@@ -55,7 +56,8 @@ def getMvalues(query):
 		meas_table = LocateWQalongREF("in_memory\q_as_layer", config.ref_line)
 
 		# create data dict with ID and measurement result
-		distances = ID_MeasurePair(meas_table, "id")
+		#distances = ID_MeasurePair(meas_table, "id")
+		distances = MeasureDicts(meas_table, "id")
 
 	finally:
 		# clean up temp layer
@@ -64,20 +66,15 @@ def getMvalues(query):
 	return distances
 
 
-def updateM(session, idDistance):
+def bulk_updateM(session, idDistance_mappings):
 	"""
-	Updates the m-values using the id and measurement in the distances dict
+	http://stackoverflow.com/questions/25694234/bulk-update-in-sqlalchemy-core-using-where
 	:param session: an open SQLAlchemy database session
-	:param idDistance: data dict of water_quality ID and linear ref distance (output of getMvalues)
+	:param idDistance: list of id~distance dict mappings
 	:return:
 	"""
-	# update the selected records in the database with the new measurements
-	for location in idDistance.keys():
-		record = session.query(classes.WaterQuality).filter(classes.WaterQuality.id == location).one_or_none()
-		if record is None:
-			# print a warning
-			continue  # skip the record - FID not found - likly a problem
-		record.m_value = idDistance[location]
+	wq = classes.WaterQuality
+	session.bulk_update_mappings(wq, idDistance_mappings)
 	return
 
 
@@ -131,15 +128,18 @@ def main(query_type="ALL", overwrite=False, idrange=None, dates=None):
 	:return:
 	"""
 	session = classes.get_new_session()
+
 	try:
 		print("Querying Database")
 		q = queryBuilder(session, query_type, overwrite, idrange, dates)
 		numrecs = q.count()
+		print("Number of records returned by query: {}.".format(numrecs))
 		if numrecs > 0:
-			print("Linear referencing {} wqt points - be patient....".format(numrecs))
+			print("Linear referencing wqt points. Be patient....")
+
 			distances = getMvalues(q)
 			print("Updating database...")
-			updateM(session, distances)
+			bulk_updateM(session, distances)
 			session.commit()
 		else:
 			print("Query returned zero records to update.")

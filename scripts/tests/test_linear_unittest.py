@@ -14,7 +14,8 @@ class MeasTableTests(unittest.TestCase):
 
 	def test_PairDict(self):
 		arcpy.da.NumPyArrayToTable(self.array, "in_memory/out_table1")
-		self.assertEqual(linear_ref.ID_MeasurePair("in_memory/out_table1", 'id'), {64: 12060.5, 25: 2060.5})
+		self.assertEqual(linear_ref.MeasureDicts("in_memory/out_table1", 'id'),
+		                 [{'m_value': 12060.5, 'id': 64}, {'m_value': 2060.5, 'id': 25}])
 		pass
 
 	def tearDown(self):
