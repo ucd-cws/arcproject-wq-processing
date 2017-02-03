@@ -14,8 +14,9 @@ def LocateWQalongREF(wq_features, ref_route):
 	:return: table with measurement along line, distance to ref line, etc.
 	"""
 	#  use linear referencing to locate each point along route using arcgis's linear referencing tool set
-
-	# note wq_feature needs to FID/OID
+	if arcpy.Exists(r"in_memory\out_table"):
+		# check if already exists and if so delete it
+		arcpy.Delete_management(r"in_memory\out_table")
 	ref_table_out = arcpy.LocateFeaturesAlongRoutes_lr(wq_features, ref_route, "Slough",
                                    "250 Meters", r"in_memory\out_table", out_event_properties="RID POINT MEAS")
 
@@ -100,21 +101,21 @@ def queryBuilder(session, query_type="ALL", overwrite=False, idrange=None, dates
 	elif query_type == "ALL" and overwrite is False:
 		# update all records in wq table that have xy coords that don't have m - values
 		q = session.query(wq).filter(wq.x_coord != None, wq.y_coord != None, wq.m_value == None)
-	elif query_type == "IDRANGE" and overwrite is True:
+	elif query_type == "IDRANGE" and overwrite is True and idrange is not None:
 		q = session.query(wq).filter(wq.id >= idrange[0], wq.id <= idrange[1], wq.x_coord != None, wq.y_coord != None)
-	elif query_type == "IDRANGE" and overwrite is False:
+	elif query_type == "IDRANGE" and overwrite is False and idrange is not None:
 		q = session.query(wq).filter(wq.id >= idrange[0], wq.id <= idrange[1], wq.x_coord != None,
 		                             wq.y_coord != None, wq.m_value == None)
-	elif query_type == "DATERANGE" and overwrite is True:
+	elif query_type == "DATERANGE" and overwrite is True and dates is not None:
 		upper_bound = dates[1] + datetime.timedelta(days=1)
 		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound,
 		                             wq.x_coord != None, wq.y_coord != None)
-	elif query_type == "DATERANGE" and overwrite is False:
+	elif query_type == "DATERANGE" and overwrite is False and dates is not None:
 		upper_bound = dates[1] + datetime.timedelta(days=1)
 		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound,
 		                             wq.x_coord != None, wq.y_coord != None, wq.m_value == None)
 	else:
-		print("Input params not valid.")
+		raise Exception("Input params are not valid.")
 	return q
 
 
@@ -124,7 +125,7 @@ def main(query_type="ALL", overwrite=False, idrange=None, dates=None):
 	:param query_type: choose "ALL", "IDRANGE", or "DATERANGE"
 	:param overwrite: optional - overwrites any existing m values
 	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
-		Ex: main("RANGE", overwrite=True, idrange=[120, 2000])
+		Ex: main("IDRANGE", overwrite=True, idrange=[120, 2000])
 	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
 		Ex: main("DATERANGE", overwrite=False, dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
 	:return:

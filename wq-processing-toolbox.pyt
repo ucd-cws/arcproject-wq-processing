@@ -22,9 +22,8 @@ class Toolbox(object):
 		self.label = "ArcProject WQ Toolbox"
 		self.alias = "ArcProject WQ Toolbox"
 		# List of tool classes associated with this toolbox
-		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
-		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite, DeleteMonth]
+		self.tools = [AddSite, AddGainSite, JoinTimestamp, GenerateWQLayer, GainToDB, GenerateMonth,
+		              ModifyWQSite, GenerateHeatPlot, GenerateSite, ModifySelectedSite, DeleteMonth, LinearRef]
 
 
 class AddSite(object):
@@ -301,102 +300,6 @@ class JoinTimestamp(object):
 		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function)
 
 		pass
-
-
-class CheckMatch(object):
-	def __init__(self):
-		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Percent Match - Water Quality data with Transect"
-		self.description = "Reports the percent match for multiple water quality dataset with transect shapefile"
-		self.canRunInBackground = False
-		self.category = "Add Data"
-
-	def getParameterInfo(self):
-		"""Define parameter definitions"""
-
-		# parameter info for selecting multiple csv water quality files
-		wqt = arcpy.Parameter(
-			displayName="Transect Water Quality Data",
-			name="wqt_files",
-			datatype="DEFile",
-			multiValue=True,
-			direction="Input"
-		)
-
-		# shapefile for the transects GPS breadcrumbs
-		bc = arcpy.Parameter(
-			displayName="Transect Shapefile",
-			name="shp_file",
-			datatype="DEFeatureClass",
-			direction="Input"
-		)
-
-		add = arcpy.Parameter(
-			displayName="Add to database?",
-			name="add",
-			datatype="GPBoolean",
-			direction="Input"
-		)
-
-		params = [wqt, bc, add]
-		return params
-
-	def isLicensed(self):
-		"""Set whether tool is licensed to execute."""
-		return True
-
-	def updateParameters(self, parameters):
-		"""Modify the values and properties of parameters before internal
-		validation is performed.  This method is called whenever a parameter
-		has been changed."""
-		return
-
-	def updateMessages(self, parameters):
-		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation."""
-		return
-
-	def execute(self, parameters, messages):
-		"""The source code of the tool."""
-		wq_transect_list = parameters[0].valueAsText
-
-		transect_gps = str(parameters[1].valueAsText)
-
-		arcpy.AddMessage(transect_gps)
-
-		add2db = parameters[2]
-
-		# list of water quality files from parameter
-		# wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
-		# wq = wq_transect_list[0] # TODO
-
-		arcpy.AddMessage("Processing Water Quality")
-		wq = wqt_timestamp_match.wq_append_fromlist(wq_transect_list)
-
-		arcpy.AddMessage("Processing GPS input")
-		pts = wqt_timestamp_match.wqtshp2pd(transect_gps)
-
-		# join using time stamps with exact match
-		joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
-		matched = wqt_timestamp_match.splitunmatched(joined_data)[0]
-
-		arcpy.AddMessage("Percent Matched: {}".format(wqt_timestamp_match.JoinMatchPercent(wq, matched)))
-
-		if add2db:
-			session = classes.get_new_session()
-			wqt_timestamp_match.wq_df2database(matched, session=session)
-
-			tobeadded = len(matched)
-
-			arcpy.AddMessage("Number of records added: {}".format(tobeadded))
-
-			session.commit()
-			session.close()
-		else:
-			arcpy.AddMessage("Fix problems and then add to database")
-
-		return
-
 
 
 class GainToDB(object):
@@ -833,43 +736,71 @@ class GenerateHeatPlot(object):
 class LinearRef(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Locate along reference line"
-		self.description = "Locate water quality points along a reference line"
+		self.label = "Update WQT M-values"
+		self.description = "Locate water quality points using linear referencing to update " \
+		                   "the m-value of selected records"
 		self.canRunInBackground = False
 		self.category = "Modify"
 
 	def getParameterInfo(self):
 
 		query = arcpy.Parameter(
-			displayName="Query for records to modify",
+			displayName="Type of query to select records to modify?",
 			name="query",
 			datatype="GPString",
 			multiValue=False,
 			direction="Input",
-			parameterType="Optional"
+			parameterType="Required"
 		)
 
 		query.filter.type = "ValueList"
-		query.filter.list = ["All", "Last Month"]
+		query.filter.list = ["ALL", "DATERANGE", "IDRANGE"]
 
-		ref = arcpy.Parameter(
-			displayName="Reference Line",
-			name="ref",
-			datatype="GP",
-			multiValue=False,
-			direction="Input",
-			parameterType="Optional"
-		)
 
 		over = arcpy.Parameter(
-			displayName="Override existing M Values?",
+			displayName="Overwrite existing M Values?",
 			name="over",
 			datatype="GPBoolean",
 			direction="Input",
 			parameterType="Optional"
 		)
 
-		params = [query, ref, over]
+		over.value = False
+
+		date1 = arcpy.Parameter(
+			displayName="Start date",
+			name="date1",
+			datatype="GPDate",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		date2 = arcpy.Parameter(
+			displayName="End date",
+			name="date2",
+			datatype="GPDate",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		id1 = arcpy.Parameter(
+			displayName="Start ID",
+			name="id1",
+			datatype="GPLong",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		id2 = arcpy.Parameter(
+			displayName="End ID",
+			name="id2",
+			datatype="GPLong",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+
+		params = [query, over, date1, date2, id1, id2]
 		return params
 
 	def isLicensed(self):
@@ -880,6 +811,20 @@ class LinearRef(object):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
+
+		if parameters[0].valueAsText == "DATERANGE":
+			parameters[2].enabled = True
+			parameters[3].enabled = True
+		else:
+			parameters[2].enabled = False
+			parameters[3].enabled = False
+
+		if parameters[0].valueAsText == "IDRANGE":
+			parameters[4].enabled = True
+			parameters[5].enabled = True
+		else:
+			parameters[4].enabled = False
+			parameters[5].enabled = False
 		return
 
 	def updateMessages(self, parameters):
@@ -889,25 +834,31 @@ class LinearRef(object):
 
 	def execute(self, parameters, messages):
 
-		query = parameters[0].valueAsText
-		ref_line = parameters[1].valueAsText
-		over = parameters[2].valueAsText
+		query_type = parameters[0].valueAsText
+		over = parameters[1].value
 
-		session = classes.get_new_session()
+		start_date = parameters[2].value
+		end_date = parameters[3].value
 
-		if query == "All" and over is False:
-			q = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None,
-			                                           classes.WaterQuality.y_coord != None,
-			                                           classes.WaterQuality.x_coord != None).all()
-		elif query == "All" and over is True:
-			q = session.query(classes.WaterQuality).filter(classes.WaterQuality.y_coord != None,
-			                                               classes.WaterQuality.x_coord != None).all()
-		elif query == "Last Month":
-			q = "test"
+		start_id = parameters[4].value
+		end_id = parameters[5].value
 
+		arcpy.AddMessage("PARAMS: type = {}, overwrite = {}, start date = {}, "
+		                 "end date = {}, start id = {}, end id = {}".format(query_type, over, start_date,
+		                                                                    end_date, start_id, end_id))
 
+		if start_date is not None and end_date is not None:
+			date_range = [start_date, end_date]
+		else:
+			date_range = None
 
-		linear_ref.main(session, query, ref_line)
+		if start_id is not None and end_id is not None:
+			id_range = [start_id, end_id]
+		else:
+			id_range = None
+
+		arcpy.AddMessage("Updating m values for wqt points. Be patient...")
+		linear_ref.main(query_type, overwrite=over, dates=date_range, idrange=id_range)
 
 		return
 
