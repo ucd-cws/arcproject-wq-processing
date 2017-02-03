@@ -42,7 +42,6 @@ def getMvalues(query):
 	:param query: a SQLAlchemy query object for records to update
 	:return: data dict with id and m-value for records in query
 	"""
-
 	try:
 		# turn records that need measurement to a feature class in memory
 		if arcpy.Exists(r"in_memory\q_as_layer"):
@@ -82,6 +81,17 @@ def updateM(session, idDistance):
 
 
 def queryBuilder(session, query_type="ALL", overwrite=False, idrange=None, dates=None):
+	"""
+	Creates query to pull records from water quality table
+	:param session: an open SQLAlchemy database session
+	:param query_type: choose "ALL", "IDRANGE", or "DATERANGE"
+	:param overwrite: optional - overwrites any existing m values
+	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
+		Ex: main("RANGE", overwrite=True, idrange=[120, 2000])
+	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
+		Ex: main("DATERANGE", overwrite=False, dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
+	:return: a SQLAlchemy query object
+	"""
 	wq = classes.WaterQuality
 
 	if query_type == "ALL" and overwrite is True:
@@ -103,7 +113,8 @@ def queryBuilder(session, query_type="ALL", overwrite=False, idrange=None, dates
 		upper_bound = dates[1] + datetime.timedelta(days=1)
 		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound,
 		                             wq.x_coord != None, wq.y_coord != None, wq.m_value == None)
-
+	else:
+		print("Input params not valid.")
 	return q
 
 
