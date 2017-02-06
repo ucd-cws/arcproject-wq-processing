@@ -118,7 +118,7 @@ def RegListComp(list_reg_obj, date, gain):
 	print("Date: {}, gain: {}".format(date, gain))
 
 	# use list comprehension to filter all elements with desired gain setting and date
-	subset = [x for x in list_reg_obj if x.date == date and x.gain == gain]
+	subset = [x for x in list_reg_obj if (x.date == date and x.gain == gain)]
 
 	if len(subset) == 1:
 		reg = subset[0]
@@ -166,7 +166,6 @@ def check_gain_reg_exists(regression_table, sample_date, gain):
 		t = RegListComp(regression_table, sample_date, gain)
 		return True
 	except:
-		print("Regression does not exist")
 		return False
 
 
@@ -184,13 +183,13 @@ def chl_decision(uncorrected_chl_value, regression_table, sample_date):
 	else:
 		if uncorrected_chl_value < 5 and check_gain_reg_exists(regression_table, sample_date, 100):
 			# use gain 100 regression if significant
-			chl = get_chl_for_gain(regression_table, sample_date, uncorrected_chl_value, gain=100)
+			chl = get_chl_for_gain(uncorrected_chl_value, regression_table, sample_date, gain=100)
 		elif uncorrected_chl_value < 45 and check_gain_reg_exists(regression_table, sample_date, 10):
 			# use gain 10 regression if significant
-			chl = get_chl_for_gain(regression_table, sample_date, uncorrected_chl_value, gain=10)
+			chl = get_chl_for_gain(uncorrected_chl_value, regression_table, sample_date, gain=10)
 		elif check_gain_reg_exists(regression_table, sample_date, 1):
 			# use gain1 regression if significant
-			chl = get_chl_for_gain(regression_table, sample_date, uncorrected_chl_value, gain=1)
+			chl = get_chl_for_gain(uncorrected_chl_value, regression_table, sample_date, gain=1)
 		else:
 			#print("Unable to correct CHL since regression values don't exist in the table.")
 			#print("Returning uncorrected values")
@@ -224,17 +223,16 @@ def main(query_type="NEW", daterange=None, idrange=None):
 			dt = row.date_time
 
 			# decision tree using date and uncorrectd chl value
-			print(row.chl)
 			updated_chl = chl_decision(row.chl, reg_table, dt)
-			print(updated_chl)
 			row.chl_corrected = updated_chl
 
 		# commit session
 		session.commit()
-	except:
+	except Exception as e:
+		print(e)
 		pass
 	session.close()
 	return
 
 if __name__ == '__main__':
-	main(query_type="IDRANGE", idrange=[10, 55])
+	main(query_type="ALL")
