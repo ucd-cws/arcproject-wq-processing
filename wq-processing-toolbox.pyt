@@ -848,7 +848,13 @@ class LinearRef(object):
 		                                                                    end_date, start_id, end_id))
 
 		if start_date is not None and end_date is not None:
+
+			# round python date time objects to start of the day (in case times are included in tbx input)
+			start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+			end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
 			date_range = [start_date, end_date]
+
 		else:
 			date_range = None
 
