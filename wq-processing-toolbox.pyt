@@ -12,6 +12,8 @@ from scripts import wqt_timestamp_match
 from scripts.mapping import generate_layer_for_month
 from scripts import swap_site_recs
 from scripts import linear_ref
+from scripts import config
+
 
 from waterquality import classes
 
@@ -726,7 +728,7 @@ class GenerateHeatPlot(object):
 		base_path = os.path.split(os.path.abspath(__file__))[0]
 
 		# path to R exe
-		rscript_path = r"C:\Program Files\R\R-3.2.3\bin\rscript.exe" # TODO update this depending on r install local
+		rscript_path = config.rscript
 		gen_heat = os.path.join(base_path, "scripts", "generate_heatplots.R")
 		arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title]))
 		subprocess.call([rscript_path, gen_heat, "--args", sitecode, wq_var, title])
@@ -1176,7 +1178,7 @@ class DeleteMonth(object):
 			for i in range(10, 0, -1):
 				time.sleep(1)
 				arcpy.AddMessage(i)
-			arcpy.AddMessage("Changes commit. Records are deleted.")
+			arcpy.AddMessage("Changes committed. Records are deleted.")
 			session.commit()
 
 		finally:
