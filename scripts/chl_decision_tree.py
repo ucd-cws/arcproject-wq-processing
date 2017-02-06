@@ -1,15 +1,12 @@
 # Decision tree for applying chl correction using linear regression as well as actual values
 
 from datetime import datetime
-
 import six
 import numpy
 import pandas
-
 from waterquality import classes, shorten_float
 from sqlalchemy import exc
-from datetime import datetime
-startTime = datetime.now()
+
 
 format_string = "%Y-%m-%d"
 
@@ -68,38 +65,14 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 		session.close()
 
 
-def queryBuilder(session, query_type="NEW", idrange=None, dates=None):
-	"""
-	Creates query to pull records from water quality table
-	:param session: an open SQLAlchemy database session
-	:param query_type: choose "ALL", "IDRANGE", or "DATERANGE"
-	:param overwrite: optional - overwrites any existing m values
-	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
-		Ex: main("RANGE", overwrite=True, idrange=[120, 2000])
-	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
-		Ex: main("DATERANGE", overwrite=False, dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
-	:return: a SQLAlchemy query object
-	"""
-	wq = classes.WaterQuality
-
-	if query_type == "ALL":
-		# update all records in wq table that have xy coords
-		q = session.query(wq).filter(wq.chl != None)  # all records that have chl values
-	elif query_type == "NEW":
-		q = session.query(wq).filter(wq.chl != None, wq.chl_corrected == None)
-	elif query_type == "IDRANGE" and idrange is not None:
-		q = session.query(wq).filter(wq.id >= idrange[0], wq.id <= idrange[1], wq.chl != None)
-	elif query_type == "DATERANGE" and dates is not None:
-		upper_bound = dates[1] + datetime.timedelta(days=1)
-		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound, wq.chl != None)
-	else:
-		raise Exception("Input params are not valid.")
-	return q
-
-
 def pullRegresionTable(session):
+	"""
+	Creates query to pull records from the regression table
+	:param session: an open SQLAlchemy database session
+	:return: a list of regression objects
+	"""
 	# pull all the data from the regression table in a single query
-	# this avoids calling spawn thousands of queries in the loop
+	# this avoids calling this for every records which spawns thousands of queries in the loop
 	reg = classes.Regression
 	reg_table = session.query(reg).all()
 	return reg_table
@@ -115,8 +88,6 @@ def RegListComp(list_reg_obj, date, gain):
 	"""
 	# gets the date only from the python date time object
 	date = date.date()
-	print("Date: {}, gain: {}".format(date, gain))
-
 	# use list comprehension to filter all elements with desired gain setting and date
 	subset = [x for x in list_reg_obj if (x.date == date and x.gain == gain)]
 
@@ -162,11 +133,32 @@ def lm_significant(uncorrected_chl_value, rsquared, a_coeff, b_coeff):
 
 
 def check_gain_reg_exists(regression_table, sample_date, gain):
+	"""
+	Checks if a there are values in the regression table for specific date and gain setting
+	:param regression_table:
+	:param sample_date:
+	:param gain:
+	:return: Boolean
+	"""
 	try:
 		t = RegListComp(regression_table, sample_date, gain)
 		return True
 	except:
 		return False
+
+
+def get_chl_for_gain(uncorrected_chl_value, list_reg_obj, sample_date, gain):
+	"""
+	For specific date and gain, applies the linear model to an uncorrected chl value
+	:param uncorrected_chl_value: raw chl value
+	:param list_reg_obj: output of pullRegresionTable (ie a list of regression objects)
+	:param sample_date: python date time object for date uncorrect chl was measured
+	:param gain: get setting to use for the lm lookup
+	:return: corrected chl value based on the lm of the specified gain if the lm is significant
+	"""
+	reg_values = RegListComp(list_reg_obj, sample_date, gain)
+	chl = lm_significant(uncorrected_chl_value, reg_values.r_squared, reg_values.a_coefficient, reg_values.b_coefficient)
+	return chl
 
 
 def chl_decision(uncorrected_chl_value, regression_table, sample_date):
@@ -197,24 +189,47 @@ def chl_decision(uncorrected_chl_value, regression_table, sample_date):
 	return chl
 
 
-def get_chl_for_gain(uncorrected_chl_value, list_reg_obj, sample_date, gain):
+def queryBuilder(session, query_type="NEW", idrange=None, dates=None):
 	"""
+	Creates query to pull records from water quality table
+	:param session: an open SQLAlchemy database session
+	:param query_type: choose "ALL", "NEW", "IDRANGE", or "DATERANGE"
+	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
+		Ex: main(session, "RANGE", idrange=[120, 2000])
+	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
+		Ex: main(session, "DATERANGE",  dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
+	:return: a SQLAlchemy query object
+	"""
+	wq = classes.WaterQuality
 
-	:param sample_date:
-	:param uncorrected_chl_value:
-	:param gain:
+	if query_type == "ALL":
+		# update all records in wq table that have xy coords
+		q = session.query(wq).filter(wq.chl != None)  # all records that have chl values
+	elif query_type == "NEW":
+		q = session.query(wq).filter(wq.chl != None, wq.chl_corrected == None)
+	elif query_type == "IDRANGE" and idrange is not None:
+		q = session.query(wq).filter(wq.id >= idrange[0], wq.id <= idrange[1], wq.chl != None)
+	elif query_type == "DATERANGE" and dates is not None:
+		upper_bound = dates[1] + datetime.timedelta(days=1)
+		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound, wq.chl != None)
+	else:
+		raise Exception("Input params are not valid.")
+	return q
+
+
+def main(query_type="ALL", daterange=None, idrange=None):
+	"""
+	Updates the water quality table corrected CHL by applying the linear regression values from the regression table
+	:param query_type: Subset of records to run update on ("ALL", "NEW", "DATERANGE", "IDRANGE"
+	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
+		Ex: main(session, "RANGE", idrange=[120, 2000])
+	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
+		Ex: main(session, "DATERANGE",  dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
 	:return:
 	"""
-	reg_values = RegListComp(list_reg_obj,  sample_date, gain)
-	chl = lm_significant(uncorrected_chl_value, reg_values.r_squared, reg_values.a_coefficient, reg_values.b_coefficient)
-	return chl
-
-
-def main(query_type="NEW", daterange=None, idrange=None):
 	session = classes.get_new_session()
 	query = queryBuilder(session, query_type, idrange, daterange)
 	reg_table = pullRegresionTable(session)
-
 	try:
 		# iterate over each row
 		for row in query:
@@ -222,7 +237,7 @@ def main(query_type="NEW", daterange=None, idrange=None):
 			# get the date only from the date_time field
 			dt = row.date_time
 
-			# decision tree using date and uncorrectd chl value
+			# decision tree using date and uncorrected chl value
 			updated_chl = chl_decision(row.chl, reg_table, dt)
 			row.chl_corrected = updated_chl
 
