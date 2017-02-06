@@ -148,12 +148,11 @@ def apr():
 	s.slurp_gains(path)
 	s.slurp_trans(path)
 
-
 def mar():
 	print("March 2013")
 	path = os.path.join(data, "Mar_2013")
 	s = slurp.Slurper()
-	s.exclude = ['StatePlaneCAII', 'SummaryFiles', "Arc_030413"]  # see github issue
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']  # see github issue
 	s.site_function_params = {"site_part": 3}
 	s.gain_setting = 0
 	s.dst = True
@@ -197,19 +196,22 @@ def jan():
 	s.slurp_trans(path)
 
 
-def main():
-	jan()
-	feb()
-	mar()
-	apr()
-	may()
-	jun()
-	jul()
-	aug()
-	sep()
-	oct()
-	nov()
-	dec()
+def main(month="ALL"):
+	if month == "ALL":
+		jan()
+		feb()
+		mar()
+		apr()
+		may()
+		jun()
+		jul()
+		aug()
+		sep()
+		oct()
+		nov()
+		dec()
+	else:
+		month
 
 if __name__ == '__main__':
 	main()

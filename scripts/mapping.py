@@ -61,6 +61,16 @@ def generate_layer_for_month(month_to_use, year_to_use, output_location):
 		session.close()
 
 
+def generate_layer_for_site(siteid, output_location):
+	wq = classes.WaterQuality
+	session = classes.get_new_session()
+	try:
+		query = session.query(wq).filter(wq.site_id == siteid, wq.x_coord != None, wq.y_coord != None)
+		query_to_features(query, output_location)
+	finally:
+		session.close()
+
+
 def query_to_features(query, export_path):
 	"""
 	Given a SQLAlchemy query for water quality data, exports it to a feature class
