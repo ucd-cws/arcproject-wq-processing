@@ -68,36 +68,68 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 		session.close()
 
 
-def check_gain_reg_exists(session, sample_date, gain_setting, date_format_string=format_string):
+def queryBuilder(session, query_type="NEW", idrange=None, dates=None):
 	"""
-	Given a date and gain setting, check if there exists a regression result in the pandas table that matches
-	:param session: a SQLAlchemy database session
-	:param sample_date: date to check (should be in format of 'YYYY-MM-DD')
-	:param gain_setting: the gain setting to check for
-	:return: True or False
+	Creates query to pull records from water quality table
+	:param session: an open SQLAlchemy database session
+	:param query_type: choose "ALL", "IDRANGE", or "DATERANGE"
+	:param overwrite: optional - overwrites any existing m values
+	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
+		Ex: main("RANGE", overwrite=True, idrange=[120, 2000])
+	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
+		Ex: main("DATERANGE", overwrite=False, dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
+	:return: a SQLAlchemy query object
 	"""
-	# Checks if there is a row that matches a given date and gain setting
+	wq = classes.WaterQuality
 
-	has_gain = session.query(classes.Regression)\
-					.filter(classes.Regression.date == sample_date,
-							classes.Regression.gain == gain_setting)\
-					.count() > 0
-	return has_gain
+	if query_type == "ALL":
+		# update all records in wq table that have xy coords
+		q = session.query(wq).filter(wq.chl != None)  # all records that have chl values
+	elif query_type == "NEW":
+		q = session.query(wq).filter(wq.chl != None, wq.chl_corrected == None)
+	elif query_type == "IDRANGE" and idrange is not None:
+		q = session.query(wq).filter(wq.id >= idrange[0], wq.id <= idrange[1], wq.chl != None)
+	elif query_type == "DATERANGE" and dates is not None:
+		upper_bound = dates[1] + datetime.timedelta(days=1)
+		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound, wq.chl != None)
+	else:
+		raise Exception("Input params are not valid.")
+	return q
 
 
-def lookup_regression_values(session, sample_date, gain_setting):
+def pullRegresionTable(session):
+	# pull all the data from the regression table in a single query
+	# this avoids calling spawn thousands of queries in the loop
+	reg = classes.Regression
+	reg_table = session.query(reg).all()
+	return reg_table
+
+
+def RegListComp(list_reg_obj, date, gain):
 	"""
-	Return regression values from table given a sample date and gain setting
-	:param session:  a SQLAlchemy database session
-	:param sample_date: date to check (should be in format of 'YYYY-MM-DD')
-	:param gain_setting: gain setting to check (0, 1, 10, 100)
-	:return: tuple with rsquared value, a coefficient (intercept), b coefficient (slope)
+	Filters the regression table objects by a specific date and gain setting
+	:param list_reg_obj: a list objects of type regression class
+	:param date: desired date as a python date time object
+	:param gain: desired gain setting
+	:return: regression object
 	"""
-	record = session.query(classes.Regression) \
-		.filter(classes.Regression.date == sample_date,
-				classes.Regression.gain == gain_setting)\
-		.one()
-	return record
+	# gets the date only from the python date time object
+	date = date.date()
+	print("Date: {}, gain: {}".format(date, gain))
+
+	# use list comprehension to filter all elements with desired gain setting and date
+	subset = [x for x in list_reg_obj if x.date == date and x.gain == gain]
+
+	if len(subset) == 1:
+		reg = subset[0]
+
+	elif len(subset) == 0:
+		# regression does not exist
+		# need to do something with this use case
+		raise Exception("Regression values does not exist for this date and gain setting!")
+	else:
+		raise Exception("Regression values for date and gain must be unique!")
+	return reg
 
 
 def chl_correction(uncorrected_chl, a_coeff, b_coeff):
@@ -123,16 +155,22 @@ def lm_significant(uncorrected_chl_value, rsquared, a_coeff, b_coeff):
 	:return: corrected chl
 	"""
 	if rsquared > 0.8:
-		#print("R-square value {} and significant. Using the lm to correct the chl".format(rsquared))
 		corrected_chl = chl_correction(uncorrected_chl_value, a_coeff, b_coeff)
 	else:
-		#print("R-square value {} and not significant. Using uncorrected Chl values".format(rsquared))
 		corrected_chl = uncorrected_chl_value
-
 	return corrected_chl
 
 
-def chl_decision(uncorrected_chl_value, sample_date):
+def check_gain_reg_exists(regression_table, sample_date, gain):
+	try:
+		t = RegListComp(regression_table, sample_date, gain)
+		return True
+	except:
+		print("Regression does not exist")
+		return False
+
+
+def chl_decision(uncorrected_chl_value, regression_table, sample_date):
 	"""
 	Decision tree for correcting Chl values using a linear model regression results
 	:param uncorrected_chl_value: the value to correct
@@ -140,34 +178,27 @@ def chl_decision(uncorrected_chl_value, sample_date):
 	:param sample_date: date sample was collected to look up for correction
 	:return: corrected chl value if applicable (r square significant for lm)
 	"""
-
-	session = classes.get_new_session()
-
 	# gain zero
-	if check_gain_reg_exists(session, sample_date, 0):
-		chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=0)
+	if check_gain_reg_exists(regression_table, sample_date, 0):
+		chl = get_chl_for_gain(uncorrected_chl_value, regression_table, sample_date, gain=0)
 	else:
-		if uncorrected_chl_value < 5 and check_gain_reg_exists(session, sample_date, 100):
+		if uncorrected_chl_value < 5 and check_gain_reg_exists(regression_table, sample_date, 100):
 			# use gain 100 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=100)
-		elif uncorrected_chl_value < 45 and check_gain_reg_exists(session, sample_date, 10):
+			chl = get_chl_for_gain(regression_table, sample_date, uncorrected_chl_value, gain=100)
+		elif uncorrected_chl_value < 45 and check_gain_reg_exists(regression_table, sample_date, 10):
 			# use gain 10 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=10)
-		elif check_gain_reg_exists(session, sample_date, 1):
+			chl = get_chl_for_gain(regression_table, sample_date, uncorrected_chl_value, gain=10)
+		elif check_gain_reg_exists(regression_table, sample_date, 1):
 			# use gain1 regression if significant
-			chl = get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain=1)
+			chl = get_chl_for_gain(regression_table, sample_date, uncorrected_chl_value, gain=1)
 		else:
 			#print("Unable to correct CHL since regression values don't exist in the table.")
 			#print("Returning uncorrected values")
-			chl = uncorrected_chl_value
-
-	# TODO there will likely be an error if the regression values don't exist in the table
-	# TODO figure out how to catch that. Alternative is to return uncorrected values.
-
+			chl = None
 	return chl
 
 
-def get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain):
+def get_chl_for_gain(uncorrected_chl_value, list_reg_obj, sample_date, gain):
 	"""
 
 	:param sample_date:
@@ -175,25 +206,15 @@ def get_chl_for_gain(session, sample_date, uncorrected_chl_value, gain):
 	:param gain:
 	:return:
 	"""
-
-	reg_values = lookup_regression_values(session, sample_date, gain)
+	reg_values = RegListComp(list_reg_obj,  sample_date, gain)
 	chl = lm_significant(uncorrected_chl_value, reg_values.r_squared, reg_values.a_coefficient, reg_values.b_coefficient)
-
 	return chl
 
 
-def main(update="NEW"):
-
-	wq = classes.WaterQuality
+def main(query_type="NEW", daterange=None, idrange=None):
 	session = classes.get_new_session()
-
-	if update == "ALL":
-		# get all data in water_quality
-		query = session.query(wq).filter(wq.chl != None)  # all records that have chl values
-	elif update == "NEW":
-		query = session.query(wq).filter(wq.chl != None, wq.chl_corrected is None)  # all records that have chl values
-	else:
-		query = update
+	query = queryBuilder(session, query_type, idrange, daterange)
+	reg_table = pullRegresionTable(session)
 
 	try:
 		# iterate over each row
@@ -201,19 +222,19 @@ def main(update="NEW"):
 
 			# get the date only from the date_time field
 			dt = row.date_time
-			date = dt.strftime('%Y-%m-%d')
 
 			# decision tree using date and uncorrectd chl value
-			updated_chl = chl_decision(row.chl, date)
+			print(row.chl)
+			updated_chl = chl_decision(row.chl, reg_table, dt)
+			print(updated_chl)
 			row.chl_corrected = updated_chl
 
 		# commit session
 		session.commit()
 	except:
 		pass
-	# close session
 	session.close()
 	return
 
-main()
-print (datetime.now() - startTime)
+if __name__ == '__main__':
+	main(query_type="IDRANGE", idrange=[10, 55])
