@@ -25,11 +25,10 @@ def lookup_siteid(session, site_abbr):
 		q = session.query(s.id).filter(s.code == site_abbr.upper()).one()
 		return q[0]
 	except orm.exc.NoResultFound:
-		print("{} is not a valid current site code. Add to site table in database and try again.".format(site_abbr))
-		exit()
+		raise Exception("{} is not a valid current site code. Add to site table in database and try again.".format(site_abbr))
 
 
-def recs_swap_id(session, oldid, newid):
+def recs_swap_id(session, oldid, newid, note=None):
 	"""
 	Swaps the site_ids for all the records that belong to the oldid, replacing with the new site id
 	:param session:
@@ -41,16 +40,18 @@ def recs_swap_id(session, oldid, newid):
 	c = 0
 	for r in recs:
 		r.site_id = int(newid)
+		r.notes = note
 		c += 1
 	return c
 
 
-def main(current, desired, remove=False):
+def main(current, desired, remove=False, note=None):
 	"""
 	Changes the assigned site for all records for a provided site abbreviation
 	:param current: abbreviation of currently assigned site
 	:param desired: abbreviation of the new site to assign to the records
 	:param remove: optional - remove the original site for the sites table after changing the wq recs
+	:param note: optional - new note to add to the wq record
 	:return:
 	"""
 	# open new session
@@ -66,7 +67,7 @@ def main(current, desired, remove=False):
 			raise Exception("Unable to swap with self")
 
 		# swap old and new while returning the count of records updated.
-		count = recs_swap_id(session, old, new)
+		count = recs_swap_id(session, old, new, note)
 
 		if remove:
 			s = classes.Site

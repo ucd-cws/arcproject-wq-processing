@@ -1,5 +1,4 @@
 library("RSQLite")
-
 # set working directory to arcproject-wq-processing folder
 project_folder = "~/arcproject-wq-processing"
 setwd(project_folder)
@@ -28,11 +27,12 @@ plot_wq_var <- function(connection, site_code, title, water_quality_var){
   # load data for selected transect
   data <- all_wq_reach(connection, siteid)
   
-  # check if there is actually data for the selected variable
+  #check if there is actually data for the selected variable
   if(sum(!is.na(data[water_quality_var]))>0){
   p <- heatplot(data, "date_time", "m_value", water_quality_var, title)
   }
   else{print("Variable does not have enough data")}
+  
   }
 
 
@@ -109,6 +109,7 @@ generate_all <- function(connection,list_wq_vars){
 
 ##############################################
 # get argvs if calling from script
+#args<- c("junk", 'CC', 'ph', 'Title')
 args <- commandArgs(trailingOnly=TRUE)
 if(length(args) == 4){
   
@@ -123,7 +124,7 @@ if(length(args) == 4){
   
   # save the plot to disk using the title as the filename
   # saves the plot
-  save_wq_plot(p, title, wqvar)
+  save_wq_plot(p, siteid, wqvar)
   
   # finally disconnect from the database
   dbDisconnect(con)

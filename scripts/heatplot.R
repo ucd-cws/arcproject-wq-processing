@@ -10,8 +10,11 @@ unique_dates <- function(dataframe, dateField){
     unique <- unique(df[,dateField]) # get list of unique dates to use as breaks
 }
 
+yaxisformat <-function(x){
+  x/1000000
+}
 
-heatplot <- function(df, dateField, distanceField, wqVariable, site_code){
+heatplot <- function(df, dateField, distanceField, wqVariable, title){
     # convert date_time to just date
     df[,dateField] <- as.Date(df[,dateField])
     df[,dateField] <- as.Date(df[,dateField])
@@ -24,19 +27,22 @@ heatplot <- function(df, dateField, distanceField, wqVariable, site_code){
     # get unique dates from dataframe
     date_breaks <- unique_dates(df, dateField)
 
+    
     # plot using ggplot with geom_tile
     p <- ggplot(df, aes_string(x=dateField, y=distanceField, fill=wqVariable)) +
       geom_bar(width=31, stat="identity") + # makes widths equal to 31 days
       scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) + # set color gradient
-      ggtitle(paste(toupper(wqVariable), "-", toupper(site_code))) +
-      scale_y_continuous() +
+      ggtitle(title) +
+      ylab("km")+
+      scale_y_continuous(labels = yaxisformat) +
       scale_x_date(breaks=date_breaks, date_labels="%b - %Y")+ # format of x axis dates Mon - YEAR
       guides(fill = guide_colorbar(ticks = FALSE)) + # no tick marks
       theme_bw() +  # change theme simple with no axis or tick marks
       theme(panel.border = element_blank(), panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),axis.title.y=element_blank(),
-            axis.text.y=element_blank(),
-            axis.ticks.y=element_blank(),
+            panel.grid.minor = element_blank(),
+            #axis.title.y=element_blank(),
+            #axis.text.y=element_blank(),
+            #axis.ticks.y=element_blank(),
             axis.ticks.x=element_blank(),
             axis.title.x = element_blank(),
             axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.25), # x labels horizontal
