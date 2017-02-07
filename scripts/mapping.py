@@ -15,6 +15,10 @@ _BASE_FOLDER = os.path.split(os.path.dirname(__file__))[0]
 _TEMPLATES_FOLDER = os.path.join(_BASE_FOLDER, "templates", )
 _LAYERS_FOLDER = os.path.join(_TEMPLATES_FOLDER, "layers")
 
+arcgis_10_template = os.path.join(_TEMPLATES_FOLDER, "base_template.mxd")
+arcgis_pro_template = os.path.join(_TEMPLATES_FOLDER, "arcproject_template_pro", "arcproject_template_pro.aprx")
+arcgis_pro_layout_template = os.path.join(_TEMPLATES_FOLDER, "arcproject_template_pro", "main_layout.pagx")
+
 arcgis_pro_layer_symbology = os.path.join(_LAYERS_FOLDER, "wq_points.lyrx")
 arcgis_10_layer_symbology = os.path.join(_LAYERS_FOLDER, "wq_points.lyr")
 

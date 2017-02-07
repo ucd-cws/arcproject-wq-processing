@@ -28,7 +28,7 @@ class Toolbox(object):
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp, CheckMatch,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite]
+		              GenerateSite, ModifySelectedSite, GenerateMap]
 
 
 class WQMappingBase(object):
@@ -69,8 +69,8 @@ class WQMappingBase(object):
 
 
 		self._filter_to_layer_mapping = {
-										"CHL": "CHLa.lyr",
-										"CHL Corrected": "CHLa.lyr",
+										"CHL": "CHL_regular.lyr",
+										"CHL Corrected": "CHL_corrected.lyr",
 										"Dissolved Oxygen": "DO.lyr",
 										"DO Percent Saturation": "DOPerCentSat.lyr",
 										"pH": "pH.lyr",
@@ -108,7 +108,7 @@ class WQMappingBase(object):
 		layer_name = self._filter_to_layer_mapping[symbology_param.valueAsText]
 		layer_path = os.path.join(mapping._LAYERS_FOLDER, layer_name)
 
-		layer = amaptor.make_layer_with_file_symbology(data_path, layer_path)
+		layer = amaptor.functions.make_layer_with_file_symbology(data_path, layer_path)
 		layer.name = os.path.split(data_path)[1]
 		l_map.add_layer(layer)
 
@@ -157,6 +157,14 @@ class WQMappingBase(object):
 			finally:
 				session.close()
 		return
+
+	def convert_year_and_month(self, year, month):
+		year_to_use = int(year.value)
+		month = month.valueAsText
+		# look up index position in calender.monthname
+		t = list(calendar.month_name)
+		month_to_use = int(t.index(month))
+		return year_to_use, month_to_use
 
 
 class AddSite(object):
@@ -721,11 +729,7 @@ class GenerateMonth(WQMappingBase):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		year_to_use = int(parameters[0].value)
-		month = parameters[1].value
-		# look up index position in calender.monthname
-		t = list(calendar.month_name)
-		month_to_use = int(t.index(month))
+		year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
 
 		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
 
@@ -785,7 +789,7 @@ class GenerateMap(WQMappingBase):
 				category="Static Map Exports",
 			)
 
-		params = [self.month_to_generate, self.year_to_generate, self.select_wq_param, map_output, export_pdf, export_png]
+		params = [self.year_to_generate, self.month_to_generate, self.select_wq_param, map_output, export_pdf, export_png]
 		return params
 
 	def isLicensed(self):
@@ -804,7 +808,7 @@ class GenerateMap(WQMappingBase):
 		parameter.  This method is called after internal validation."""
 		return
 
-	def execute(self, parameters):
+	def execute(self, parameters, messages):
 		"""
 			Generates the map and exports any necessary static maps
 		:param parameters:
@@ -813,21 +817,22 @@ class GenerateMap(WQMappingBase):
 
 		# TODO: STILL NEEDS TO HANDLE STATIC MAP EXPORTS
 
-		month_to_use = parameters[0].valueAsText
-		year_to_use = parameters[1].valueAsText
+		year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
 		symbology_param = parameters[2]
 
-		template = os.path.join(mapping._TEMPLATES_FOLDER, "base_template.mxd")
-		output_location = parameters[3].valueAsText
+		template = mapping.arcgis_10_template
+		output_map_path = parameters[3].valueAsText
+		new_layout_name = "{} Layout".format(output_map_path)
 		if amaptor.PRO:
 			map_project = amaptor.Project("CURRENT")
-			map_project.new_map(name=output_location, template=template)
-			new_map = map_project.find_map(output_location)
+			new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
+			new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="arcproject_map_template")
+			new_layout.frames[0].map = new_map.map_object  # rewrite the data frame map to be the map object of the new map
 
-			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project._primary_document.defaultGeodatabase)
+			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
 		else:
-			shutil.copyfile(template, output_location)
-			map_project = amaptor.Project(output_location)
+			shutil.copyfile(template, output_map_path)
+			map_project = amaptor.Project(output_map_path)
 			new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
 
 			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer")
@@ -836,6 +841,12 @@ class GenerateMap(WQMappingBase):
 		generate_layer_for_month(month_to_use, year_to_use, output_location)
 
 		self.insert_layer(output_location, symbology_param, map_or_project=new_map)
+		new_layer = new_map.find_layer(path=output_location)
+		new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
+		map_project.save()
+
+		if amaptor.PRO:
+			arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
 
 class ModifyWQSite(object):
 	def __init__(self):
