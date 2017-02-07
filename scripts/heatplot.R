@@ -11,7 +11,7 @@ unique_dates <- function(dataframe, dateField){
 }
 
 yaxisformat <-function(x){
-  x/1000000
+  x/1000
 }
 
 heatplot <- function(df, dateField, distanceField, wqVariable, title){
@@ -29,9 +29,10 @@ heatplot <- function(df, dateField, distanceField, wqVariable, title){
 
     
     # plot using ggplot with geom_tile
-    p <- ggplot(df, aes_string(x=dateField, y=distanceField, fill=wqVariable)) +
-      geom_bar(width=31, stat="identity") + # makes widths equal to 31 days
-      scale_fill_gradientn(colours=c("blue","green","yellow","orange","red")) + # set color gradient
+    p <- ggplot(df, aes_string(x=dateField, y=distanceField, color=wqVariable)) +
+      geom_point(pch=15, cex=3)+
+      #geom_bar(width=31, stat="identity") + # makes widths equal to 31 days
+      scale_color_gradientn(colours=c("blue","green","yellow","orange","red")) + # set color gradient
       ggtitle(title) +
       ylab("km")+
       scale_y_continuous(labels = yaxisformat) +
@@ -50,6 +51,7 @@ heatplot <- function(df, dateField, distanceField, wqVariable, title){
             legend.direction="horizontal", # orientation of legend
             legend.title= element_blank(), # no title for legend
             legend.key.size = unit(1.5, "cm") # size of legend
-      )
+     )
     p
 }
+
