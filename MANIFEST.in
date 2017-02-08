@@ -1,0 +1,8 @@
+include scripts *.py
+recursive-include scripts/R_postprocessing *
+recursive-include templates *
+recursive-include plots *
+recursive-include data *
+recursive-include geo *
+include wqdb.sqlite
+include wq-procesing-toolbox.*

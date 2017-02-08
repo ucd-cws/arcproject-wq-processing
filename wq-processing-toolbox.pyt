@@ -822,12 +822,14 @@ class GenerateMap(WQMappingBase):
 
 		template = mapping.arcgis_10_template
 		output_map_path = parameters[3].valueAsText
+		output_pdf_path = parameters[4].valueAsText
+		output_png_path = parameters[5].valueAsText
 		new_layout_name = "{} Layout".format(output_map_path)
 		if amaptor.PRO:
 			map_project = amaptor.Project("CURRENT")
-			new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
+			new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="_arcproject_map_template")
 			new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="arcproject_map_template")
-			new_layout.frames[0].map = new_map.map_object  # rewrite the data frame map to be the map object of the new map
+			new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
 
 			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
 		else:
@@ -842,8 +844,15 @@ class GenerateMap(WQMappingBase):
 
 		self.insert_layer(output_location, symbology_param, map_or_project=new_map)
 		new_layer = new_map.find_layer(path=output_location)
+		new_layer.name = symbology_param.valueAsText
 		new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
 		map_project.save()
+
+		if output_png_path and output_png_path != "":
+			new_map.export_png(output_png_path, resolution=300)
+		if output_pdf_path and output_pdf_path != "":
+			pass
+
 
 		if amaptor.PRO:
 			arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
