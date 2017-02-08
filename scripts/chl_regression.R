@@ -18,17 +18,31 @@ library("RSQLite")
 
 # queries database to get all the vertical profile water data for a given day ie '2013-01-07'
 vertical_profiles <- function(date){
-  date <- as.Date(date)# date should be cast to date object using as.Date()
-  upperbound <- date + 1 # upper bound is the next day
+  lowerbound = paste(date, '00:00:00.000000')
+  upperbound = paste(date, '23:59:59.999999')
   con = dbConnect(SQLite(), dbname=database) # connect to the sqlite database
-  print(date)
-  print(upperbound)
+
   # build query statement  
-  statement = paste("select * from vertical_profiles where date_time >=", date) #, "and date_time <", upperbound)
+  statement = paste("select * from vertical_profiles where date_time >'", lowerbound, "'", "and date_time <'", upperbound, "'", sep='')
   print(statement)
   vps = dbGetQuery(con, statement) 
   dbDisconnect(con) # disconnect from the database
   return(vps) # returns all vertical profile records for a given date
+}
+
+
+# queries database to get all grab sample data for a given day ie '2013-01-07'
+vertical_profiles <- function(date){
+  lowerbound = paste(date, '00:00:00.000000')
+  upperbound = paste(date, '23:59:59.999999')
+  con = dbConnect(SQLite(), dbname=database) # connect to the sqlite database
+  
+  # build query statement  
+  statement = paste("select * from vertical_profiles where date_time >'", lowerbound, "'", "and date_time <'", upperbound, "'", sep='')
+  print(statement)
+  grab = dbGetQuery(con, statement) 
+  dbDisconnect(con) # disconnect from the database
+  return(grab) # returns all vertical profile records for a given date
 }
 
 
@@ -43,4 +57,11 @@ readdate <- function()
 ############################################################
 date = '2013-01-07'
 
+#as.Date(date)
 p <- vertical_profiles(date)
+
+
+
+
+
+
