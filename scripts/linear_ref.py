@@ -18,7 +18,7 @@ def LocateWQalongREF(wq_features, ref_route):
 		# check if already exists and if so delete it
 		arcpy.Delete_management(r"in_memory\out_table")
 	ref_table_out = arcpy.LocateFeaturesAlongRoutes_lr(wq_features, ref_route, "SITECODE",
-                                   "250 Meters", r"in_memory\out_table", out_event_properties="RID POINT MEAS")
+                                   "25 Meters", r"in_memory\out_table", out_event_properties="RID POINT MEAS")
 
 	return ref_table_out
 
