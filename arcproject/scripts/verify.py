@@ -8,11 +8,11 @@ import pandas as pd
 import geodatabase_tempfile
 import amaptor
 
-from arcproject import waterquality
-from arcproject.waterquality import classes, funcs as wq_funcs
-from arcproject.waterquality import api
-from arcproject import scripts
-from arcproject.scripts import mapping
+from .. import waterquality
+from ..waterquality import classes, funcs as wq_funcs
+from ..waterquality import api
+from .. import scripts
+from . import mapping
 
 class Point(object):
 	"""

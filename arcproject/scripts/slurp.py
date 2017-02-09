@@ -8,14 +8,17 @@
 	which ones represent specific data of interest. May be able to just index some of this based on filenames though
 """
 import os
-from arcproject.scripts import wqt_timestamp_match
-from arcproject.scripts import wq_gain
+import six
+
 import fnmatch
+
 from sqlalchemy import exc
 from sqlalchemy.orm.exc import NoResultFound
+
 # import project modules
-from arcproject.waterquality import classes
-import six
+from ..waterquality import classes
+from . import wqt_timestamp_match
+from . import wq_gain
 
 
 class Slurper(object):

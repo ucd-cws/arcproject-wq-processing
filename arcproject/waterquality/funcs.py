@@ -1,4 +1,4 @@
-from arcproject.scripts import SpatialReferenceError, NoRecordsError
+from ..scripts import SpatialReferenceError, NoRecordsError
 
 
 def get_wq_df_spatial_reference(df):

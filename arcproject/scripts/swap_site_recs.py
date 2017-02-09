@@ -1,5 +1,7 @@
-from arcproject.waterquality import classes
+
 from sqlalchemy import exc, orm
+
+from ..waterquality import classes
 
 
 def select_allrecs_siteid(session, site):

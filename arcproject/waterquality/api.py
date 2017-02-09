@@ -2,8 +2,8 @@ import datetime
 
 import pandas
 
-from arcproject.waterquality import classes
-from arcproject.waterquality.classes import WaterQuality as wq
+from . import classes
+from .classes import WaterQuality as wq
 
 
 def get_wq_for_date(datetime_object, shorten_spatial=True, index=False):  # TODO: Add unit tests for this
