@@ -6,7 +6,6 @@ import mapping
 import config
 import datetime
 
-
 def LocateWQalongREF(wq_features, ref_route):
 	"""
 	Uses arcpy linear refereeing to locate the input features distances along the reference route

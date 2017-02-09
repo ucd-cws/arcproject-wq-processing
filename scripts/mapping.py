@@ -5,13 +5,22 @@ import os
 import arcpy
 import pandas as pd
 
+import amaptor
+
 from scripts import NoRecordsError, SpatialReferenceError
 from scripts.wqt_timestamp_match import pd2np
 from waterquality import classes, funcs as wq_funcs
 
-arcgis_pro_layer_symbology = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wq_points.lyrx")
-arcgis_10_layer_symbology = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wq_points.lyr")
+_BASE_FOLDER = os.path.split(os.path.dirname(__file__))[0]
+_TEMPLATES_FOLDER = os.path.join(_BASE_FOLDER, "templates", )
+_LAYERS_FOLDER = os.path.join(_TEMPLATES_FOLDER, "layers")
 
+arcgis_10_template = os.path.join(_TEMPLATES_FOLDER, "base_template.mxd")
+arcgis_pro_template = os.path.join(_TEMPLATES_FOLDER, "arcproject_template_pro", "arcproject_template_pro.aprx")
+arcgis_pro_layout_template = os.path.join(_TEMPLATES_FOLDER, "arcproject_template_pro", "main_layout.pagx")
+
+arcgis_pro_layer_symbology = os.path.join(_LAYERS_FOLDER, "wq_points.lyrx")
+arcgis_10_layer_symbology = os.path.join(_LAYERS_FOLDER, "wq_points.lyr")
 
 def set_output_symbology(parameter):
 	## Output symbology
@@ -95,3 +104,28 @@ def query_to_features(query, export_path):
 		shape_fields=["x_coord", "y_coord"],
 		spatial_reference=sr,
 	)
+
+
+def map_missing_segments(summary_file, loaded_data, output_location, template=os.path.join(_TEMPLATES_FOLDER, "base_template.mxd")):
+	"""
+		A mapping function used by data validation code to create maps when data is invalid
+	:param summary_file:
+	:param loaded_data:
+	:param output_location:
+	:param template:
+	:return:
+	"""
+
+	transect_template = os.path.join(_LAYERS_FOLDER, "added_data.lyr")
+	summary_file_template = os.path.join(_LAYERS_FOLDER, "summary_file_review.lyr")
+
+	project = amaptor.Project(template)
+	map = project.maps[0]
+	map.insert_feature_class_with_symbology(summary_file, layer_file=summary_file_template, layer_name="Summary File",
+											near_name="Arc_DeltaWaterways_0402", insert_position="BEFORE")
+	map.insert_feature_class_with_symbology(loaded_data, layer_file=transect_template, layer_name="Loaded Transects",
+											near_name="Arc_DeltaWaterways_0402", insert_position="BEFORE")
+
+	project.save_a_copy(output_location)
+
+	return project

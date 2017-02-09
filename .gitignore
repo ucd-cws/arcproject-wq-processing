@@ -1,4 +1,5 @@
 scripts/tests/testfiles/slurp/*
+*.sr.lock
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -99,3 +100,4 @@ ENV/
 python.bat
 tox.ini
 pip.bat
+MANIFEST
