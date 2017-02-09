@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 from sqlalchemy.exc import IntegrityError
-
+from datetime import datetime
 from scripts import chl_decision_tree as cdt
 from waterquality import classes, shorten_float
 
@@ -63,77 +63,79 @@ class LookupReg(unittest.TestCase):
 
 	def setUp(self):
 		# this is fake data - should not be imported to database
-		self.df = pd.DataFrame(
-		                       [
-			                       ['2013-01-07', 0, 0.999913452106, -0.700480071906, 0.911512370843],
-			                       ['2013-01-08', 0, 0.712038046822, 0.353666429071, 0.190055423761],
-			                       ['2014-01-13', 10, 0.987127460968, -1.77156121034, 1.01214030496],
-			                       ['2014-01-13', 1, 0.881928349698, -2.19331177439, 1.77889434406],
-			                       ['2014-02-25', 10, 0.0875528346389, 1.30569522004, 0.524964784217],
-			                       ['2014-02-25', 1, 0.12658432064, 1.95385057303, 0.174847905936],
-			                       ['2014-09-16', 100, 0.901128927601, -4.12735096256, 3.78735462682],
-			                       ['2014-09-18', 100, 0.792842499024, -3.06172823977, 1.77689278967]
-		                       ], columns=['Date', 'Gain', 'Rsquared', 'A_coeff', 'B_coeff'])
 
-		try:
-			cdt.load_regression_data(self.df)
-		except IntegrityError:
-			pass  # it's probably OK in this case - it should mean the data is already there - tests will fail later if it isn't
+		# this is a list of regression objects
+		self.regs = [
+			classes.Regression(id=1, date=datetime(2013, 1, 7).date(), gain=0, r_squared=0.999913452106, a_coefficient= -0.700480071906, b_coefficient=0.911512370843),
+			classes.Regression(id=2, date=datetime(2013, 1, 8).date(), gain=0, r_squared=0.712038046822, a_coefficient= 0.353666429071, b_coefficient=0.190055423761),
+			classes.Regression(id=3, date=datetime(2014, 1, 13).date(), gain=10, r_squared=0.987127460968, a_coefficient= -1.77156121034, b_coefficient=1.01214030496),
+			classes.Regression(id=4, date=datetime(2014, 1, 13).date(), gain=1, r_squared=0.881928349698, a_coefficient= -2.19331177439, b_coefficient=1.77889434406),
+			classes.Regression(id=5, date=datetime(2014, 2, 25).date(), gain=10, r_squared=0.0875528346389, a_coefficient= 1.30569522004, b_coefficient=0.524964784217),
+			classes.Regression(id=6, date=datetime(2014, 2, 25).date(), gain=1, r_squared=0.12658432064, a_coefficient=1.95385057303, b_coefficient=0.174847905936),
+			classes.Regression(id=7, date=datetime(2014, 9, 16).date(), gain=100, r_squared=0.901128927601, a_coefficient= -4.12735096256, b_coefficient=3.78735462682),
+			classes.Regression(id=8, date=datetime(2014, 9, 18).date(), gain=100, r_squared=0.792842499024, a_coefficient= -3.06172823977, b_coefficient=1.77689278967),
+			classes.Regression(id=9, date=datetime(2014, 9, 18).date(), gain=100, r_squared=0.792842499024, a_coefficient= -3.06172823977, b_coefficient=1.77689278967)
+		]
+		pass
 
-	def test_check_row_exists(self):
+	def test_structure(self):
+		# regs is a list
+		self.assertEqual(type(self.regs), list)
 
-		session = classes.get_new_session()
-		try:
-			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-09', 0))  # wrong date
-			self.assertFalse(cdt.check_gain_reg_exists(session, '2013-01-08', 10))  # wrong gain
-			self.assertTrue(cdt.check_gain_reg_exists(session, '2014-01-13', 10))  # right date + gain
-		finally:
-			session.close()
+		# items in regs are of type classes.Regression
+		self.assertEqual(type(self.regs[0]), classes.Regression)
 
-	def test_check_lookup(self):
-		session = classes.get_new_session()
+		# check the value of variable in a class instance
+		self.assertEqual(self.regs[0].r_squared, 0.999913452106)
 
-		try:
-			regression = cdt.lookup_regression_values(session, '2013-01-08', 0)
-			self.assertAlmostEqual(regression.r_squared, 0.712038046822)
-			self.assertAlmostEqual(regression.a_coefficient, 0.35366642907099999)
-			self.assertAlmostEqual(regression.b_coefficient, 0.19005542376099999)
+	def test_check_gainrow_exists(self):
+		self.assertFalse(cdt.check_gain_reg_exists(self.regs, datetime(2013, 1, 9), 0))  # wrong date
+		self.assertFalse(cdt.check_gain_reg_exists(self.regs, datetime(2013, 1, 8), 10))  # wrong gain
+		self.assertTrue(cdt.check_gain_reg_exists(self.regs, datetime(2014, 1, 13), 10))  # right date + gain
 
-			regression = cdt.lookup_regression_values(session, '2014-01-13', 1)
-			self.assertAlmostEqual(regression.r_squared, 0.8819283496979999)
-			self.assertAlmostEqual(regression.a_coefficient, -2.19331177439)
-			self.assertAlmostEqual(regression.b_coefficient, 1.7788943440599998)
-		finally:
-			session.close()
+	def test_RegComp(self):
+		self.assertEqual(cdt.RegListComp(self.regs, datetime(2014, 1, 13), 10), self.regs[2])
+		self.assertEqual(cdt.RegListComp(self.regs, datetime(2014, 9, 16), 100), self.regs[6])
 
-	def test_chl_decision(self):
+	def test_RegComp_nodata_exception(self):
+		with self.assertRaises(Exception) as context:
+			cdt.RegListComp(self.regs, datetime(2014, 9, 18), 0)
+		self.assertTrue('Regression values does not exist for this date and gain setting!' in str(context.exception))
 
-		# tests decision tree when there only exists gain 0 Chl values
+	def test_RegComp_duplicate_exception(self):
+		with self.assertRaises(Exception) as context:
+			cdt.RegListComp(self.regs, datetime(2014, 9, 18), 100)
+		self.assertTrue("Regression values for date and gain must be unique!" in str(context.exception))
+
+	def test_get_chl_for_gain(self):
 		# gain 0 with a r-square value that is significant
-		self.assertAlmostEqual(cdt.chl_decision(10, '2013-01-07'), 8.41464364)
+		self.assertAlmostEquals(cdt.get_chl_for_gain(10, self.regs, datetime(2013, 1, 7), 0), 8.41464364, places=5)
+
 		# gain 0 with a nonsignificant r-square value
-		self.assertEqual(cdt.chl_decision(10, '2013-01-08'), 10)
+		self.assertAlmostEquals(cdt.get_chl_for_gain(10, self.regs, datetime(2013, 1, 8), 0), 10, places=5)
 
-		# when the uncorrected value is less than 5 use gain 100 regression
+	def test_cdt(self):
+		# gain 0 with a nonsignificant r-square value
+		self.assertEqual(cdt.chl_decision(10, self.regs, datetime(2013, 1, 8)), 10)
+
+		# when the uncorrected value is less than 5 use the gain 100 regression
 		# gain 100 sig
-		self.assertAlmostEqual(cdt.chl_decision(4, '2014-09-16'), 11.02206754472)
-		# gain 100 no sig
-		self.assertEqual(cdt.chl_decision(4, '2014-09-18'), 4)
+		self.assertAlmostEqual(cdt.chl_decision(4, self.regs, datetime(2014, 9, 16)), 11.02206754472, places=5)
 
-		# when the uncorrected value is less than 45 but greater than 5 use gain 10
+		#when the uncorrected value is less than 45 but greater than 5 use gain 10
 		# gain 10 sig
-		self.assertAlmostEqual(cdt.chl_decision(10, '2014-01-13'), 8.34984184)
+		self.assertAlmostEqual(cdt.chl_decision(10, self.regs, datetime(2014, 1, 13)), 8.34984184, places=5)
 		# gain 10 no sig
-		self.assertEqual(cdt.chl_decision(10, '2014-02-25'), 10)
+		self.assertEqual(cdt.chl_decision(10, self.regs, datetime(2014, 2, 25)), 10)
 
 		# the rest of the time just use the gain 1 correction
 		# gain 1 sig
-		self.assertAlmostEqual(cdt.chl_decision(50, '2014-01-13'), 86.75140543, places=5)  # set places shorter - we think there's a typo in "43" - should be insignificant regardless
+		self.assertAlmostEqual(cdt.chl_decision(50, self.regs, datetime(2014, 1, 13)), 86.75140543, places=5)
 		# gain 1 no sig
-		self.assertEqual(cdt.chl_decision(50, '2014-02-25'), 50)
+		self.assertEqual(cdt.chl_decision(50, self.regs, datetime(2014, 2, 25)), 50)
 
 	def test_chl_decision_no_regression(self):
-		self.assertEqual(cdt.chl_decision(4, '1000-02-25'), 4)
+		self.assertEqual(cdt.chl_decision(4, self.regs, datetime(1000, 2, 25)), None)
 		pass
 
 

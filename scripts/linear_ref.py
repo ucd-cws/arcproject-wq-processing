@@ -1,77 +1,10 @@
 # linear reference points along sloughs
-# given x, y and slough name return distance along slough
+# given x, y and a reference line return distance along slough
 import arcpy
-import os
 from waterquality import classes
-import numpy as np
-from scripts import wqt_timestamp_match
-
-# reference routes that are used to get the slough distance
-wd = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ref_routes = os.path.join(wd, "geo", "Reference_SloughCenterlines.shp")  # routes as lines
-
-
-def data_to_linear_reference(records, in_memory_table):
-	"""
-	Turns records from session query into an arcgis table
-	:param records: result from a query that returns all the records that should be updated with m_values
-	:param in_memory_table: name of table to create in memory
-	:return:
-	"""
-	# if the query is empty than all records have values
-	if len(q) == 0:
-		print("All records with Lat/Long have m_values.")
-	else:
-		recs = []
-
-		# iterate through records pulling just the id, lat, and long
-		for record in records:
-			row = [record.id, record.y_coord, record.x_coord]
-			recs.append(row)
-
-		# turn lists of records to numpy array to table
-		dts = {'names': ('id', 'y_coord', 'x_coord'),
-		            'formats': (np.dtype(int), np.float64, np.float64)}
-		array = np.rec.fromrecords(recs, dtype=dts)
-
-		# save numpy array to table
-		arcpy.da.NumPyArrayToTable(array, in_memory_table)
-
-	return
-
-
-def subset_ref_route(reference_lines, slough):
-	# TODO select by reach name so that points at confluences get assigned properly
-	pass
-
-
-def makeFeatureLayer(table):
-	"""
-	Turns a table with Point_X and Point_Y fields (in CA teale albers) into feature layer in memory
-	:param table: input table with X and Y coordinates stored in field (ie not stored in spatial db)
-	:return: feature class stored in memory
-	"""
-
-	if arcpy.Exists("temp_layer"):
-		arcpy.Delete_management("temp_layer")
-
-	if arcpy.Exists(r"in_memory\out_layer"):
-		arcpy.Delete_management(r"in_memory\out_layer")
-
-	# spatial reference
-	sr = arcpy.SpatialReference(wqt_timestamp_match.projection_spatial_reference)
-
-	# create XY event layer using the Point_X and Point_Y fields from the table
-	arcpy.MakeXYEventLayer_management(table,  "x_coord", "y_coord", "temp_layer", spatial_reference=sr)
-	try:
-		# the XY event layer  does not have a object ID - need to copy to disk via in_memory
-		out_layer = arcpy.CopyFeatures_management("temp_layer", r"in_memory\out_layer")
-	finally:
-		# removes the XY event layer
-		arcpy.Delete_management("temp_layer")  # delete the temp layer
-
-	return out_layer
-
+import mapping
+import config
+import datetime
 
 def LocateWQalongREF(wq_features, ref_route):
 	"""
@@ -80,85 +13,180 @@ def LocateWQalongREF(wq_features, ref_route):
 	:return: table with measurement along line, distance to ref line, etc.
 	"""
 	#  use linear referencing to locate each point along route using arcgis's linear referencing tool set
-
-	# note wq_feature needs to FID/OID
-	ref_table_out = arcpy.LocateFeaturesAlongRoutes_lr(wq_features, ref_route, "Slough",
-                                   "250 Meters", r"in_memory\out_table", out_event_properties="RID POINT MEAS")
+	if arcpy.Exists(r"in_memory\out_table"):
+		# check if already exists and if so delete it
+		arcpy.Delete_management(r"in_memory\out_table")
+	ref_table_out = arcpy.LocateFeaturesAlongRoutes_lr(wq_features, ref_route, "SITECODE",
+                                   "25 Meters", r"in_memory\out_table", out_event_properties="RID POINT MEAS")
 
 	return ref_table_out
 
 
-def ID_MeasurePair(linear_referenced_table, ID_field):
+def MeasureDicts(linear_referenced_table, ID_field, update_sites=None):
 	"""
-	Creates python dict pair with the each records FID and linear measurement along reference line
+	Creates a list of  python dicts with the each record ID and linear measurement along reference line
 	:param linear_referenced_table: Table with linear reference results
 	:param ID_field: Field name that uniquely identifies the record
-	:return: python data dictionary with key = recond FID, value = measurement along line
+	:param update_sites: when provided with a list of site objects, updates the site_id using ref value
+	:return: list of dictionaries with id and m_value mappings
 	"""
-
-	# returns data table with input FID, distance along route (MEAS) and distance from the line
-	cursor = arcpy.da.SearchCursor(linear_referenced_table, [ID_field, 'MEAS'])
-
-	measurePairs = {}
-
+	cursor = arcpy.da.SearchCursor(linear_referenced_table, [ID_field, 'MEAS', 'RID'])
+	dicts = []
 	for row in cursor:
-		print(row)
-		measurePairs[row[0]] = row[1]
-
-	return measurePairs
-
-
-def main(session, records, reference_line, override=False):
-	"""
-	Updates all the records with null m_values in the waterquality table
-	:param records: query to pull the records to be updated
-	:param reference_line: the slough line to use as a linear reference
-	:param override: overrides existing m_values
-	:return:
-	"""
-
-	# # creates new session
-	# session = classes.get_new_session()
-	#
-	# # Return all the records that do not have m values
-	# records = session.query(classes.WaterQuality).filter(classes.WaterQuality.m_value == None,
-	# 		classes.WaterQuality.y_coord != None, classes.WaterQuality.x_coord != None ).all()
-
-	try:
-		# turn records that need slough measurement to a table
-		data_to_linear_reference(session, records, "in_memory/recs_np_table")
-
-		# check that the table exists
-		if arcpy.Exists("in_memory/recs_np_table"):
-
-			# turn table into feature layer using XY coords
-			print("Creating XY table")
-			features = makeFeatureLayer("in_memory/recs_np_table")
-
-			# locate features along route using the slough reference lines
-			print("Locating Features along routes")
-			meas_table = LocateWQalongREF(features, reference_line)
-
-			# create data dict with ID and measurement result
-			distances = ID_MeasurePair(meas_table, "id")
-
-			print("Updating records")
-			# update the selected records in the database with the new measurements
-			for location in distances.keys():
-				record = session.query(classes.WaterQuality).filter(classes.WaterQuality.id == location).one_or_none()
-
-				if record is None:
-					# print a warning
-					continue  # skip the record - FID not found - likly a problem - can use .one() instead of .one_or_none() above to raise an exception instead, if no record is found
-
-				record.m_value = distances[location]
+		if update_sites is None:
+			measurePair = {'id': row[0], 'm_value': row[1]}
+			dicts.append(measurePair)
 		else:
-			print("No records updated")
+			siteid = LookupSiteID(update_sites, row[2])
+			measurePair = {'id': row[0], 'm_value': row[1], 'site_id': siteid}
+			dicts.append(measurePair)
+	return dicts
 
-		session.commit()
+
+def pullSites(session):
+	"""
+	Creates query to pull records from the sites table
+	:param session: an open SQLAlchemy database session
+	:return: a list of site objects
+	"""
+	# pull all the data from the regression table in a single query
+	# this avoids calling this for every records which spawns thousands of queries in the loop
+	s = classes.Site
+	s_table = session.query(s).all()
+	return s_table
+
+
+def LookupSiteID(sites_table, code):
+	"""
+	Filters the site table objects by code
+	:param sites_table: a list objects of type site class
+	:param code: code of site id to lookup
+	:return: site id
+	"""
+	subset = [x for x in sites_table if (x.code == code)]
+	if len(subset) == 1:
+		siteid = subset[0].id
+	elif len(subset) == 0:
+		raise Exception("This site does not exist")
+	return siteid
+
+
+def getMvalues(query, sites_table=None):
+	"""
+	Given a SQLAlchemy query for water quality data, exports a feature class to linear reference which is used to update m_values
+	:param query: a SQLAlchemy query object for records to update
+	:param sites_table: a list of sites objects
+	:return: data dict with id and m-value for records in query
+	"""
+	try:
+		# turn records that need measurement to a feature class in memory
+		if arcpy.Exists(r"in_memory\q_as_layer"):
+			# check if already exists and if so delete it
+			arcpy.Delete_management(r"in_memory\q_as_layer")
+		mapping.query_to_features(query, "in_memory\q_as_layer")
+
+		# locate features along route using the reference lines
+		print("Locating points along routes....")
+		meas_table = LocateWQalongREF("in_memory\q_as_layer", config.ref_line)
+
+		# create data dict with ID and measurement result
+		#distances = ID_MeasurePair(meas_table, "id")
+		distances = MeasureDicts(meas_table, "id", sites_table)
 
 	finally:
+		# clean up temp layer
+		arcpy.Delete_management(r"in_memory\q_as_layer")
+
+	return distances
+
+
+def bulk_updateM(session, idDistance_mappings):
+	"""
+	http://stackoverflow.com/questions/25694234/bulk-update-in-sqlalchemy-core-using-where
+	:param session: an open SQLAlchemy database session
+	:param idDistance: list of id~distance dict mappings
+	:return:
+	"""
+	wq = classes.WaterQuality
+	session.bulk_update_mappings(wq, idDistance_mappings)
+	return
+
+
+def queryBuilder(session, query_type="ALL", overwrite=False, idrange=None, dates=None):
+	"""
+	Creates query to pull records from water quality table
+	:param session: an open SQLAlchemy database session
+	:param query_type: choose "ALL", "IDRANGE", or "DATERANGE"
+	:param overwrite: optional - overwrites any existing m values
+	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
+		Ex: main("RANGE", overwrite=True, idrange=[120, 2000])
+	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
+		Ex: main("DATERANGE", overwrite=False, dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
+	:return: a SQLAlchemy query object
+	"""
+	wq = classes.WaterQuality
+
+	if query_type == "ALL" and overwrite is True:
+		# update all records in wq table that have xy coords
+		q = session.query(wq).filter( wq.x_coord != None, wq.y_coord != None)
+	elif query_type == "ALL" and overwrite is False:
+		# update all records in wq table that have xy coords that don't have m - values
+		q = session.query(wq).filter(wq.x_coord != None, wq.y_coord != None, wq.m_value == None)
+	elif query_type == "IDRANGE" and overwrite is True and idrange is not None:
+		q = session.query(wq).filter(wq.id >= idrange[0], wq.id <= idrange[1], wq.x_coord != None, wq.y_coord != None)
+	elif query_type == "IDRANGE" and overwrite is False and idrange is not None:
+		q = session.query(wq).filter(wq.id >= idrange[0], wq.id <= idrange[1], wq.x_coord != None,
+		                             wq.y_coord != None, wq.m_value == None)
+	elif query_type == "DATERANGE" and overwrite is True and dates is not None:
+		upper_bound = dates[1] + datetime.timedelta(days=1)
+		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound,
+		                             wq.x_coord != None, wq.y_coord != None)
+	elif query_type == "DATERANGE" and overwrite is False and dates is not None:
+		upper_bound = dates[1] + datetime.timedelta(days=1)
+		q = session.query(wq).filter(wq.date_time > dates[0], wq.date_time < upper_bound,
+		                             wq.x_coord != None, wq.y_coord != None, wq.m_value == None)
+	else:
+		raise Exception("Input params are not valid.")
+	return q
+
+
+def main(query_type="ALL", overwrite=False, idrange=None, dates=None, updatesites=False):
+	"""
+	Updates m-values in database by linear reference pts along reference line
+	:param query_type: choose "ALL", "IDRANGE", or "DATERANGE"
+	:param overwrite: optional - overwrites any existing m values
+	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
+		Ex: main("IDRANGE", overwrite=True, idrange=[120, 2000])
+	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
+		Ex: main("DATERANGE", overwrite=False, dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
+	:param updatesites: boolean - will use the linear reference line to update the sites code
+	:return:
+	"""
+	session = classes.get_new_session()
+
+	if updatesites:
+		sites = pullSites(session)
+	else:
+		sites = None
+
+	try:
+		print("Querying Database")
+		q = queryBuilder(session, query_type, overwrite, idrange, dates)
+		numrecs = q.count()
+		print("Number of records returned by query: {}.".format(numrecs))
+		if numrecs > 0:
+			print("Linear referencing wqt points. Be patient....")
+
+			distances = getMvalues(q, sites)
+			print("Updating database...")
+			bulk_updateM(session, distances)
+			session.commit()
+		else:
+			print("Query returned zero records to update.")
+	finally:
 		session.close()
+	return
+
 
 if __name__ == '__main__':
-	main()
+	main("ALL", overwrite=True,  updatesites=True)
