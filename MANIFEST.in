@@ -5,4 +5,5 @@ recursive-include plots *
 recursive-include data *
 recursive-include geo *
 include wqdb.sqlite
-include wq-procesing-toolbox.*
+include wq-procesing-toolbox.pyt
+recursive-include *.pyt.xml

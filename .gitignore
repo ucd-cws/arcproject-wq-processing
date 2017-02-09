@@ -100,3 +100,4 @@ ENV/
 python.bat
 tox.ini
 pip.bat
+MANIFEST
