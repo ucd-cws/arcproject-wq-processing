@@ -1,6 +1,6 @@
-from scripts import wqt_timestamp_match as wqt
+from arcproject.scripts import wqt_timestamp_match as wqt
 import pandas as pd
-from waterquality import classes
+from arcproject.waterquality import classes
 import logging
 import traceback
 import six

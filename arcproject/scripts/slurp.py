@@ -8,13 +8,13 @@
 	which ones represent specific data of interest. May be able to just index some of this based on filenames though
 """
 import os
-from scripts import wqt_timestamp_match
-from scripts import wq_gain
+from arcproject.scripts import wqt_timestamp_match
+from arcproject.scripts import wq_gain
 import fnmatch
 from sqlalchemy import exc
 from sqlalchemy.orm.exc import NoResultFound
 # import project modules
-from waterquality import classes
+from arcproject.waterquality import classes
 import six
 
 

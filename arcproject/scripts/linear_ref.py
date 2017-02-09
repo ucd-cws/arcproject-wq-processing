@@ -1,9 +1,9 @@
 # linear reference points along sloughs
 # given x, y and a reference line return distance along slough
 import arcpy
-from waterquality import classes
-import mapping
-import config
+from arcproject.waterquality import classes
+from arcproject.scripts import mapping
+from arcproject.scripts import config
 import datetime
 
 def LocateWQalongREF(wq_features, ref_route):

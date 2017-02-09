@@ -1,4 +1,4 @@
-from .. import classes
+from arcproject.waterquality import classes
 import os
 
 

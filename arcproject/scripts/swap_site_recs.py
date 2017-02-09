@@ -1,4 +1,4 @@
-from waterquality import classes
+from arcproject.waterquality import classes
 from sqlalchemy import exc, orm
 
 

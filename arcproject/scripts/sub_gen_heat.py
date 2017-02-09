@@ -1,6 +1,8 @@
 import subprocess
 import os
 
+from arcproject.scripts import config
+
 ### DEFINE DATA PATHS ###
 base_path = os.path.split(os.path.split(os.path.abspath(__file__))[0])[0]
 

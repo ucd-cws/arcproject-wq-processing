@@ -4,8 +4,8 @@ import os
 
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
-from scripts import chl_decision_tree as cdt
-from waterquality import classes, shorten_float
+from arcproject.scripts import chl_decision_tree as cdt
+from arcproject.waterquality import classes, shorten_float
 
 
 class ChlCorrection(unittest.TestCase):
