@@ -10,7 +10,7 @@ import arcpy
 
 import geodatabase_tempfile
 
-from scripts import verify
+from . import verify
 
 test_data = r"C:\Users\dsx.AD3\Box Sync\arcproject"
 

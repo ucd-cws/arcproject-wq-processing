@@ -1,9 +1,11 @@
-include scripts *.py
-recursive-include scripts/R_postprocessing *
-recursive-include templates *
-recursive-include plots *
-recursive-include data *
-recursive-include geo *
-include wqdb.sqlite
-include wq-procesing-toolbox.pyt
+include arcproject/scripts *.py
+recursive-include arcproject/scripts/ *.R
+recursive-include arcproject/scripts/R_postprocessing *
+recursive-include arcproject/templates *
+recursive-include arcproject/plots *
+recursive-include arcproject/data *
+recursive-include arcproject/geo *
+include arcproject/wqdb.sqlite
+include r_dependencies.py
+include wq-processing-toolbox.pyt
 recursive-include *.pyt.xml

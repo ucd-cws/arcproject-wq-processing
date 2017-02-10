@@ -1,9 +1,9 @@
 import os
 import unittest
 
-import scripts
-from scripts import mapping
-from waterquality import classes
+from arcproject import scripts
+from arcproject.scripts import mapping
+from arcproject.waterquality import classes
 import datetime
 
 import arcpy

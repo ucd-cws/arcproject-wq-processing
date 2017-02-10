@@ -1,7 +1,7 @@
 import arcpy
 import numpy as np
 import unittest
-from scripts import linear_ref
+from arcproject.scripts import linear_ref
 
 class MeasTableTests(unittest.TestCase):
 

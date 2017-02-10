@@ -7,9 +7,9 @@ import pandas as pd
 
 import amaptor
 
-from scripts import NoRecordsError, SpatialReferenceError
-from scripts.wqt_timestamp_match import pd2np
-from waterquality import classes, funcs as wq_funcs
+from . import NoRecordsError, SpatialReferenceError
+from .wqt_timestamp_match import pd2np
+from ..waterquality import classes, funcs as wq_funcs
 
 _BASE_FOLDER = os.path.split(os.path.dirname(__file__))[0]
 _TEMPLATES_FOLDER = os.path.join(_BASE_FOLDER, "templates", )
