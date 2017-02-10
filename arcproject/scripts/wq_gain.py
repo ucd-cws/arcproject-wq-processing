@@ -84,9 +84,9 @@ def gain_wq_df2database(data, field_map=classes.gain_water_quality_header_map, s
 def gain_make_record(field_map, row, session):
 	"""
 	Called for each record in the loaded and joined Pandas data frame. Given a named tuple of a row in the data frame,
-	 translates it into a waterquality object
+	 translates it into a profile object
 	:param field_map: A field map dictionary with keys based on the data frame fields and values of the database field
-	:param row: a named tuple of the row in the data frame to translate into the WaterQuality object
+	:param row: a named tuple of the row in the data frame to translate into the profile object
 	:param session: an open SQLAlchemy database session
 	:return:
 	"""
@@ -112,6 +112,16 @@ def gain_make_record(field_map, row, session):
 	else:  # if we don't break for a bad site code or something else, then add the object
 		session.add(profile)  # adds the object for creation in the DB - will be committed later.
 	return
+
+
+def profile_from_text(session, profile_abbreviation):
+	"""
+		Given a site code and an open database session, returns the site object
+	:param session: An open database session
+	:param profile_abbreviation: a text string that matches a code in the database
+	:return: ProfileSite object
+	"""
+	return session.query(classes.ProfileSite).filter(classes.ProfileSite.abbreviation == profile_abbreviation).one()
 
 
 def main(gain_file, site=profile_function_historic, gain=profile_function_historic, site_gain_params=wqt.site_function_params):
@@ -140,9 +150,16 @@ def main(gain_file, site=profile_function_historic, gain=profile_function_histor
 	try:
 		# If it's a text code, use the text, otherwise call the function
 		if isinstance(site, six.string_types):
-			gain_df['Site'] = site.upper()
+			site = site.upper()
 		else:
-			gain_df['Site'] = site(filename=base, part=site_gain_params["site_part"])
+			site = site(filename=base, part=site_gain_params["site_part"])
+
+		# lookup vert profile from site text
+		session = classes.get_new_session()
+		profile_site_id = profile_from_text(session, site)
+		gain_df['Site'] = profile_site_id.id
+		session.close()
+
 	except ValueError:
 		traceback.print_exc()
 
