@@ -1,4 +1,5 @@
 # function to create heatplot from a dataframe with date, distance, water quality info
+.libPaths("C:\\arcproject-wq\\r_packages")  # add the project packages directory to the search path
 library(ggplot2)
 
 ######################################################

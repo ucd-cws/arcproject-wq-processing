@@ -1,3 +1,5 @@
+.libPaths("C:\\arcproject-wq\\r_packages")  # add the project packages directory to the search path
+
 if (!require("gplots")) {
   install.packages("gplots", dependencies = TRUE)
   library(gplots)
