@@ -60,6 +60,12 @@ if __name__ == "__main__":
 	### LOAD REGRESSION DATA ###
 	print("Loading Regression Data")
 	regression_data = os.path.join(base_path, "data", "legacy", "lm_coeffs_rsquared", "legacy_coeffs_rsquared.csv")
-	chl_decision_tree.load_regression_data_from_csv(regression_data)
+	chl_decision_tree.load_data_from_csv(regression_data)
+
+	### LOAD LAB DATA ###
+	print("Loading Lab Data")
+	grab_data = os.path.join(base_path, "data", "legacy", "wq_grab", "ArcProject_lab_values_Master.csv")
+	chl_decision_tree.load_data_from_csv(grab_data, field_map=classes.sample_field_map,
+	                                     date_format_string="%m/%d/%Y", table_class=classes.GrabSample)
 
 	print("Done Loading Data")

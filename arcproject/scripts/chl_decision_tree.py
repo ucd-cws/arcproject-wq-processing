@@ -11,26 +11,28 @@ from sqlalchemy import exc
 format_string = "%Y-%m-%d"
 
 
-def load_regression_data_from_csv(csv_path, field_map=classes.regression_field_map, date_format_string=format_string):
+def load_data_from_csv(csv_path, field_map=classes.regression_field_map, date_format_string=format_string, table_class=classes.Regression):
 	"""
 		Given the path to a CSV file containing regression values, loads them to the database. Takes a field map to translate
 		table CSV fields to the DB. Loads the CSV to a Pandas data frame, then calls load_regression_data
 	:param csv_path: Path to CSV with values to load
 	:param field_map: Field map that translates those values to the database fields
 	:param date_format_string: The format string to use when translating dates to machine dates
+	:param table_class: the class type of this table
 	:return: None
 	"""
 
-	load_regression_data(pandas.read_csv(csv_path), field_map=field_map, date_format_string=date_format_string)
+	load_df_data(pandas.read_csv(csv_path), field_map=field_map, date_format_string=date_format_string, table_class=table_class)
 
 
-def load_regression_data(data_frame, field_map=classes.regression_field_map, date_format_string=format_string):
+def load_df_data(data_frame, field_map=classes.regression_field_map, date_format_string=format_string, table_class=classes.Regression):
 	"""
 		Given a pandas data frame containing regression values, loads them to the database. Takes a field map to translate
 		table CSV fields to the DB.
 	:param data_frame: The pandas data frame to load into the Regression table
 	:param field_map: Field map that translates those values to the database fields
 	:param date_format_string: The format string to use when translating dates to machine dates
+	:param table_class: the class type of this table
 	:return: None
 	"""
 
@@ -38,7 +40,7 @@ def load_regression_data(data_frame, field_map=classes.regression_field_map, dat
 
 	try:
 		for row in data_frame.iterrows():
-			regression = classes.Regression()
+			regression = table_class()
 
 			# row[1] is the actual data that is included in the row
 			row1 = row[1]

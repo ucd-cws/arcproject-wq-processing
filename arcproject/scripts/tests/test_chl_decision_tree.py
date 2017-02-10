@@ -35,7 +35,7 @@ class RegressionTable(unittest.TestCase):
 
 	def test_load_regression_data(self):
 		try:
-			cdt.load_regression_data_from_csv(self.regression_data)
+			cdt.load_data_from_csv(self.regression_data)
 		except IntegrityError:
 			pass  # it's ok because data already loaded
 
