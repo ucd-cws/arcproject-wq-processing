@@ -22,7 +22,16 @@ if __name__ == "__main__":
 	### MAKE SITE FOR DATA ###
 	#site_code = "wqt"
 	print("Adding default sloughs to sites")
-	site_names = {"WQT": "Test Site"}
+	site_names = {"WQT": "Test Site",
+	              "BK": "",
+	              "CA": "",
+	              "CC": "",
+	              "HS": "",
+	              "LN": "",
+	              "UL": "",
+	              "SH": ""}
+
+
 
 	session = classes.get_new_session()
 	for site in site_names:
@@ -38,16 +47,13 @@ if __name__ == "__main__":
 
 	### Add vertical profile default sites ###
 	print("Adding default vertical profiles to profile_sites")
-	vert_profiles = {
-	"TS1": "WQT"
-	}
+	vert_profiles = ["TS1", "CC1"]
 
 	session = classes.get_new_session()
 
 	for vp in vert_profiles:
 		ps = classes.ProfileSite()
 		ps.abbreviation = vp
-		ps.slough = vert_profiles[vp]
 		session.add(ps)
 		session.commit()
 

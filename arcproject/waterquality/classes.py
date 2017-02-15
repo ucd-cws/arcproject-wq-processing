@@ -191,7 +191,7 @@ sample_field_map = {
 class GrabSample(Base):
 	__tablename__ = 'grab_samples'
 	id = Column(Integer, primary_key=True)
-	profile_site_id = Column(String, ForeignKey("profile_sites.id"))
+	profile_site_id = Column(Integer, ForeignKey("profile_sites.id"))
 	sample_id = Column(String)
 	site_id = Column(String)
 	date = Column(Date)
