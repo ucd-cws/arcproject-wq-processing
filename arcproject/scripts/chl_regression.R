@@ -1,14 +1,3 @@
-#############################################################
-
-# project settings
-
-# set working directory to arcproject-wq-processing folder
-project_folder = "~/arcproject-wq-processing"
-setwd(project_folder)
-
-# location of database
-database = 'arcproject/wqdb.sqlite'
-
 ############################################################
 # install the packages to library
 
@@ -129,7 +118,8 @@ check_site_names <- function(profiles, grabs){
     a <- paste(p_names, collapse=" ")
     b <- paste(g_names, collapse=" ")
     st = sprintf("Site codes do not match. \n Rename either the profiles or the grab samples! \n vertical_profile codes [%s] \n grab_sample codes [%s].", a, b)
-    warning(st)
+    #warning(st)
+    stop(st)
     return(FALSE)
   }
 }
@@ -203,7 +193,7 @@ plot_regression <- function(merged_data, title){
 
 
 lm_results <- function(merged_data){
-  l <- lm(merged$chl_grab~merged$chl_profile)
+  l <- lm(merged_data$chl_grab~merged_data$chl_profile)
   model_summary <- summary(l)
   a <- model_summary$coefficients[1,1]
   b <- model_summary$coefficients[2,1]
@@ -214,21 +204,22 @@ lm_results <- function(merged_data){
 }
 
 
+add_regression_to_db<-function(date, gain, a_coeff, b_coeff, rsquared){
+  con = dbConnect(SQLite(), dbname=database) # connect to the sqlite database
+  statement = sprintf("INSERT INTO regression(date, gain, r_squared, a_coefficient, b_coefficient)
+  VALUES('%s', '%s', '%s', '%s', '%s')", date, gain, rsquared, a_coeff, b_coeff)
+  dbSendQuery(con, statement)
+  print("added regression info to data base")
+}
 
 
-############################################################
-adate = '2013-01-07'
-gain = 0
-p <- profile(adate, gain)
-g <- grab(adate)
-
-check_site_names(p, g)
-
-print(g)
-print(p)
-merged <- merge(p, g, by="abbreviation")
-merged
-
-plot_regression(merged, paste(adate, " - gain ", gain, sep=" "))
-
+confirm_commit <- function(func){
+  ans <- readline("Commit regression to the database? press y for yes   ")
+  if(ans=='y'){
+    func
+  }
+  else{
+    print("Not commiting regression")
+  }
+}
 

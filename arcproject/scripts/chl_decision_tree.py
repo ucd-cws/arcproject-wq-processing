@@ -66,7 +66,6 @@ def load_df_data(data_frame, field_map=classes.regression_field_map, date_format
 	finally:
 		session.close()
 
-
 def pullRegresionTable(session):
 	"""
 	Creates query to pull records from the regression table
