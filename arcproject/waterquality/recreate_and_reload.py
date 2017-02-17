@@ -24,12 +24,21 @@ if __name__ == "__main__":
 	print("Adding default sloughs to sites")
 	site_names = {"WQT": "Test Site",
 	              "BK": "",
+	              "BR": "",
 	              "CA": "",
+	              "CB": "",
 	              "CC": "",
+	              "CO": "",
+	              "GR": "",
 	              "HS": "",
+	              "HSPDC": "",
 	              "LN": "",
-	              "UL": "",
-	              "SH": ""}
+	              "LU": "",
+	              "MZ": "",
+	              "NSDV": "",
+	              "NS": "",
+	              "SB": "",
+	              "UL": ""}
 
 
 
