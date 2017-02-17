@@ -736,7 +736,7 @@ class GenerateMap(WQMappingBase):
 		if amaptor.PRO:
 			map_project = amaptor.Project("CURRENT")
 			new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
-			new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="arcproject_map_template")
+			new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="base_template")
 			new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
 
 			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
