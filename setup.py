@@ -13,7 +13,6 @@ from setuptools import setup
 from setuptools.command.install import install
 
 import r_dependencies
-new_r_package_folder = r"C:\arcproject_wq\r_packages"
 
 def get_r_exec():
 	"""
@@ -26,6 +25,7 @@ def get_r_exec():
 		# current_r_version = winreg.QueryValue(registry, r"Software\R-core\R\Current Version")  # get the PISCES location
 		key = winreg.OpenKey(registry, r"Software\R-core\R")
 		current_r_path = winreg.QueryValueEx(key, "InstallPath")[0]
+		current_r_version = winreg.QueryValueEx(key, "Current Version")[0]
 
 		winreg.CloseKey(registry)
 	except WindowsError:
@@ -33,10 +33,13 @@ def get_r_exec():
 
 	print("R located at {}".format(current_r_path))
 
-	return os.path.join(current_r_path, "bin", "Rscript.exe")
+	major_version, minor_version, sub_version = current_r_version.split(".")
+	packages_version = "{}.{}".format(major_version, minor_version)  # get the version format used for packages
+	new_r_package_folder = os.path.join(r"C:{}".format(os.environ["HOMEPATH"]), "Documents", "R", "win-library", packages_version)
+	return os.path.join(current_r_path, "bin", "Rscript.exe"), new_r_package_folder
 
 try:
-	r_exec = get_r_exec()
+	r_exec, new_r_package_folder = get_r_exec()
 except WindowsError:
 	raise WindowsError("R does not appear to be installed on this machine. Please install it, making sure to install with version number in registry (installation option) then try again")
 
@@ -44,16 +47,12 @@ except WindowsError:
 def write_r_package_install_file():
 	print("Installing R packages using interpreter at {}".format(r_exec))
 
-	dependencies_file = os.path.join(os.path.split(os.path.abspath(__file__))[0], "arcproject", "scripts",
-									 "install_packages.R")
-	with open(dependencies_file, 'wb') as rdeps:
+	dependencies_file = os.path.join(os.path.split(os.path.abspath(__file__))[0], "arcproject", "scripts", "install_packages.R")
+	with open(dependencies_file, 'w') as rdeps:
 		# for every item in the dependecies list, fill the values into the installation expression, and write that out to the file
 		rdeps.write("install.packages(c({}), dependencies=TRUE, lib=\"{}\", repos='http://cran.us.r-project.org')".format(", ".join(r_dependencies.dependencies), new_r_package_folder.replace("\\", "\\\\")))
 
 	return dependencies_file
-
-
-dependencies_file = write_r_package_install_file()
 
 
 class CustomInstallCommand(install):
@@ -67,25 +66,27 @@ class CustomInstallCommand(install):
 		if not os.path.exists(new_r_package_folder):
 			os.makedirs(new_r_package_folder)
 
+		dependencies_file = write_r_package_install_file()
+
 		subprocess.call([r_exec, dependencies_file])  # call the code to set up R packages
 
 
 
-
-setup(
-	name='arcproject-wq',
-	version='0.9',
-	packages=['arcproject', 'arcproject.scripts', 'arcproject.waterquality'],
-	license='MIT',
-	description=None,
-	long_description="",
-	install_requires=["SQLAlchemy >= 1.1.2", "six", "numpy >= 1.9.2", "pandas >= 0.16.1", "matplotlib",
-						"geodatabase_tempfile", "amaptor >= 0.1.1.2"],
-	author=__author__,
-	author_email="nrsantos@ucdavis.edu",
-	url='https://github.com/ucd-cws/amaptor',
-	include_package_data=True,
-	cmdclass={
-		'install': CustomInstallCommand,
-	},
-)
+if __name__ == "__main__":
+	setup(
+		name='arcproject-wq',
+		version='0.9',
+		packages=['arcproject', 'arcproject.scripts', 'arcproject.waterquality'],
+		license='MIT',
+		description=None,
+		long_description="",
+		install_requires=["SQLAlchemy >= 1.1.2", "six", "numpy >= 1.9.2", "pandas >= 0.16.1", "matplotlib",
+							"geodatabase_tempfile", "amaptor >= 0.1.1.2"],
+		author=__author__,
+		author_email="nrsantos@ucdavis.edu",
+		url='https://github.com/ucd-cws/amaptor',
+		include_package_data=True,
+		cmdclass={
+			'install': CustomInstallCommand,
+		},
+	)
