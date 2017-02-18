@@ -734,7 +734,11 @@ class GenerateMap(WQMappingBase):
 		output_png_path = parameters[5].valueAsText
 		new_layout_name = "{} Layout".format(output_map_path)
 		if amaptor.PRO:
-			map_project = amaptor.Project("CURRENT")
+			if "testing_project" in globals(): # this is a hook for our testing code to set a value in the module and have this use it instead of "CURRENT"
+				project = globals()["testing_project"]
+			else:
+				project = "CURRENT"
+			map_project = amaptor.Project(project)
 			new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
 			new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="base_template")
 			new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
@@ -1172,7 +1176,7 @@ class ModifySelectedSite(object):
 			direction="Input"
 		)
 
-		wq =  arcpy.Parameter(
+		wq = arcpy.Parameter(
 			displayName="WQ points to change site code",
 			name="shp_file",
 			datatype="GPFeatureLayer",
