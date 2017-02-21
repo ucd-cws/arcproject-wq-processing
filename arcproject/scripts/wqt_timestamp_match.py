@@ -13,8 +13,8 @@ import six
 from sqlalchemy import exc
 from sqlalchemy.orm.exc import NoResultFound
 
-from scripts import reproject_features
-from waterquality import classes
+from . import reproject_features
+from ..waterquality import classes
 
 # define constants
 source_field = "WQ_SOURCE"

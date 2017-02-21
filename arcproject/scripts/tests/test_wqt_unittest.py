@@ -8,9 +8,9 @@ import six
 import pandas
 import arcpy
 
-import scripts
-from scripts import wqt_timestamp_match
-from waterquality import classes
+from arcproject import scripts
+from arcproject.scripts import wqt_timestamp_match
+from arcproject.waterquality import classes
 from sqlalchemy import exc
 
 class BaseDBTest(unittest.TestCase):

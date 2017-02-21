@@ -1,3 +1,4 @@
-from waterquality import utils
+from arcproject.waterquality import utils
 
-utils.recreate_tables()
+if __name__ == "__main__":
+	utils.recreate_tables()

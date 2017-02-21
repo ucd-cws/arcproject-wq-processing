@@ -152,7 +152,7 @@ class Regression(Base):
 
 sample_field_map = {
 	"Date": "date",
-	"ID": "internal_id",
+	"Sample_ID": "sample_id",
 	"SiteID": "site_id",
 	"LabNum": "lab_num",
 	"EC": "ec",
@@ -169,7 +169,7 @@ sample_field_map = {
 	"TNTP": "tntp",
 	"ChlorophyllA": "chlorophyll_a",
 	"PheophytinA": "pheophytin_a",
-	"PreHCl": "pre_hcl",
+	"PreHCL": "pre_hcl",
 	"TSS": "tss",
 	"VSS": "vss",
 	"NOTES": "notes",
@@ -177,29 +177,27 @@ sample_field_map = {
 }
 
 
-class Station(Base):
-	"""
-		Stations are locations where= grab samples occur
-	"""
-	__tablename__ = 'stations'
-
-	id = Column(Integer, primary_key=True)
-	code = Column(String)  # the station code
-	y_coord = Column(Numeric(asdecimal=False))
-	x_coord = Column(Numeric(asdecimal=False))
-
+# class Station(Base):
+# 	"""
+# 		Stations are locations where= grab samples occur
+# 	"""
+# 	__tablename__ = 'stations'
+#
+# 	id = Column(Integer, primary_key=True)
+# 	code = Column(String)  # the station code
+# 	y_coord = Column(Numeric(asdecimal=False))
+# 	x_coord = Column(Numeric(asdecimal=False))
+#
 
 class GrabSample(Base):
 	__tablename__ = 'grab_samples'
 
 	id = Column(Integer, primary_key=True)
-	internal_id = Column(String)
-	date = Column(Date)
-	station_id = Column(Integer, ForeignKey('stations.id'))
-	station = relationship("Station",
-					backref="grab_samples")
 
+	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
+	sample_id = Column(String)
 	site_id = Column(String)
+	date = Column(Date)
 	lab_num = Column(String)
 	ec = Column(Float)
 	ph = Column(Float)
@@ -219,7 +217,7 @@ class GrabSample(Base):
 	tss = Column(Float)
 	vss = Column(Float)
 	notes = Column(String)
-	source = Column(Float)
+	source = Column(String)
 
 
 water_quality_header_map = {

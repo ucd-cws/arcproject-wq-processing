@@ -1,6 +1,6 @@
 import unittest
 
-from waterquality import api
+from arcproject.waterquality import api
 import datetime
 
 import arcpy

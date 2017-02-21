@@ -1,8 +1,8 @@
 import os
 import unittest
 from datetime import datetime
-from scripts import wq_gain
-from scripts import wqt_timestamp_match
+from arcproject.scripts import wq_gain
+from arcproject.scripts import wqt_timestamp_match
 import pandas
 from pandas.util.testing import assert_frame_equal
 

@@ -1,11 +1,11 @@
 import os
 import unittest
 
-from scripts import wqt_timestamp_match
-from scripts import verify
-from scripts import NoRecordsError
-from waterquality import utils
-from waterquality import classes
+from arcproject.scripts import wqt_timestamp_match
+from arcproject.scripts import verify
+from arcproject.scripts import NoRecordsError
+from arcproject.waterquality import utils
+from arcproject.waterquality import classes
 
 
 class TestVerify(unittest.TestCase):

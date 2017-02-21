@@ -12,16 +12,15 @@ from sqlalchemy import exc, func, distinct, extract
 import geodatabase_tempfile
 import amaptor
 
-from scripts import mapping
-from scripts import wq_gain
-from scripts import wqt_timestamp_match
-from scripts.mapping import generate_layer_for_month
-from scripts import swap_site_recs
-from scripts import linear_ref
-from scripts import config
+from arcproject.scripts import mapping
+from arcproject.scripts import wq_gain
+from arcproject.scripts import wqt_timestamp_match
+from arcproject.scripts.mapping import generate_layer_for_month
+from arcproject.scripts import swap_site_recs
+from arcproject.scripts import linear_ref
+from arcproject.scripts import config
 
-
-from waterquality import classes
+from arcproject.waterquality import classes
 
 
 class Toolbox(object):
