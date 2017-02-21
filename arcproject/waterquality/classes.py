@@ -1,7 +1,5 @@
 import os
 
-import numpy
-
 import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Numeric, Date, DateTime
