@@ -1,5 +1,3 @@
-.libPaths("C:\\arcproject-wq\\r_packages")  # add the project packages directory to the search path
-
 library("RSQLite")
 # set working directory to arcproject-wq-processing folder
 project_folder = "~/arcproject-wq-processing"

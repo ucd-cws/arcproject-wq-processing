@@ -1,4 +1,6 @@
 scripts/tests/testfiles/slurp/*
+distribution/
+distribution.zip
 *.sr.lock
 
 # Byte-compiled / optimized / DLL files

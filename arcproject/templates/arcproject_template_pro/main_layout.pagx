@@ -5,34 +5,39 @@
   "binaryReferences" : [
     {
       "type" : "CIMBinaryReference",
-      "uRI" : "CIMPATH=Metadata/998e145df0f0a16b12ec468bd46886d1.xml",
-      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170206</CreaDate><CreaTime>10491900</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><MapLyrSync>TRUE</MapLyrSync></Esri><dataIdInfo><idCitation><resTitle></resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit></dataIdInfo><distInfo><distFormat><formatName>Layout</formatName></distFormat><distributor><distorFormat><formatName>Layout</formatName></distorFormat></distributor></distInfo></metadata>\r\n"
+      "uRI" : "CIMPATH=Metadata/0a2ee7a2db95c3064ac923f6ac015e3d.xml",
+      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170217</CreaDate><CreaTime>14260300</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><MapLyrSync>TRUE</MapLyrSync></Esri><dataIdInfo><idCitation><resTitle>ArcProject Data Export</resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit></dataIdInfo><distInfo><distFormat><formatName>Layout</formatName></distFormat><distributor><distorFormat><formatName>Layout</formatName></distorFormat></distributor></distInfo></metadata>\r\n"
     },
     {
       "type" : "CIMBinaryReference",
-      "uRI" : "CIMPATH=Metadata/a114cf348c361ec4cf72d96fe3d70e2f.xml",
-      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170206</CreaDate><CreaTime>10491900</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce></Esri><dataIdInfo><idCitation><resTitle>Arc_DeltaWaterways_0402</resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit><resConst><Consts><useLimit></useLimit></Consts></resConst></dataIdInfo></metadata>\r\n"
+      "uRI" : "CIMPATH=Metadata/16ac67e9683ae6500fb8ca466e1b1b87.xml",
+      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170217</CreaDate><CreaTime>14260300</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce></Esri><dataIdInfo><idCitation><resTitle>Basemap</resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit><resConst><Consts><useLimit></useLimit></Consts></resConst></dataIdInfo></metadata>\r\n"
     },
     {
       "type" : "CIMBinaryReference",
-      "uRI" : "CIMPATH=Metadata/c63ab2cf4efb10fd77fee977a1e16ac4.xml",
-      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170206</CreaDate><CreaTime>10491900</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce></Esri><dataIdInfo><idCitation><resTitle>sl_maj_channels_0402</resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit><resConst><Consts><useLimit></useLimit></Consts></resConst></dataIdInfo></metadata>\r\n"
+      "uRI" : "CIMPATH=Metadata/49215a15448f4bdc7b388f1799108935.xml",
+      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170217</CreaDate><CreaTime>14260300</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><MapLyrSync>TRUE</MapLyrSync></Esri><dataIdInfo><idCitation><resTitle>ArcProject Data Export</resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit></dataIdInfo></metadata>\r\n"
     },
     {
       "type" : "CIMBinaryReference",
-      "uRI" : "CIMPATH=Metadata/e3a283581dab62a87916951c9c71ea5a.xml",
-      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170206</CreaDate><CreaTime>10491900</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><MapLyrSync>TRUE</MapLyrSync></Esri><dataIdInfo><idCitation><resTitle></resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit></dataIdInfo><Binary><Thumbnail><Data EsriPropertyType=\"PictureX\">/9j/4AAQSkZJRgABAQEAAAAAAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0a\r\nHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIy\r\nMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCACFAMgDAREA\r\nAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQA\r\nAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3\r\nODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWm\r\np6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEA\r\nAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSEx\r\nBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElK\r\nU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3\r\nuLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3aw/5\r\nBtr/ANcU/kKALNABQAUAFABQAUAFABQAUAFABQAUAFAFRbsS3E9tGjiSIA7nUhTnpg96AMV7nW7z\r\nVLnT4Z7aBYY1ZpUXLAtnAGcigCpdaTr0WnzCfWg8SAuPMC9jkAnbk0Abdu2rSWsbk2qsVBxg0AWL\r\nmwj1GzEF/Gr5HzBWIGaAM1PCeniQNK9zMqjCo8pCgemBjP45oAtxeH9LgOYrNEOckqSM0ATC3trC\r\nJ3jKwlsKGdiRnt1oAga21hkXbqECsDz+4yCPzoAmMWo+UirdQ7x95jH1/DNAErrKtiwmcPJjkgYF\r\nAC2H/INtf+uKfyFAFmgAoAKACgAoAKACgAoApyXU6TFFs5HUHG4EYPvQAw3lyI932CTdzld4oAgl\r\n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</Data></Thumbnail></Binary></metadata>\r\n"
+      "uRI" : "CIMPATH=Metadata/7f1a77d97901c2973231042d6868b7e1.xml",
+      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170217</CreaDate><CreaTime>14260300</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce></Esri><dataIdInfo><idCitation><resTitle>Arc_DeltaWaterways_0402</resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit><resConst><Consts><useLimit></useLimit></Consts></resConst></dataIdInfo></metadata>\r\n"
+    },
+    {
+      "type" : "CIMBinaryReference",
+      "uRI" : "CIMPATH=Metadata/8f26ce612525ecdb59a68c7cb6c32d93.xml",
+      "data" : "<?xml version=\"1.0\"?>\r\n<metadata xml:lang=\"en\"><Esri><CreaDate>20170217</CreaDate><CreaTime>14260300</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce></Esri><dataIdInfo><idCitation><resTitle>sl_maj_channels_0402</resTitle></idCitation><idAbs></idAbs><idPurp></idPurp><idCredit></idCredit><resConst><Consts><useLimit></useLimit></Consts></resConst></dataIdInfo></metadata>\r\n"
     }
   ],
   "layerDefinitions" : [
     {
       "type" : "CIMFeatureLayer",
       "name" : "Arc_DeltaWaterways_0402",
-      "uRI" : "CIMPATH=arcproject_map/arc_deltawaterways_0402.xml",
+      "uRI" : "CIMPATH=arcproject_map1/arc_deltawaterways_0402.xml",
       "sourceModifiedTime" : {
         "type" : "TimeInstant"
       },
-      "metadataURI" : "CIMPATH=Metadata/a114cf348c361ec4cf72d96fe3d70e2f.xml",
+      "metadataURI" : "CIMPATH=Metadata/7f1a77d97901c2973231042d6868b7e1.xml",
       "layerType" : "Operational",
       "showLegends" : true,
       "visibility" : true,
@@ -248,14 +253,14 @@
             }
           ]
         },
-        "symbolName" : "Symbol_41"
+        "symbolName" : "Symbol_3"
       },
       "featureCacheType" : "None",
       "labelClasses" : [
         {
           "type" : "CIMLabelClass",
-          "expression" : "[HNAME]",
-          "expressionEngine" : "VBScript",
+          "expression" : "[HNAME].title()",
+          "expressionEngine" : "Python",
           "featuresToLabel" : "AllVisibleFeatures",
           "maplexLabelPlacementProperties" : {
             "type" : "CIMMaplexLabelPlacementProperties",
@@ -361,7 +366,7 @@
             "featureType" : "Line",
             "featureWeight" : "None",
             "labelWeight" : "High",
-            "numLabelsOption" : "OneLabelPerPart",
+            "numLabelsOption" : "OneLabelPerName",
             "lineLabelPosition" : {
               "type" : "CIMStandardLineLabelPosition",
               "above" : true,
@@ -411,7 +416,25 @@
               "fontFamilyName" : "Arial",
               "fontStyleName" : "Regular",
               "fontType" : "Unspecified",
-              "haloSize" : 1,
+              "haloSize" : 2,
+              "haloSymbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        255,
+                        255,
+                        255,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
               "height" : 8,
               "hinting" : "Default",
               "horizontalAlignment" : "Center",
@@ -453,7 +476,7 @@
               "wordSpacing" : 100,
               "billboardMode3D" : "FaceNearPlane"
             },
-            "symbolName" : "Symbol_40"
+            "symbolName" : "Symbol_2"
           },
           "useCodedValue" : true,
           "visibility" : true,
@@ -489,7 +512,7 @@
               }
             ]
           },
-          "symbolName" : "Symbol_39"
+          "symbolName" : "Symbol_1"
         }
       },
       "scaleSymbols" : true,
@@ -498,11 +521,11 @@
     {
       "type" : "CIMFeatureLayer",
       "name" : "sl_maj_channels_0402",
-      "uRI" : "CIMPATH=arcproject_map/sl_maj_channels_0402.xml",
+      "uRI" : "CIMPATH=arcproject_map1/sl_maj_channels_0402.xml",
       "sourceModifiedTime" : {
         "type" : "TimeInstant"
       },
-      "metadataURI" : "CIMPATH=Metadata/c63ab2cf4efb10fd77fee977a1e16ac4.xml",
+      "metadataURI" : "CIMPATH=Metadata/8f26ce612525ecdb59a68c7cb6c32d93.xml",
       "expanded" : true,
       "layerType" : "Operational",
       "showLegends" : true,
@@ -710,7 +733,7 @@
             }
           ]
         },
-        "symbolName" : "Symbol_44"
+        "symbolName" : "Symbol_6"
       },
       "featureCacheType" : "None",
       "labelClasses" : [
@@ -914,7 +937,7 @@
               "wordSpacing" : 100,
               "billboardMode3D" : "FaceNearPlane"
             },
-            "symbolName" : "Symbol_43"
+            "symbolName" : "Symbol_5"
           },
           "useCodedValue" : true,
           "visibility" : true,
@@ -949,22 +972,101 @@
               }
             ]
           },
-          "symbolName" : "Symbol_42"
+          "symbolName" : "Symbol_4"
         }
       },
       "scaleSymbols" : true,
       "snappable" : true
+    },
+    {
+      "type" : "CIMTiledServiceLayer",
+      "name" : "World Topographic Map",
+      "uRI" : "CIMPATH=arcproject_map/world_topographic_map.xml",
+      "sourceModifiedTime" : {
+        "type" : "TimeInstant"
+      },
+      "description" : "This map is designed to be used as a basemap by GIS professionals and as a reference map by anyone. The map includes administrative boundaries, cities, water features, physiographic features, parks, landmarks, highways, roads, railways, and airports overlaid on land cover and shaded relief imagery for added context. The map provides coverage for the world down to a scale of ~1:72k. Coverage is provided down to ~1:4k for the following areas: Australia and New Zealand; India; Europe; Canada; Mexico; the continental United States and Hawaii; South America and Central America; Africa; and most of the Middle East. Coverage down to ~1:1k and ~1:2k is available in select urban areas. This basemap was compiled from a variety of best available sources from several data providers, including the U.S. Geological Survey (USGS), U.S. Environmental Protection Agency (EPA), U.S. National Park Service (NPS), Food and Agriculture Organization of the United Nations (FAO), Department of Natural Resources Canada (NRCAN), GeoBase, Agriculture and Agri-Food Canada, DeLorme, HERE, Esri, OpenStreetMap contributors, and the GIS User Community. For more information on this map, including the terms of use, visit us <a href=\"http://goto.arcgisonline.com/maps/World_Topo_Map \" target=\"_new\" >online</a>.",
+      "layerType" : "BasemapBackground",
+      "showLegends" : true,
+      "visibility" : true,
+      "displayCacheType" : "Permanent",
+      "maxDisplayCacheAge" : 5,
+      "showPopups" : true,
+      "serviceLayerID" : -1,
+      "serviceConnection" : {
+        "type" : "CIMAGSServiceConnection",
+        "description" : "This map is designed to be used as a basemap by GIS professionals and as a reference map by anyone. The map includes administrative boundaries, cities, water features, physiographic features, parks, landmarks, highways, roads, railways, and airports overlaid on land cover and shaded relief imagery for added context. The map provides coverage for the world down to a scale of ~1:72k. Coverage is provided down to ~1:4k for the following areas: Australia and New Zealand; India; Europe; Canada; Mexico; the continental United States and Hawaii; South America and Central America; Africa; and most of the Middle East. Coverage down to ~1:1k and ~1:2k is available in select urban areas. This basemap was compiled from a variety of best available sources from several data providers, including the U.S. Geological Survey (USGS), U.S. Environmental Protection Agency (EPA), U.S. National Park Service (NPS), Food and Agriculture Organization of the United Nations (FAO), Department of Natural Resources Canada (NRCAN), GeoBase, Agriculture and Agri-Food Canada, DeLorme, HERE, Esri, OpenStreetMap contributors, and the GIS User Community. For more information on this map, including the terms of use, visit us <a href=\"http://goto.arcgisonline.com/maps/World_Topo_Map \" target=\"_new\" >online</a>.",
+        "objectName" : "World_Topo_Map",
+        "objectType" : "MapServer",
+        "url" : "http://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer",
+        "serverConnection" : {
+          "type" : "CIMInternetServerConnection",
+          "anonymous" : true,
+          "hideUserProperty" : false,
+          "url" : "http://services.arcgisonline.com/ArcGIS/services"
+        }
+      },
+      "subLayers" : [
+        {
+          "type" : "CIMDynamicServiceSubLayer",
+          "description" : "This map is designed to be used as a basemap by GIS professionals and as a reference map by anyone. The map includes administrative boundaries, cities, water features, physiographic features, parks, landmarks, highways, roads, railways, and airports overlaid on land cover and shaded relief imagery for added context. The map provides coverage for the world down to a scale of ~1:72k. Coverage is provided down to ~1:4k for the following areas: Australia and New Zealand; India; Europe; Canada; Mexico; the continental United States and Hawaii; South America and Central America; Africa; and most of the Middle East. Coverage down to ~1:1k and ~1:2k is available in select urban areas. This basemap was compiled from a variety of best available sources from several data providers, including the U.S. Geological Survey (USGS), U.S. Environmental Protection Agency (EPA), U.S. National Park Service (NPS), Food and Agriculture Organization of the United Nations (FAO), Department of Natural Resources Canada (NRCAN), GeoBase, Agriculture and Agri-Food Canada, DeLorme, HERE, Esri, OpenStreetMap contributors, and the GIS User Community. For more information on this map, including our terms of use, visit us online at http://goto.arcgisonline.com/maps/World_Topo_Map",
+          "name" : "Citations",
+          "showLegends" : true,
+          "subLayerID" : "0",
+          "visibility" : false,
+          "serviceLayerID" : -1,
+          "showPopups" : true
+        }
+      ],
+      "transparentColor" : {
+        "type" : "CIMRGBColor",
+        "values" : [
+          253,
+          253,
+          253,
+          100
+        ]
+      },
+      "backgroundColor" : {
+        "type" : "CIMRGBColor",
+        "values" : [
+          253,
+          253,
+          253,
+          100
+        ]
+      }
+    },
+    {
+      "type" : "CIMGroupLayer",
+      "name" : "Basemap",
+      "uRI" : "CIMPATH=arcproject_map/basemap.xml",
+      "sourceModifiedTime" : {
+        "type" : "TimeInstant"
+      },
+      "metadataURI" : "CIMPATH=Metadata/16ac67e9683ae6500fb8ca466e1b1b87.xml",
+      "expanded" : true,
+      "layerType" : "BasemapBackground",
+      "showLegends" : true,
+      "visibility" : true,
+      "displayCacheType" : "Permanent",
+      "maxDisplayCacheAge" : 5,
+      "showPopups" : true,
+      "serviceLayerID" : -1,
+      "layers" : [
+        "CIMPATH=arcproject_map/world_topographic_map.xml"
+      ]
     }
   ],
   "mapDefinitions" : [
     {
       "type" : "CIMMap",
-      "name" : "ArcProject Map",
-      "uRI" : "CIMPATH=arcproject_map/arcproject_map.xml",
+      "name" : "ArcProject Map1",
+      "uRI" : "CIMPATH=arcproject_map1/arcproject_map1.xml",
       "sourceModifiedTime" : {
         "type" : "TimeInstant"
       },
-      "metadataURI" : "CIMPATH=Metadata/e3a283581dab62a87916951c9c71ea5a.xml",
+      "metadataURI" : "CIMPATH=Metadata/49215a15448f4bdc7b388f1799108935.xml",
       "illumination" : {
         "type" : "CIMIlluminationProperties",
         "ambientLight" : 30,
@@ -976,8 +1078,9 @@
         "sunAltitude" : 0.61237243569579003
       },
       "layers" : [
-        "CIMPATH=arcproject_map/arc_deltawaterways_0402.xml",
-        "CIMPATH=arcproject_map/sl_maj_channels_0402.xml"
+        "CIMPATH=arcproject_map1/arc_deltawaterways_0402.xml",
+        "CIMPATH=arcproject_map1/sl_maj_channels_0402.xml",
+        "CIMPATH=arcproject_map/basemap.xml"
       ],
       "defaultViewingMode" : "Map",
       "mapType" : "Map",
@@ -1012,10 +1115,10 @@
         }
       ],
       "defaultExtent" : {
-        "xmin" : 6608403.8455159217,
-        "ymin" : 1777167.454397276,
-        "xmax" : 6619185.6308606863,
-        "ymax" : 1784547.5742125213,
+        "xmin" : 6544991.415901484,
+        "ymin" : 1756567.9603674642,
+        "xmax" : 6662681.6699317712,
+        "ymax" : 1898158.8187744108,
         "spatialReference" : {
           "wkid" : 102642,
           "latestWkid" : 2226
@@ -1027,7 +1130,7 @@
           "elevationMode" : "BaseGlobeSurface",
           "name" : "Ground",
           "verticalExaggeration" : 1,
-          "mapElevationID" : "7133fdea056b4f12ba24127f406191e9",
+          "mapElevationID" : "f00c1c398fd44ed3bd5efe64f286b83c",
           "color" : {
             "type" : "CIMRGBColor",
             "values" : [
@@ -1070,12 +1173,12 @@
   ],
   "layoutDefinition" : {
     "type" : "CIMLayout",
-    "name" : "arcproject_map_template",
-    "uRI" : "CIMPATH=layout/base_template.xml",
+    "name" : "base_template",
+    "uRI" : "CIMPATH=layout/base_template1.xml",
     "sourceModifiedTime" : {
       "type" : "TimeInstant"
     },
-    "metadataURI" : "CIMPATH=Metadata/998e145df0f0a16b12ec468bd46886d1.xml",
+    "metadataURI" : "CIMPATH=Metadata/0a2ee7a2db95c3064ac923f6ac015e3d.xml",
     "page" : {
       "type" : "CIMPage",
       "height" : 11,
@@ -1101,31 +1204,31 @@
         "name" : "ArcProject Map Map Frame",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 0.19360000000051514,
-          "y" : 0.16330000000016298
+          "x" : -0.0056999999997060513,
+          "y" : 0.76519999999982247
         },
         "frame" : {
           "rings" : [
             [
               [
-                0.19360000000051514,
-                0.16330000000016298
+                -0.0056999999997060513,
+                0.76519999999982247
               ],
               [
-                0.19360000000051514,
-                10.894800000000032
+                -0.0056999999997060513,
+                11.005100000000311
               ],
               [
-                8.3505999999997584,
-                10.894800000000032
+                8.5056999999997061,
+                11.005100000000311
               ],
               [
-                8.3505999999997584,
-                0.16330000000016298
+                8.5056999999997061,
+                0.76519999999982247
               ],
               [
-                0.19360000000051514,
-                0.16330000000016298
+                -0.0056999999997060513,
+                0.76519999999982247
               ]
             ]
           ]
@@ -1196,7 +1299,7 @@
                 }
               ]
             },
-            "symbolName" : "Symbol_46"
+            "symbolName" : "Symbol_8"
           }
         },
         "autoCamera" : {
@@ -1205,16 +1308,16 @@
           "marginType" : "Percent",
           "source" : "None"
         },
-        "uRI" : "CIMPATH=arcproject_map/arcproject_map.xml",
+        "uRI" : "CIMPATH=arcproject_map1/arcproject_map1.xml",
         "view" : {
           "type" : "CIMMapView",
           "viewingMode" : "Map",
           "camera" : {
             "type" : "CIMViewCamera",
             "pitch" : -90,
-            "scale" : 475377.38976424019,
-            "x" : 6641742.5289790258,
-            "y" : 1827316.7156874612,
+            "scale" : 165928.40759023788,
+            "x" : 6603836.5429166276,
+            "y" : 1827363.3895709375,
             "z" : "NaN"
           },
           "verticalExaggerationScaleFactor" : 1,
@@ -1227,36 +1330,36 @@
       },
       {
         "type" : "CIMLegend",
-        "anchor" : "BottomLeftCorner",
+        "anchor" : "TopLeftCorner",
         "name" : "Legend",
         "visible" : true,
         "rotationCenter" : {
-          "x" : 0.19360000000051514,
-          "y" : 10.494834498355262
+          "x" : 0.22810000000026776,
+          "y" : 10.87039999999979
         },
         "lockedAspectRatio" : true,
         "frame" : {
           "rings" : [
             [
               [
-                0.19360000000051514,
-                10.494834498355262
+                0.22810000000026776,
+                10.712199999999939
               ],
               [
-                0.19360000000051514,
-                10.894800000000034
+                0.22810000000026776,
+                10.87039999999979
               ],
               [
-                1.4670679088398324,
-                10.894800000000034
+                0.73179999999956635,
+                10.87039999999979
               ],
               [
-                1.4670679088398324,
-                10.494834498355262
+                0.73179999999956635,
+                10.712199999999939
               ],
               [
-                0.19360000000051514,
-                10.494834498355262
+                0.22810000000026776,
+                10.712199999999939
               ]
             ]
           ]
@@ -1285,14 +1388,14 @@
                     "values" : [
                       255,
                       255,
-                      190,
+                      255,
                       100
                     ]
                   }
                 }
               ]
             },
-            "symbolName" : "Symbol_48"
+            "symbolName" : "Symbol_10"
           },
           "borderSymbol" : {
             "type" : "CIMSymbolReference",
@@ -1328,7 +1431,7 @@
                 }
               ]
             },
-            "symbolName" : "Symbol_49"
+            "symbolName" : "Symbol_11"
           }
         },
         "mapFrame" : "ArcProject Map Map Frame",
@@ -1342,7 +1445,7 @@
         "horizontalItemGap" : 3.6447960518799012,
         "horizontalPatchGap" : 3.6447960518799012,
         "minFontSize" : 4,
-        "showTitle" : true,
+        "showTitle" : false,
         "textGap" : 3.6447960518799012,
         "title" : "Legend",
         "titleGap" : 8,
@@ -1402,12 +1505,698 @@
             "wordSpacing" : 100,
             "billboardMode3D" : "FaceNearPlane"
           },
-          "symbolName" : "Symbol_47"
+          "symbolName" : "Symbol_9"
         },
         "verticalItemGap" : 3.6443413207157511,
         "verticalPatchGap" : 3.6443413207157511,
         "layerNameGap" : 3.6423987080714477,
         "fittingStrategy" : "AdjustColumnsAndSize"
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopLeftCorner",
+        "name" : "Text",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 0.16864054054080846,
+          "y" : 0.60182972972913262
+        },
+        "lockedAspectRatio" : true,
+        "graphic" : {
+          "type" : "CIMTextGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMTextSymbol",
+              "blockProgression" : "TTB",
+              "compatibilityMode" : true,
+              "depth3D" : 1,
+              "drawSoftHyphen" : true,
+              "extrapolateBaselines" : true,
+              "fontEffects" : "Normal",
+              "fontEncoding" : "Unicode",
+              "fontFamilyName" : "Arial",
+              "fontStyleName" : "Regular",
+              "fontType" : "Unspecified",
+              "haloSize" : 1,
+              "height" : 21,
+              "hinting" : "Default",
+              "horizontalAlignment" : "Left",
+              "kerning" : true,
+              "letterWidth" : 100,
+              "ligatures" : true,
+              "lineGapType" : "ExtraLeading",
+              "shadowColor" : {
+                "type" : "CIMRGBColor",
+                "values" : [
+                  0,
+                  0,
+                  0,
+                  100
+                ]
+              },
+              "symbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        0,
+                        0,
+                        0,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
+              "textCase" : "Normal",
+              "textDirection" : "LTR",
+              "verticalAlignment" : "Top",
+              "verticalGlyphOrientation" : "Right",
+              "wordSpacing" : 100,
+              "billboardMode3D" : "FaceNearPlane"
+            },
+            "symbolName" : "Symbol_12"
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "text" : "ArcProject Export <dyn type=\"date\" format=\"short\"/>",
+          "shape" : {
+            "x" : 0.16864054054080846,
+            "y" : 0.60182972972913262,
+            "spatialReference" : {
+              "wkid" : null
+            }
+          }
+        }
+      },
+      {
+        "type" : "CIMMarkerNorthArrow",
+        "anchor" : "CenterPoint",
+        "name" : "North Arrow",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 8.1745526035315201,
+          "y" : 0.42135130208295352
+        },
+        "lockedAspectRatio" : true,
+        "frame" : {
+          "rings" : [
+            [
+              [
+                7.9577166660315211,
+                0.15351927083295358
+              ],
+              [
+                7.9577166660315211,
+                0.68918333333295345
+              ],
+              [
+                8.391388541031521,
+                0.68918333333295345
+              ],
+              [
+                8.391388541031521,
+                0.15351927083295358
+              ],
+              [
+                7.9577166660315211,
+                0.15351927083295358
+              ]
+            ]
+          ]
+        },
+        "graphicFrame" : {
+          "type" : "CIMGraphicFrame",
+          "backgroundSymbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMPolygonSymbol",
+              "effects" : [
+                {
+                  "type" : "CIMGeometricEffectOffset",
+                  "count" : 1,
+                  "method" : "Square",
+                  "offset" : 0,
+                  "option" : "Fast"
+                }
+              ],
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidFill",
+                  "enable" : true,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      255,
+                      255,
+                      255,
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "borderSymbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMLineSymbol",
+              "effects" : [
+                {
+                  "type" : "CIMGeometricEffectOffset",
+                  "count" : 1,
+                  "method" : "Square",
+                  "offset" : 0,
+                  "option" : "Fast"
+                }
+              ],
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidStroke",
+                  "enable" : true,
+                  "capStyle" : "Round",
+                  "joinStyle" : "Round",
+                  "lineStyle3D" : "Strip",
+                  "miterLimit" : 10,
+                  "width" : 1,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      255,
+                      255,
+                      255,
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "mapFrame" : "ArcProject Map Map Frame",
+        "pointSymbol" : {
+          "type" : "CIMSymbolReference",
+          "symbol" : {
+            "type" : "CIMPointSymbol",
+            "symbolLayers" : [
+              {
+                "type" : "CIMCharacterMarker",
+                "enable" : true,
+                "anchorPointUnits" : "Relative",
+                "dominantSizeAxis3D" : "Y",
+                "size" : 48,
+                "billboardMode3D" : "FaceNearPlane",
+                "characterIndex" : 220,
+                "fontFamilyName" : "ESRI North",
+                "fontStyleName" : "Regular",
+                "fontType" : "Unspecified",
+                "scaleX" : 1,
+                "symbol" : {
+                  "type" : "CIMPolygonSymbol",
+                  "symbolLayers" : [
+                    {
+                      "type" : "CIMSolidFill",
+                      "enable" : true,
+                      "color" : {
+                        "type" : "CIMRGBColor",
+                        "values" : [
+                          0,
+                          0,
+                          0,
+                          100
+                        ]
+                      }
+                    }
+                  ]
+                },
+                "scaleSymbolsProportionally" : true,
+                "respectFrame" : true
+              }
+            ],
+            "haloSize" : 1,
+            "scaleX" : 1,
+            "angleAlignment" : "Map"
+          },
+          "symbolName" : "Symbol_13"
+        },
+        "northType" : "SimpleNorth"
+      },
+      {
+        "type" : "CIMDoubleFillScaleBar",
+        "anchor" : "BottomLeftCorner",
+        "name" : "Alternating Scale Bar",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 5.1419000000005326,
+          "y" : 0.27670000000034634
+        },
+        "frame" : {
+          "rings" : [
+            [
+              [
+                5.1419000000005326,
+                0.27670000000034634
+              ],
+              [
+                5.1419000000005326,
+                0.66810619102259516
+              ],
+              [
+                7.7165000000004511,
+                0.66810619102259516
+              ],
+              [
+                7.7165000000004511,
+                0.27670000000034634
+              ],
+              [
+                5.1419000000005326,
+                0.27670000000034634
+              ]
+            ]
+          ]
+        },
+        "graphicFrame" : {
+          "type" : "CIMGraphicFrame",
+          "backgroundSymbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMPolygonSymbol",
+              "effects" : [
+                {
+                  "type" : "CIMGeometricEffectOffset",
+                  "count" : 1,
+                  "method" : "Square",
+                  "offset" : 0,
+                  "option" : "Fast"
+                }
+              ],
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidFill",
+                  "enable" : true,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      255,
+                      255,
+                      255,
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "borderSymbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMLineSymbol",
+              "effects" : [
+                {
+                  "type" : "CIMGeometricEffectOffset",
+                  "count" : 1,
+                  "method" : "Square",
+                  "offset" : 0,
+                  "option" : "Fast"
+                }
+              ],
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidStroke",
+                  "enable" : true,
+                  "capStyle" : "Round",
+                  "joinStyle" : "Round",
+                  "lineStyle3D" : "Strip",
+                  "miterLimit" : 10,
+                  "width" : 1,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      255,
+                      255,
+                      255,
+                      0
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "mapFrame" : "ArcProject Map Map Frame",
+        "barHeight" : 6.7772653010071311,
+        "division" : 3,
+        "divisions" : 2,
+        "divisionsBeforeZero" : 0,
+        "fittingStrategy" : "AdjustDivision",
+        "labelFrequency" : "DivisionsAndFirstMidpoint",
+        "labelGap" : 3.3886326505035655,
+        "labelPosition" : "Above",
+        "labelSymbol" : {
+          "type" : "CIMSymbolReference",
+          "symbol" : {
+            "type" : "CIMTextSymbol",
+            "blockProgression" : "TTB",
+            "compatibilityMode" : true,
+            "depth3D" : 1,
+            "drawSoftHyphen" : true,
+            "extrapolateBaselines" : true,
+            "fontEffects" : "Normal",
+            "fontEncoding" : "Unicode",
+            "fontFamilyName" : "Arial",
+            "fontStyleName" : "Regular",
+            "fontType" : "Unspecified",
+            "haloSize" : 1,
+            "height" : 13.554530602014262,
+            "hinting" : "Default",
+            "horizontalAlignment" : "Center",
+            "kerning" : true,
+            "letterWidth" : 100,
+            "ligatures" : true,
+            "lineGapType" : "ExtraLeading",
+            "shadowColor" : {
+              "type" : "CIMRGBColor",
+              "values" : [
+                0,
+                0,
+                0,
+                100
+              ]
+            },
+            "symbol" : {
+              "type" : "CIMPolygonSymbol",
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidFill",
+                  "enable" : true,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      0,
+                      0,
+                      0,
+                      100
+                    ]
+                  }
+                }
+              ]
+            },
+            "textCase" : "Normal",
+            "textDirection" : "LTR",
+            "verticalAlignment" : "Baseline",
+            "verticalGlyphOrientation" : "Right",
+            "wordSpacing" : 100,
+            "billboardMode3D" : "FaceNearPlane"
+          },
+          "symbolName" : "Symbol_16"
+        },
+        "numberFormat" : {
+          "type" : "CIMNumericFormat",
+          "alignmentOption" : "esriAlignLeft",
+          "alignmentWidth" : 12,
+          "roundingOption" : "esriRoundNumberOfDecimals",
+          "roundingValue" : 2,
+          "useSeparator" : true
+        },
+        "subdivisions" : 2,
+        "unitLabel" : "Kilometers",
+        "unitLabelGap" : 3.3886319999999999,
+        "unitLabelPosition" : "AfterBar",
+        "unitLabelSymbol" : {
+          "type" : "CIMSymbolReference",
+          "symbol" : {
+            "type" : "CIMTextSymbol",
+            "blockProgression" : "TTB",
+            "compatibilityMode" : true,
+            "depth3D" : 1,
+            "drawSoftHyphen" : true,
+            "extrapolateBaselines" : true,
+            "fontEffects" : "Normal",
+            "fontEncoding" : "Unicode",
+            "fontFamilyName" : "Arial",
+            "fontStyleName" : "Regular",
+            "fontType" : "Unspecified",
+            "haloSize" : 1,
+            "height" : 13.554530602014262,
+            "hinting" : "Default",
+            "horizontalAlignment" : "Center",
+            "kerning" : true,
+            "letterWidth" : 100,
+            "ligatures" : true,
+            "lineGapType" : "ExtraLeading",
+            "shadowColor" : {
+              "type" : "CIMRGBColor",
+              "values" : [
+                0,
+                0,
+                0,
+                100
+              ]
+            },
+            "symbol" : {
+              "type" : "CIMPolygonSymbol",
+              "symbolLayers" : [
+                {
+                  "type" : "CIMSolidFill",
+                  "enable" : true,
+                  "color" : {
+                    "type" : "CIMRGBColor",
+                    "values" : [
+                      0,
+                      0,
+                      0,
+                      100
+                    ]
+                  }
+                }
+              ]
+            },
+            "textCase" : "Normal",
+            "textDirection" : "LTR",
+            "verticalAlignment" : "Baseline",
+            "verticalGlyphOrientation" : "Right",
+            "wordSpacing" : 100,
+            "billboardMode3D" : "FaceNearPlane"
+          },
+          "symbolName" : "Symbol_17"
+        },
+        "units" : {
+          "uwkid" : 9036
+        },
+        "divisionMarkHeight" : 7.9068095178416513,
+        "divisionMarkSymbol" : {
+          "type" : "CIMSymbolReference",
+          "symbol" : {
+            "type" : "CIMLineSymbol",
+            "symbolLayers" : [
+              {
+                "type" : "CIMSolidStroke",
+                "enable" : true,
+                "capStyle" : "Round",
+                "joinStyle" : "Round",
+                "lineStyle3D" : "Strip",
+                "miterLimit" : 10,
+                "width" : 1,
+                "color" : {
+                  "type" : "CIMRGBColor",
+                  "values" : [
+                    0,
+                    0,
+                    0,
+                    100
+                  ]
+                }
+              }
+            ]
+          },
+          "symbolName" : "Symbol_18"
+        },
+        "markFrequency" : "None",
+        "markPosition" : "Above",
+        "subdivisionMarkHeight" : 5.6477210841726082,
+        "subdivisionMarkSymbol" : {
+          "type" : "CIMSymbolReference",
+          "symbol" : {
+            "type" : "CIMLineSymbol",
+            "symbolLayers" : [
+              {
+                "type" : "CIMSolidStroke",
+                "enable" : true,
+                "capStyle" : "Round",
+                "joinStyle" : "Round",
+                "lineStyle3D" : "Strip",
+                "miterLimit" : 10,
+                "width" : 1,
+                "color" : {
+                  "type" : "CIMRGBColor",
+                  "values" : [
+                    0,
+                    0,
+                    0,
+                    100
+                  ]
+                }
+              }
+            ]
+          },
+          "symbolName" : "Symbol_19"
+        },
+        "fillSymbol1" : {
+          "type" : "CIMSymbolReference",
+          "symbol" : {
+            "type" : "CIMPolygonSymbol",
+            "symbolLayers" : [
+              {
+                "type" : "CIMSolidStroke",
+                "enable" : true,
+                "capStyle" : "Round",
+                "joinStyle" : "Round",
+                "lineStyle3D" : "Strip",
+                "miterLimit" : 10,
+                "width" : 1,
+                "color" : {
+                  "type" : "CIMRGBColor",
+                  "values" : [
+                    0,
+                    0,
+                    0,
+                    100
+                  ]
+                }
+              },
+              {
+                "type" : "CIMSolidFill",
+                "enable" : true,
+                "color" : {
+                  "type" : "CIMRGBColor",
+                  "values" : [
+                    0,
+                    0,
+                    0,
+                    100
+                  ]
+                }
+              }
+            ]
+          },
+          "symbolName" : "Symbol_14"
+        },
+        "fillSymbol2" : {
+          "type" : "CIMSymbolReference",
+          "symbol" : {
+            "type" : "CIMPolygonSymbol",
+            "symbolLayers" : [
+              {
+                "type" : "CIMSolidStroke",
+                "enable" : true,
+                "capStyle" : "Round",
+                "joinStyle" : "Round",
+                "lineStyle3D" : "Strip",
+                "miterLimit" : 10,
+                "width" : 1,
+                "color" : {
+                  "type" : "CIMRGBColor",
+                  "values" : [
+                    0,
+                    0,
+                    0,
+                    100
+                  ]
+                }
+              }
+            ]
+          },
+          "symbolName" : "Symbol_15"
+        },
+        "style" : "Alternating"
+      },
+      {
+        "type" : "CIMGraphicElement",
+        "anchor" : "TopMidPoint",
+        "name" : "Text 1",
+        "visible" : true,
+        "rotationCenter" : {
+          "x" : 3.8179000000000087,
+          "y" : 0.18280000000049768
+        },
+        "lockedAspectRatio" : true,
+        "graphic" : {
+          "type" : "CIMTextGraphic",
+          "symbol" : {
+            "type" : "CIMSymbolReference",
+            "symbol" : {
+              "type" : "CIMTextSymbol",
+              "blockProgression" : "TTB",
+              "compatibilityMode" : true,
+              "depth3D" : 1,
+              "drawSoftHyphen" : true,
+              "extrapolateBaselines" : true,
+              "fontEffects" : "Normal",
+              "fontEncoding" : "Unicode",
+              "fontFamilyName" : "Arial",
+              "fontStyleName" : "Regular",
+              "fontType" : "Unspecified",
+              "haloSize" : 1,
+              "height" : 10,
+              "hinting" : "Default",
+              "horizontalAlignment" : "Center",
+              "kerning" : true,
+              "letterWidth" : 100,
+              "ligatures" : true,
+              "lineGapType" : "ExtraLeading",
+              "shadowColor" : {
+                "type" : "CIMRGBColor",
+                "values" : [
+                  0,
+                  0,
+                  0,
+                  100
+                ]
+              },
+              "symbol" : {
+                "type" : "CIMPolygonSymbol",
+                "symbolLayers" : [
+                  {
+                    "type" : "CIMSolidFill",
+                    "enable" : true,
+                    "color" : {
+                      "type" : "CIMRGBColor",
+                      "values" : [
+                        0,
+                        0,
+                        0,
+                        100
+                      ]
+                    }
+                  }
+                ]
+              },
+              "textCase" : "Normal",
+              "textDirection" : "LTR",
+              "verticalAlignment" : "Top",
+              "verticalGlyphOrientation" : "Right",
+              "wordSpacing" : 100,
+              "billboardMode3D" : "FaceNearPlane"
+            },
+            "symbolName" : "Symbol_20"
+          },
+          "blendingMode" : "Alpha",
+          "placement" : "Unspecified",
+          "text" : "Map Generated by ArcProject software. Map Projection EPSG 2226 NAD 1983 State Plane California II FIPS 0402 Feet",
+          "shape" : {
+            "x" : 3.8179000000000087,
+            "y" : 0.18280000000049768,
+            "spatialReference" : {
+              "wkid" : null
+            }
+          }
+        }
       }
     ]
   }
