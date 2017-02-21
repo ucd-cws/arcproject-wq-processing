@@ -8,6 +8,7 @@ If(Test-Path $destination) {Remove-Item $destination}
 Copy-Item .\dist\arcproject*.whl .\distribution
 Copy-Item .\*.pyt .\distribution
 Copy-Item *.pyt.xml .\distribution
+Copy-Item .\Installation_Instructions.url
 Copy-Item .\README.md .\distribution\README.txt
 
 # zip the files in the distribution folder to a single file
