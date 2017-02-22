@@ -1,5 +1,5 @@
-from waterquality import classes
-from scripts import swap_site_recs
+from arcproject.waterquality import classes
+from arcproject.scripts import swap_site_recs
 import os
 import csv
 
@@ -33,6 +33,3 @@ for t in remaps:
 		swap_site_recs.main(t.current, t.new, True, t.note)
 	except Exception as e:
 		print(e)
-
-
-
