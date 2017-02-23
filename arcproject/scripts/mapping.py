@@ -80,6 +80,18 @@ def generate_layer_for_site(siteid, output_location):
 		session.close()
 
 
+def replaceDefaultNull(fc, placeholder=-9999):
+	try:
+		with arcpy.da.UpdateCursor(fc, '*') as cursor:
+			for row in cursor:
+				for i in range(len(row)):
+					if row[i] == placeholder:
+						row[i] = None
+						cursor.updateRow(row)
+	except Exception as e:
+		print(e.message)
+
+
 def query_to_features(query, export_path):
 	"""
 	Given a SQLAlchemy query for water quality data, exports it to a feature class
@@ -104,6 +116,9 @@ def query_to_features(query, export_path):
 		shape_fields=["x_coord", "y_coord"],
 		spatial_reference=sr,
 	)
+
+	# replace -9999 with <null> for geodatabase. Shapefile no data will remain -9999
+	replaceDefaultNull(export_path)
 
 
 def map_missing_segments(summary_file, loaded_data, output_location, template=os.path.join(_TEMPLATES_FOLDER, "base_template.mxd")):
