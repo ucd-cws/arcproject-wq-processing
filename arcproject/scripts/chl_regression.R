@@ -1,3 +1,12 @@
+# project settings
+
+# set working directory to arcproject-wq-processing folder
+# get the base folders
+project_folder = Sys.getenv("arcproject_code_path")  # get the main folder name
+database = Sys.getenv("arcproject_db_path")  # get the DB location
+
+setwd(project_folder)
+
 ############################################################
 # install the packages to library
 
@@ -222,4 +231,3 @@ confirm_commit <- function(func){
     print("Not commiting regression")
   }
 }
-

@@ -8,9 +8,12 @@ If(Test-Path $destination) {Remove-Item $destination}
 Copy-Item .\dist\arcproject*.whl .\distribution
 Copy-Item .\*.pyt .\distribution
 Copy-Item *.pyt.xml .\distribution
+Copy-Item .\Installation_Instructions.url .\distribution\Installation_Instructions.url
 Copy-Item .\README.md .\distribution\README.txt
 
 # zip the files in the distribution folder to a single file
 $source = "C:\Users\dsx.AD3\Code\arcproject-wq-processing\distribution"
 Add-Type -assembly "system.io.compression.filesystem"
 [io.compression.zipfile]::CreateFromDirectory($source, $destination)
+
+

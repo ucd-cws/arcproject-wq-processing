@@ -1,7 +1,5 @@
 import os
 
-import numpy
-
 import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Numeric, Date, DateTime
@@ -9,8 +7,15 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, UniqueConstraint, CheckConstraint
 from sqlalchemy.orm import relationship, validates
 
-db_name = "wqdb.sqlite"
-db_location = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), db_name)
+base_folder = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if os.path.exists(os.path.join(base_folder, "DEV_MODE")):
+	db_name = "wqdb.sqlite"
+	db_location = os.path.join(base_folder, "arcproject", db_name)
+else:
+	db_location = r"X:\ArcProject\ArcProjectData\water_quality_db.sqlite"
+
+os.environ["arcproject_db_path"] = db_location  # set the DB path to access later when R is called
+
 Base = declarative_base()
 
 class db_abstract(object):
