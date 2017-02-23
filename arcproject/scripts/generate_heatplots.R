@@ -4,8 +4,8 @@ library("RSQLite")
 # To start with, check if we're on a dev machine or a production machine
 
 # get the base folders
-project_folder = Sys.getenv("arcproject_code_path")  # get the main folder name
-db_name = Sys.getenv("arcproject_db_path")  # get the DB location
+project_folder <- Sys.getenv("arcproject_code_path")  # get the main folder name - these variables set by Python before calling R
+db_name <- Sys.getenv("arcproject_db_path")  # get the DB location
 
 setwd(project_folder)
 
@@ -35,9 +35,8 @@ plot_wq_var <- function(connection, site_code, title, water_quality_var){
 
   #check if there is actually data for the selected variable
   if(sum(!is.na(data[water_quality_var]))>0){
-  p <- heatplot(data, "date_time", "m_value", water_quality_var, title)
-  }
-  else{print("Variable does not have enough data")}
+    p <- heatplot(data, "date_time", "m_value", water_quality_var, title)
+  }else{print("Variable does not have enough data")}
 
   }
 
@@ -47,7 +46,7 @@ save_wq_plot <- function(plot_obj, site_code, var){
   # save the plot to disk using the title as the filename
   name = paste(site_code, var, sep="_")
   # location to save plot
-  filename <- paste("arcproject/plots/heatplots/",name, ".png", sep = "")
+  filename <- paste(project_folder, "/arcproject/plots/heatplots/",name, ".png", sep = "")
   # save the plot with ggsave()
   ggsave(filename, plot = plot_obj)
 }
