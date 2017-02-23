@@ -886,11 +886,19 @@ class GenerateHeatPlot(object):
 			direction="Input"
 		)
 
+		output_path = arcpy.Parameter(
+			displayName="Output location",
+			name="output_path",
+			datatype="DEFile",
+			multiValue=False,
+			direction="Input"
+		)
+
 		wq_var.filter.type = 'ValueList'
 		wq_var.filter.list = ["temp","ph","sp_cond","salinity", "dissolved_oxygen","dissolved_oxygen_percent",
             "dep_25", "par", "rpar","turbidity_sc","chl", "chl_volts","chl_corrected","corrected_gain"]
 
-		params = [code, wq_var, title]
+		params = [code, wq_var, title, output_path]
 		return params
 
 	def isLicensed(self):
