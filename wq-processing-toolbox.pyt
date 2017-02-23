@@ -5,6 +5,7 @@ import shutil
 from string import digits
 import datetime
 import time
+from functools import wraps
 
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
@@ -21,6 +22,19 @@ from arcproject.scripts import linear_ref
 from arcproject.scripts import config
 
 from arcproject.waterquality import classes
+
+
+def parameters_as_dict(f):
+	@wraps(f)
+	def wrapper(*args, **kwargs):
+		params = args[1]
+		parameters = {}
+		for param in params:
+			parameters[param.name] = param
+
+		f(self=args[0], parameters=parameters, messages=args[1])
+
+	return wrapper
 
 
 class Toolbox(object):
@@ -886,10 +900,10 @@ class GenerateHeatPlot(object):
 			direction="Input"
 		)
 
-		output_path = arcpy.Parameter(
-			displayName="Output location",
-			name="output_path",
-			datatype="DEFile",
+		output_folder = arcpy.Parameter(
+			displayName="Output folder",
+			name="output_folder",
+			datatype="DEFolder",
 			multiValue=False,
 			direction="Input"
 		)
@@ -898,7 +912,7 @@ class GenerateHeatPlot(object):
 		wq_var.filter.list = ["temp","ph","sp_cond","salinity", "dissolved_oxygen","dissolved_oxygen_percent",
             "dep_25", "par", "rpar","turbidity_sc","chl", "chl_volts","chl_corrected","corrected_gain"]
 
-		params = [code, wq_var, title, output_path]
+		params = [code, wq_var, title, output_folder]
 		return params
 
 	def isLicensed(self):
@@ -933,12 +947,13 @@ class GenerateHeatPlot(object):
 		parameter.  This method is called after internal validation."""
 		return
 
+	@parameters_as_dict
 	def execute(self, parameters, messages):
 
-		sitecode = parameters[0].valueAsText
-		wq_var = parameters[1].valueAsText
-		title = parameters[2].valueAsText
-
+		sitecode = parameters["code"].valueAsText
+		wq_var = parameters["wq_var"].valueAsText
+		title = parameters["output"].valueAsText
+		output_folder = parameters["output_folder"].valueAsText
 
 		### DEFINE DATA PATHS ###
 		base_path = os.path.split(os.path.abspath(__file__))[0]
@@ -946,9 +961,11 @@ class GenerateHeatPlot(object):
 		# path to R exe
 		rscript_path = config.rscript
 		gen_heat = os.path.join(base_path, "scripts", "generate_heatplots.R")
-		arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title]))
-		subprocess.call([rscript_path, gen_heat, "--args", sitecode, wq_var, title])
-		return
+		arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder]))
+		try:
+			subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder])
+		except subprocess.CalledProcessError as e:
+			arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(e.returncode, e.output))
 
 
 class LinearRef(object):

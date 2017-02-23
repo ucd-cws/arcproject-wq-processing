@@ -42,11 +42,12 @@ plot_wq_var <- function(connection, site_code, title, water_quality_var){
 
 
 # save the plot to plots/heatplots folder
-save_wq_plot <- function(plot_obj, site_code, var){
+save_wq_plot <- function(plot_obj, site_code, var, output_folder){
   # save the plot to disk using the title as the filename
   name = paste(site_code, var, sep="_")
   # location to save plot
-  filename <- paste(project_folder, "/arcproject/plots/heatplots/",name, ".png", sep = "")
+  filename <- paste(output_folder, "\\", name, ".png", sep="")
+
   # save the plot with ggsave()
   ggsave(filename, plot = plot_obj)
 }
@@ -116,11 +117,12 @@ generate_all <- function(connection,list_wq_vars){
 # get argvs if calling from script
 #args<- c("junk", 'CC', 'ph', 'Title')
 args <- commandArgs(trailingOnly=TRUE)
-if(length(args) == 4){
+if(length(args) == 5){
 
   siteid<-args[2]
   wqvar<-args[3]
   title<-args[4]
+  output_folder<-args[5]
 
   # connect to the sqlite database
   con = dbConnect(SQLite(), dbname=db_name)
@@ -129,7 +131,7 @@ if(length(args) == 4){
 
   # save the plot to disk using the title as the filename
   # saves the plot
-  save_wq_plot(p, siteid, wqvar)
+  save_wq_plot(p, siteid, wqvar, output_folder)
 
   # finally disconnect from the database
   dbDisconnect(con)
