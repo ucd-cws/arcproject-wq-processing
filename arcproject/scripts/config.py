@@ -13,3 +13,6 @@ ref_line = os.path.join(arcwqpro, "geo", "ArcLinearReferenceRoute_Lines.shp")
 
 # location of r install
 rscript = r_connector.rscript
+
+# set the path to the arcproject folder as an environment variable to access from R
+os.environ["arcproject_code_path"] = arcwqpro

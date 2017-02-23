@@ -14,6 +14,8 @@ if os.path.exists(os.path.join(base_folder, "DEV_MODE")):
 else:
 	db_location = r"X:\ArcProject\ArcProjectData\water_quality_db.sqlite"
 
+os.environ["arcproject_db_path"] = db_location  # set the DB path to access later when R is called
+
 Base = declarative_base()
 
 class db_abstract(object):
