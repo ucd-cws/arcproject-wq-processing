@@ -3,12 +3,11 @@
 # project settings
 
 # set working directory to arcproject-wq-processing folder
-project_folder = "~/arcproject-wq-processing"
+# get the base folders
+project_folder = Sys.getenv("arcproject_code_path")  # get the main folder name
+database = Sys.getenv("arcproject_db_path")  # get the DB location
+
 setwd(project_folder)
-
-# location of database
-database = 'wqdb.sqlite'
-
 
 library("RSQLite")
 library(plyr)
@@ -97,7 +96,7 @@ profile <- function(date){
 # TODO TODO TODO
 grab_df<- function(){
   library(readr)
-  df <- read_csv("~/arcproject-wq-processing/data/legacy/wq_grab/ArcProject_lab_values_Master.csv")
+  df <- read_csv(paste(project_folder, "arcproject/data/legacy/wq_grab/ArcProject_lab_values_Master.csv", sep="/"))
   df$date <- as.Date(df$date, "%m/%d/%Y")
   return(df)
 }
