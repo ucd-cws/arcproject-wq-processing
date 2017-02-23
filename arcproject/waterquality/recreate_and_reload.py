@@ -22,23 +22,28 @@ if __name__ == "__main__":
 	### MAKE SITE FOR DATA ###
 	#site_code = "wqt"
 	print("Adding default sloughs to sites")
-	site_names = {"WQT": "Test Site",
-	              "BK": "",
-	              "BR": "",
-	              "CA": "",
-	              "CB": "",
-	              "CC": "",
-	              "CO": "",
-	              "GR": "",
-	              "HS": "",
-	              "HSPDC": "",
-	              "LN": "",
+	site_names = {"WQT": "Unknown Water Quality Site",
+	              "BK": "Barker Slough",
+	              "BR": "Browns Island",
+	              "CA": "Cache Slough",
+	              "CB": "Cabin Slough",
+	              "CC": "Calhoun Cut Canal",
+	              "CO": "Cutoff Slough",
+	              "GR": "Second Mallard Creek",
+	              "HS": "Horse Slough",
+	              "HSPC": "",
+	              "LN": "Lindsey Slough",
 	              "LU": "",
-	              "MZ": "",
-	              "NSDV": "",
-	              "NS": "",
-	              "SB": "",
-	              "UL": ""}
+	              "MZ": "Montezuma Slough",
+	              "NSDV": "Nurse Slough - Denverton Slough",
+	              "NS": "Nurse Slough (East of little Honker Bay)",
+	              "SB": "First Mallard Creek",
+	              "UL": "Ulantis Creek",
+	              "SI": "Sherman Island",
+	              "SI1": "Sherman Main Drag",
+	              "SI4": "Sherman: Slough to bay",
+	              "SI7": "Sherman: SI7",
+	              "SJ": "Sherman: sac to sj"}
 
 
 
@@ -69,8 +74,8 @@ if __name__ == "__main__":
 	session.close()
 
 	### LOAD WQ DATA ###
-	print("Loading Water Quality Data")
-	wqt_timestamp_match.main([wq_data,], gps_data,)
+	#print("Loading Water Quality Data")
+	#wqt_timestamp_match.main([wq_data,], gps_data,)
 
 	### LOAD REGRESSION DATA ###
 	print("Loading Regression Data")
