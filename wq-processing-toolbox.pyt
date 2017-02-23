@@ -6,6 +6,7 @@ from string import digits
 import datetime
 import time
 from functools import wraps
+import six
 
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
@@ -956,14 +957,14 @@ class GenerateHeatPlot(object):
 		output_folder = parameters["output_folder"].valueAsText
 
 		### DEFINE DATA PATHS ###
-		base_path = os.path.split(os.path.abspath(__file__))[0]
+		base_path = config.arcwqpro
 
 		# path to R exe
 		rscript_path = config.rscript
-		gen_heat = os.path.join(base_path, "scripts", "generate_heatplots.R")
+		gen_heat = os.path.join(base_path, "arcproject", "scripts", "generate_heatplots.R")
 		arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder]))
 		try:
-			subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder])
+			subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder], stderr=subprocess.STDOUT)
 		except subprocess.CalledProcessError as e:
 			arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(e.returncode, e.output))
 
