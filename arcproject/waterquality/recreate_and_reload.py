@@ -73,9 +73,7 @@ if __name__ == "__main__":
 
 	session.close()
 
-	### LOAD WQ DATA ###
-	#print("Loading Water Quality Data")
-	#wqt_timestamp_match.main([wq_data,], gps_data,)
+
 
 	### LOAD REGRESSION DATA ###
 	print("Loading Regression Data")
@@ -89,3 +87,4 @@ if __name__ == "__main__":
 	                                     date_format_string="%m/%d/%Y", table_class=classes.GrabSample)
 
 	print("Done Loading Data")
+

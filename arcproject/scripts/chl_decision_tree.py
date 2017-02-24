@@ -4,7 +4,7 @@ from datetime import datetime
 import six
 import numpy
 import pandas
-from ..waterquality import classes, shorten_float
+from arcproject.waterquality import classes, shorten_float
 from sqlalchemy import exc
 
 

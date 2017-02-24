@@ -9,7 +9,7 @@ from . import r_connector
 arcwqpro = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # path to reference lines for sloughs
-ref_line = os.path.join(arcwqpro, "geo", "ArcLinearReferenceRoute_Lines.shp")
+ref_line = os.path.join(arcwqpro, "arcproject", "geo", "ArcLinearReferenceRoute_Lines.shp")
 
 # location of r install
 rscript = r_connector.rscript
