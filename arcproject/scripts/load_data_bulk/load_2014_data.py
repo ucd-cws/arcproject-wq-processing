@@ -1,6 +1,6 @@
 import os
 from arcproject.waterquality import classes
-from arcproject.scripts import slurp
+from arcproject.scripts.load_data_bulk import slurp
 
 # path to location with data
 data = r"C:\Users\Andy\Desktop\ArcData" # or location on x drive

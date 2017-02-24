@@ -16,9 +16,9 @@ from sqlalchemy import exc
 from sqlalchemy.orm.exc import NoResultFound
 
 # import project modules
-from ..waterquality import classes
-from . import wqt_timestamp_match
-from . import wq_gain
+from arcproject.waterquality import classes
+from arcproject.scripts import wqt_timestamp_match
+from arcproject.scripts import wq_gain
 
 
 class Slurper(object):
