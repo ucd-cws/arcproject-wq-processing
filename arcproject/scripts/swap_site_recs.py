@@ -1,8 +1,5 @@
-
 from sqlalchemy import exc, orm
-
-from ..waterquality import classes
-
+from arcproject.waterquality import classes
 
 def select_allrecs_siteid(session, site):
 	"""
@@ -70,13 +67,12 @@ def main(current, desired, remove=False, note=None):
 
 		# swap old and new while returning the count of records updated.
 		count = recs_swap_id(session, old, new, note)
-
-		if remove:
+		session.commit()
+		if remove and len(select_allrecs_siteid(session, old)) == 0:
 			s = classes.Site
 			q = session.query(s).filter(s.id == old).one()
 			session.delete(q)
-
-		session.commit()
+			session.commit()
 	finally:
 		session.close()
 	return count

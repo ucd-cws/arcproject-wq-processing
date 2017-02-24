@@ -1,9 +1,9 @@
 # linear reference points along sloughs
 # given x, y and a reference line return distance along slough
 import arcpy
-from ..waterquality import classes
-from . import mapping
-from . import config
+from arcproject.waterquality import classes
+from arcproject.scripts import mapping
+from arcproject.scripts import config
 import datetime
 
 def LocateWQalongREF(wq_features, ref_route):
@@ -17,28 +17,25 @@ def LocateWQalongREF(wq_features, ref_route):
 		# check if already exists and if so delete it
 		arcpy.Delete_management(r"in_memory\out_table")
 	ref_table_out = arcpy.LocateFeaturesAlongRoutes_lr(wq_features, ref_route, "SITECODE",
-                                   "25 Meters", r"in_memory\out_table", out_event_properties="RID POINT MEAS")
+                                   "250 Meters", r"in_memory\out_table",
+                                    out_event_properties="RID POINT MEAS", route_locations="ALL")
 
 	return ref_table_out
 
 
-def MeasureDicts(linear_referenced_table, ID_field, update_sites=None):
+def MeasureDicts(linear_referenced_table, ID_field, sites_table):
 	"""
 	Creates a list of  python dicts with the each record ID and linear measurement along reference line
 	:param linear_referenced_table: Table with linear reference results
 	:param ID_field: Field name that uniquely identifies the record
-	:param update_sites: when provided with a list of site objects, updates the site_id using ref value
 	:return: list of dictionaries with id and m_value mappings
 	"""
-	cursor = arcpy.da.SearchCursor(linear_referenced_table, [ID_field, 'MEAS', 'RID'])
+	cursor = arcpy.da.SearchCursor(linear_referenced_table, [ID_field, 'MEAS', 'RID', 'site_id'])
 	dicts = []
 	for row in cursor:
-		if update_sites is None:
+		site_num = LookupSiteID(sites_table, row[2])
+		if site_num == row[3]:
 			measurePair = {'id': row[0], 'm_value': row[1]}
-			dicts.append(measurePair)
-		else:
-			siteid = LookupSiteID(update_sites, row[2])
-			measurePair = {'id': row[0], 'm_value': row[1], 'site_id': siteid}
 			dicts.append(measurePair)
 	return dicts
 
@@ -67,15 +64,14 @@ def LookupSiteID(sites_table, code):
 	if len(subset) == 1:
 		siteid = subset[0].id
 	elif len(subset) == 0:
-		raise Exception("This site does not exist")
+		raise Exception("This site does not exist - code {}".format(code))
 	return siteid
 
 
-def getMvalues(query, sites_table=None):
+def getMvalues(query, sites_table):
 	"""
 	Given a SQLAlchemy query for water quality data, exports a feature class to linear reference which is used to update m_values
 	:param query: a SQLAlchemy query object for records to update
-	:param sites_table: a list of sites objects
 	:return: data dict with id and m-value for records in query
 	"""
 	try:
@@ -90,7 +86,6 @@ def getMvalues(query, sites_table=None):
 		meas_table = LocateWQalongREF("in_memory\q_as_layer", config.ref_line)
 
 		# create data dict with ID and measurement result
-		#distances = ID_MeasurePair(meas_table, "id")
 		distances = MeasureDicts(meas_table, "id", sites_table)
 
 	finally:
@@ -150,7 +145,7 @@ def queryBuilder(session, query_type="ALL", overwrite=False, idrange=None, dates
 	return q
 
 
-def main(query_type="ALL", overwrite=False, idrange=None, dates=None, updatesites=False):
+def main(query_type="ALL", overwrite=False, idrange=None, dates=None):
 	"""
 	Updates m-values in database by linear reference pts along reference line
 	:param query_type: choose "ALL", "IDRANGE", or "DATERANGE"
@@ -159,15 +154,10 @@ def main(query_type="ALL", overwrite=False, idrange=None, dates=None, updatesite
 		Ex: main("IDRANGE", overwrite=True, idrange=[120, 2000])
 	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
 		Ex: main("DATERANGE", overwrite=False, dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
-	:param updatesites: boolean - will use the linear reference line to update the sites code
 	:return:
 	"""
 	session = classes.get_new_session()
-
-	if updatesites:
-		sites = pullSites(session)
-	else:
-		sites = None
+	sites_table = pullSites(session)
 
 	try:
 		print("Querying Database")
@@ -177,7 +167,7 @@ def main(query_type="ALL", overwrite=False, idrange=None, dates=None, updatesite
 		if numrecs > 0:
 			print("Linear referencing wqt points. Be patient....")
 
-			distances = getMvalues(q, sites)
+			distances = getMvalues(q, sites_table)
 			print("Updating database...")
 			bulk_updateM(session, distances)
 			session.commit()
@@ -189,4 +179,4 @@ def main(query_type="ALL", overwrite=False, idrange=None, dates=None, updatesite
 
 
 if __name__ == '__main__':
-	main("ALL", overwrite=True,  updatesites=True)
+	main("ALL", overwrite=True)

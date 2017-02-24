@@ -22,7 +22,30 @@ if __name__ == "__main__":
 	### MAKE SITE FOR DATA ###
 	#site_code = "wqt"
 	print("Adding default sloughs to sites")
-	site_names = {"WQT": "Test Site"}
+	site_names = {"WQT": "Unknown Water Quality Site",
+	              "BK": "Barker Slough",
+	              "BR": "Browns Island",
+	              "CA": "Cache Slough",
+	              "CB": "Cabin Slough",
+	              "CC": "Calhoun Cut Canal",
+	              "CO": "Cutoff Slough",
+	              "GR": "Second Mallard Creek",
+	              "HS": "Horse Slough",
+	              "HSPC": "",
+	              "LN": "Lindsey Slough",
+	              "LU": "",
+	              "MZ": "Montezuma Slough",
+	              "NSDV": "Nurse Slough - Denverton Slough",
+	              "NS": "Nurse Slough (East of little Honker Bay)",
+	              "SB": "First Mallard Creek",
+	              "UL": "Ulantis Creek",
+	              "SI": "Sherman Island",
+	              "SI1": "Sherman Main Drag",
+	              "SI4": "Sherman: Slough to bay",
+	              "SI7": "Sherman: SI7",
+	              "SJ": "Sherman: sac to sj"}
+
+
 
 	session = classes.get_new_session()
 	for site in site_names:
@@ -38,24 +61,19 @@ if __name__ == "__main__":
 
 	### Add vertical profile default sites ###
 	print("Adding default vertical profiles to profile_sites")
-	vert_profiles = {
-	"TS1": "WQT"
-	}
+	vert_profiles = ["TS1", "CC1"]
 
 	session = classes.get_new_session()
 
 	for vp in vert_profiles:
 		ps = classes.ProfileSite()
 		ps.abbreviation = vp
-		ps.slough = vert_profiles[vp]
 		session.add(ps)
 		session.commit()
 
 	session.close()
 
-	### LOAD WQ DATA ###
-	print("Loading Water Quality Data")
-	wqt_timestamp_match.main([wq_data,], gps_data,)
+
 
 	### LOAD REGRESSION DATA ###
 	print("Loading Regression Data")
@@ -69,3 +87,4 @@ if __name__ == "__main__":
 	                                     date_format_string="%m/%d/%Y", table_class=classes.GrabSample)
 
 	print("Done Loading Data")
+

@@ -1,6 +1,6 @@
 import os
-from waterquality import classes
-from scripts import slurp
+from arcproject.waterquality import classes
+from arcproject.scripts.load_data_bulk import slurp
 
 # path to location with data
 data = r"C:\Users\Andy\Desktop\ArcData" # or location on x drive
@@ -266,4 +266,4 @@ def main(month="ALL"):
 		month
 
 if __name__ == '__main__':
-	main(jan())
+	main()

@@ -4,7 +4,7 @@ from datetime import datetime
 import six
 import numpy
 import pandas
-from ..waterquality import classes, shorten_float
+from arcproject.waterquality import classes, shorten_float
 from sqlalchemy import exc
 
 
@@ -205,7 +205,7 @@ def queryBuilder(session, query_type="NEW", idrange=None, dates=None):
 	wq = classes.WaterQuality
 
 	if query_type == "ALL":
-		# update all records in wq table that have xy coords
+		# update all records in wq table
 		q = session.query(wq).filter(wq.chl != None)  # all records that have chl values
 	elif query_type == "NEW":
 		q = session.query(wq).filter(wq.chl != None, wq.chl_corrected == None)
@@ -219,13 +219,13 @@ def queryBuilder(session, query_type="NEW", idrange=None, dates=None):
 	return q
 
 
-def main(query_type="ALL", daterange=None, idrange=None):
+def main(query_type="NEW", daterange=None, idrange=None):
 	"""
 	Updates the water quality table corrected CHL by applying the linear regression values from the regression table
 	:param query_type: Subset of records to run update on ("ALL", "NEW", "DATERANGE", "IDRANGE"
 	:param idrange: when query_type="IDRANGE" range of ids as list where [start_id, end_id]
 		Ex: main(session, "RANGE", idrange=[120, 2000])
-	:param dates: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
+	:param daterange: when query_type="DATERANGE" two datetime objects as list where [start_date, end_date].
 		Ex: main(session, "DATERANGE",  dates=[datetime.datetime(2016, 1, 01), datetime.datetime(2016, 1, 31)])
 	:return:
 	"""
@@ -234,8 +234,9 @@ def main(query_type="ALL", daterange=None, idrange=None):
 	reg_table = pullRegresionTable(session)
 	try:
 		# iterate over each row
-		for row in query:
+		print(query.count())
 
+		for row in query:
 			# get the date only from the date_time field
 			dt = row.date_time
 
@@ -252,4 +253,4 @@ def main(query_type="ALL", daterange=None, idrange=None):
 	return
 
 if __name__ == '__main__':
-	main(query_type="ALL")
+	main(query_type="NEW")

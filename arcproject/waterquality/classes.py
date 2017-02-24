@@ -14,6 +14,8 @@ if os.path.exists(os.path.join(base_folder, "DEV_MODE")):
 else:
 	db_location = r"X:\ArcProject\ArcProjectData\water_quality_db.sqlite"
 
+os.environ["arcproject_db_path"] = db_location  # set the DB path to access later when R is called
+
 Base = declarative_base()
 
 class db_abstract(object):
@@ -98,7 +100,7 @@ gain_water_quality_header_map = {
 	"CHL_VOLTS": "chl_volts",
 	"WQ_SOURCE": "source",  # a None here means it'll skip it
 	"Gain": "gain_setting",
-	"Site": "profile_site_abbreviation",
+	"Site": "profile_site_id",
 	"Date_Time": "date_time",
 }
 
@@ -106,8 +108,7 @@ class VerticalProfile(Base):
 	__tablename__ = "vertical_profiles"
 	__table_args__ = (UniqueConstraint('date_time', name='_time_uc'),)
 	id = Column(Integer, primary_key=True)
-
-	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
+	profile_site_id = Column(Integer, ForeignKey("profile_sites.id"))
 	profile_site = relationship(ProfileSite,
 								backref="vertical_profiles")
 	gain_setting = Column(Float)
@@ -194,10 +195,8 @@ sample_field_map = {
 
 class GrabSample(Base):
 	__tablename__ = 'grab_samples'
-
 	id = Column(Integer, primary_key=True)
-
-	profile_site_abbreviation = Column(String, ForeignKey("profile_sites.abbreviation"))
+	profile_site_id = Column(Integer, ForeignKey("profile_sites.id"))
 	sample_id = Column(String)
 	site_id = Column(String)
 	date = Column(Date)
