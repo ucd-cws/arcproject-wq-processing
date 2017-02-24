@@ -9,6 +9,11 @@ try:
 except ImportError:
 	import _winreg as winreg
 
+try:
+	from arcproject import __version__ as version
+except ImportError:
+	version = '2017.02.24'
+
 from setuptools import setup
 from setuptools.command.install import install
 
@@ -35,7 +40,7 @@ def get_r_exec():
 
 	major_version, minor_version, sub_version = current_r_version.split(".")
 	packages_version = "{}.{}".format(major_version, minor_version)  # get the version format used for packages
-	new_r_package_folder = os.path.join(r"C:{}".format(os.environ["USERPROFILE"]), "Documents", "R", "win-library", packages_version)
+	new_r_package_folder = os.path.join(os.environ["USERPROFILE"], "Documents", "R", "win-library", packages_version)
 	return os.path.join(current_r_path, "bin", "Rscript.exe"), new_r_package_folder
 
 try:
@@ -75,7 +80,7 @@ class CustomInstallCommand(install):
 if __name__ == "__main__":
 	setup(
 		name='arcproject-wq',
-		version='2017.02.23',
+		version=version,
 		packages=['arcproject', 'arcproject.scripts', 'arcproject.waterquality'],
 		license='MIT',
 		description=None,
