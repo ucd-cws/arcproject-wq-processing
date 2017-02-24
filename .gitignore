@@ -1,5 +1,6 @@
 scripts/tests/testfiles/slurp/*
 distribution/
+versions/
 distribution.zip
 *.sr.lock
 

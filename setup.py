@@ -75,7 +75,7 @@ class CustomInstallCommand(install):
 if __name__ == "__main__":
 	setup(
 		name='arcproject-wq',
-		version='0.9',
+		version='2017.02.23',
 		packages=['arcproject', 'arcproject.scripts', 'arcproject.waterquality'],
 		license='MIT',
 		description=None,
