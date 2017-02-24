@@ -35,7 +35,7 @@ def get_r_exec():
 
 	major_version, minor_version, sub_version = current_r_version.split(".")
 	packages_version = "{}.{}".format(major_version, minor_version)  # get the version format used for packages
-	new_r_package_folder = os.path.join(r"C:{}".format(os.environ["HOMEPATH"]), "Documents", "R", "win-library", packages_version)
+	new_r_package_folder = os.path.join(r"C:{}".format(os.environ["USERPROFILE"]), "Documents", "R", "win-library", packages_version)
 	return os.path.join(current_r_path, "bin", "Rscript.exe"), new_r_package_folder
 
 try:
