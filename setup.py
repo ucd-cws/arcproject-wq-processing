@@ -12,7 +12,7 @@ except ImportError:
 try:
 	from arcproject import __version__ as version
 except ImportError:
-	version = '2017.02.24'
+	version = '2017.02.28'
 
 from setuptools import setup
 from setuptools.command.install import install
@@ -43,13 +43,9 @@ def get_r_exec():
 	new_r_package_folder = os.path.join(os.environ["USERPROFILE"], "Documents", "R", "win-library", packages_version)
 	return os.path.join(current_r_path, "bin", "Rscript.exe"), new_r_package_folder
 
-try:
-	r_exec, new_r_package_folder = get_r_exec()
-except WindowsError:
-	raise WindowsError("R does not appear to be installed on this machine. Please install it, making sure to install with version number in registry (installation option) then try again")
 
+def write_r_package_install_file(r_exec, new_r_package_folder):
 
-def write_r_package_install_file():
 	print("Installing R packages using interpreter at {}".format(r_exec))
 
 	dependencies_file = os.path.join(os.path.split(os.path.abspath(__file__))[0], "arcproject", "scripts", "install_packages.R")
@@ -66,12 +62,18 @@ class CustomInstallCommand(install):
 	See https://blog.niteoweb.com/setuptools-run-custom-code-in-setup-py/ for why we're using this
 	"""
 	def run(self):
+		try:
+			r_exec, new_r_package_folder = get_r_exec()
+		except WindowsError:
+			raise WindowsError(
+				"R does not appear to be installed on this machine. Please install it, making sure to install with version number in registry (installation option) then try again")
+
 		install.run(self)  # call the parent class's default actions
 
 		if not os.path.exists(new_r_package_folder):
 			os.makedirs(new_r_package_folder)
 
-		dependencies_file = write_r_package_install_file()
+		dependencies_file = write_r_package_install_file(r_exec=r_exec, new_r_package_folder=new_r_package_folder)
 
 		subprocess.call([r_exec, dependencies_file])  # call the code to set up R packages
 
@@ -85,8 +87,9 @@ if __name__ == "__main__":
 		license='MIT',
 		description=None,
 		long_description="",
-		install_requires=["SQLAlchemy >= 1.1.2", "six", "numpy >= 1.9.2", "pandas >= 0.16.1", "matplotlib",
-							"geodatabase_tempfile", "amaptor >= 0.1.1.2"],
+		install_requires=["SQLAlchemy >= 1.1.2", "six",
+							"geodatabase_tempfile", "amaptor >= 0.1.1.4"],
+						## "pandas >= 0.16.1", "matplotlib", and "numpy >= 1.9.2" also needed, but cause issues on ArcGIS 10.4 install where it tries to upgrade numpy
 		author=__author__,
 		author_email="nrsantos@ucdavis.edu",
 		url='https://github.com/ucd-cws/amaptor',
