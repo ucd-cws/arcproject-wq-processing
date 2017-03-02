@@ -22,37 +22,109 @@ def jan():
 def feb():
 	print("Feburary 2015")
 	path = os.path.join(data, "Feb_2015")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.gain_pattern = "*WQ*"
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_022615']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
 
+	path = os.path.join(data, "Feb_2015", 'Arc_022615')
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.gain_pattern = "*WQ*"
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
 
 
 def mar():
 	print("March 2015")
 	path = os.path.join(data, "Mar_2015")
 	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.gain_pattern = "*WQ*"
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
 
 
 def apr():
 	print("April 2015")
-	path = os.path.join(data, "Apr_2015", "Arc_042214")
+	path = os.path.join(data, "Apr_2015", "Arc_042815")
 	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.gain_pattern = "*WQ*"
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
+
+	path = os.path.join(data, "Apr_2015", "Arc_043015")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.gain_pattern = "*ARC*"
+	s.site_function_params = {"site_part": 2, "gain_part": 3}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
 
 
 def may():
 	print("May 2015")
 	path = os.path.join(data, "May_2015")
 	s = slurp.Slurper()
-
+	s.add_new_sites = True
+	s.dst = True
+	s.gain_pattern = "*WQ*"
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles', 'Arc_052815']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
 
 
 def jun():
 	print("June 2015")
-	path = os.path.join(data, "Jun_2015")
+	path = os.path.join(data, "Jun_2015", "ARC_061815_WQ")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
+	path = os.path.join(data, "Jun_2015", "ARC_062515")
+	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.site_function_params = {"site_part": 3, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
 
 
 def jul():
 	print("July 2015")
 	path = os.path.join(data, "Jul_2015")
 	s = slurp.Slurper()
+	s.add_new_sites = True
+	s.dst = True
+	s.site_function_params = {"site_part": 2, "gain_part": 4}
+	s.exclude = ['StatePlaneCAII', 'SummaryFiles']
+	s.skipext = [".csv", ".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]
+	s.slurp_gains(path)
+	print("Adding water quality transects to database")
+	s.slurp_trans(path)
+
 
 def aug():
 	print("Aug 2015")
@@ -157,4 +229,4 @@ def main(month="ALL"):
 		month
 
 if __name__ == '__main__':
-	main()
+	main(jul())
