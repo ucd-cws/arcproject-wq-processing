@@ -189,8 +189,8 @@ class WQMappingBase(object):
 class AddSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "New Site (slough)"
-		self.description = "Add a new site to the database. Each slough should have it's own unique site id."
+		self.label = "New Transect Site"
+		self.description = "Add a new water quality transect site to the database. Each slough should have it's own unique site id."
 		self.canRunInBackground = False
 		self.category = "Create New Sites"
 
@@ -249,7 +249,7 @@ class AddGainSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "New Profile Site"
-		self.description = "Create a new vertical profile site to add to the database"
+		self.description = "Create a new vertical profile site"
 		self.canRunInBackground = False
 		self.category = "Create New Sites"
 
@@ -264,11 +264,12 @@ class AddGainSite(object):
 		)
 
 		slough = arcpy.Parameter(
-			displayName="Slough?",
+			displayName="Transect?",
 			name="slough",
 			datatype="GPString",
 			multiValue=False,
-			direction="Input"
+			direction="Input",
+			parameterType="Optional",
 		)
 
 		params = [abbr, slough]
@@ -303,13 +304,16 @@ class AddGainSite(object):
 		parameter.  This method is called after internal validation."""
 		return
 
+	@parameters_as_dict
 	def execute(self, parameters, messages):
 
-		abbr = parameters[0].valueAsText
-		slough = parameters[1].valueAsText
+		abbr = parameters["abbr"].valueAsText
+		slough = parameters["slough"].valueAsText
 		ps = classes.ProfileSite()
 		ps.abbreviation = abbr.upper()
-		ps.slough = slough.upper()
+
+		if slough is not None:
+			ps.slough = slough.upper()
 
 		# add to db
 		session = classes.get_new_session()
@@ -325,10 +329,10 @@ class AddGainSite(object):
 class JoinTimestamp(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Transect - Join on Timestamp"
+		self.label = "Add Transects"
 		self.description = "Join water quality transect to gps using time stamp and add to database"
 		self.canRunInBackground = False
-		self.category = "Add Data"
+		self.category = "Add WQ Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -410,10 +414,10 @@ class JoinTimestamp(object):
 class GainToDB(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Add Gain profile to database"
+		self.label = "Add Gain Profiles"
 		self.description = ""
 		self.canRunInBackground = False
-		self.category = "Add Data"
+		self.category = "Add WQ Data"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -440,30 +444,30 @@ class GainToDB(object):
 			parameterType="Optional"
 		)
 
-		site_part = arcpy.Parameter(
-			displayName="Part of filename with site code (split by underscores)?",
-			name="site",
-			datatype="GPLong",
-			parameterType="Optional"
-		)
+		# site_part = arcpy.Parameter(
+		# 	displayName="Part of filename with site code (split by underscores)?",
+		# 	name="site",
+		# 	datatype="GPLong",
+		# 	parameterType="Optional"
+		# )
+		#
+		# site_part.value = 3
+		# site_part.filter.type = "ValueList"
+		# site_part.filter.list = [1, 2, 3, 4, 5, 6]
+		#
+		#
+		# gain_part = arcpy.Parameter(
+		# 	displayName="Part of filename with gain code (split by underscores)?",
+		# 	name="gain",
+		# 	datatype="GPLong",
+		# 	parameterType="Optional"
+		# )
+		#
+		# gain_part.value = 5
+		# gain_part.filter.type = "ValueList"
+		# gain_part.filter.list = [1, 2, 3, 4, 5, 6]
 
-		site_part.value = 3
-		site_part.filter.type = "ValueList"
-		site_part.filter.list = [1, 2, 3, 4, 5, 6]
-
-
-		gain_part = arcpy.Parameter(
-			displayName="Part of filename with gain code (split by underscores)?",
-			name="gain",
-			datatype="GPLong",
-			parameterType="Optional"
-		)
-
-		gain_part.value = 5
-		gain_part.filter.type = "ValueList"
-		gain_part.filter.list = [1, 2, 3, 4, 5, 6]
-
-		params = [wqp, bool, site_part, gain_part]
+		params = [wqp, bool,]
 		return params
 
 
@@ -505,8 +509,11 @@ class GainToDB(object):
 				basename = os.path.basename(str(filename))
 				base = os.path.splitext(basename)[0]  # rm extension if there is one
 				parts = base.split("_")  # split on underscore
-				site = parts[int(parameters[2].value)-1]
-				gain = parts[int(parameters[3].value)-1]
+
+				#site = parts[int(parameters[2].value)-1]
+				site = parts[wqt_timestamp_match.site_function_params.get('site_part')]
+				#gain = parts[int(parameters[3].value)-1]
+				gain = parts[wqt_timestamp_match.site_function_params.get('gain_part')]
 				vt[i][0] = str(filename)
 				vt[i][1] = site
 
@@ -552,7 +559,7 @@ class GainToDB(object):
 class GenerateWQLayer(WQMappingBase):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Generate Map Layer from Water Quality Data"
+		self.label = "Map Layer - Single Day"
 		self.description = ""
 		self.canRunInBackground = False
 		self.category = "Mapping"
@@ -611,7 +618,7 @@ class GenerateWQLayer(WQMappingBase):
 class GenerateMonth(WQMappingBase):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Generate Layer of WQ Transects for Single Month"
+		self.label = "Map Layer - Full Month "
 		self.description = "Generate a layer of all the water quality transects for a given month and year"
 		self.canRunInBackground = False
 		self.category = "Mapping"
@@ -784,11 +791,12 @@ class GenerateMap(WQMappingBase):
 		if amaptor.PRO:
 			arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
 
+
 class ModifyWQSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Modify assigned site for WQ records"
-		self.description = ""
+		self.label = "Swap Transect Code for ALL records"
+		self.description = "Modifies the transect code for all records that currently belong to a certain site."
 		self.canRunInBackground = False
 		self.category = "Modify"
 
@@ -972,7 +980,7 @@ class GenerateHeatPlot(object):
 class LinearRef(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Update WQT M-values"
+		self.label = "Locate WQT Along Reference Route"
 		self.description = "Locate water quality points using linear referencing to update " \
 		                   "the m-value of selected records"
 		self.canRunInBackground = False
@@ -1108,7 +1116,7 @@ class LinearRef(object):
 class GenerateSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "SiteID- All WQ Transects"
+		self.label = "Map Layer - single transect (all days)"
 		self.description = ""
 		self.canRunInBackground = False
 		self.category = "Mapping"
