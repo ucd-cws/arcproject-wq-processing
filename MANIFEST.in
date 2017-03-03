@@ -5,5 +5,3 @@ recursive-include arcproject/templates *
 recursive-include arcproject/plots *
 recursive-include arcproject/data *
 recursive-include arcproject/geo *
-include arcproject/wqdb.sqlite
-include r_dependencies.py
