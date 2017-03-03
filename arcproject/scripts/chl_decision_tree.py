@@ -47,7 +47,7 @@ def load_df_data(data_frame, field_map=classes.regression_field_map, date_format
 
 			for key in row1.index:
 				class_field = field_map[key]
-				if key == "Date":
+				if key == "Date" or key == "Date_Time":
 					value = datetime.strptime(getattr(row1, key), date_format_string)
 				else:
 					value = getattr(row1, key)

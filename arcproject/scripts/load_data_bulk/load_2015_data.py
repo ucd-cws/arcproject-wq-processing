@@ -229,4 +229,4 @@ def main(month="ALL"):
 		month
 
 if __name__ == '__main__':
-	main(jul())
+	main()
