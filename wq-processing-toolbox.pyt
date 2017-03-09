@@ -897,7 +897,7 @@ class GenerateHeatPlot(object):
 			displayName="Water Quality Variable",
 			name="wq_var",
 			datatype="GPString",
-			multiValue=False,
+			multiValue=True,
 			direction="Input"
 		)
 
@@ -906,7 +906,8 @@ class GenerateHeatPlot(object):
 			name="output",
 			datatype="GPString",
 			multiValue=False,
-			direction="Input"
+			direction="Input",
+			parameterType="Optional"
 		)
 
 		output_folder = arcpy.Parameter(
@@ -919,7 +920,7 @@ class GenerateHeatPlot(object):
 
 		wq_var.filter.type = 'ValueList'
 		wq_var.filter.list = ["temp","ph","sp_cond","salinity", "dissolved_oxygen","dissolved_oxygen_percent",
-            "dep_25", "par", "rpar","turbidity_sc","chl", "chl_volts","chl_corrected","corrected_gain"]
+            "dep_25", "par", "rpar","turbidity_sc","chl", "chl_corrected", "m_value"]
 
 		params = [code, wq_var, title, output_folder]
 		return params
@@ -960,21 +961,28 @@ class GenerateHeatPlot(object):
 	def execute(self, parameters, messages):
 
 		sitecode = parameters["code"].valueAsText
-		wq_var = parameters["wq_var"].valueAsText
-		title = parameters["output"].valueAsText
+		wq_var_list = parameters["wq_var"].valueAsText.split(';')
+		title_param = parameters["output"].valueAsText
 		output_folder = parameters["output_folder"].valueAsText
 
 		### DEFINE DATA PATHS ###
 		base_path = config.arcwqpro
-
-		# path to R exe
-		rscript_path = config.rscript
+		rscript_path = config.rscript # path to R exe
 		gen_heat = os.path.join(base_path, "arcproject", "scripts", "generate_heatplots.R")
-		arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder]))
-		try:
-			subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder], stderr=subprocess.STDOUT)
-		except subprocess.CalledProcessError as e:
-			arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(e.returncode, e.output))
+
+		for wq_var in wq_var_list:
+
+			# set default title
+			if title_param is None:
+				title = sitecode.upper() + " - " + wq_var.upper()
+			else:
+				title = title_param
+
+			arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder]))
+			try:
+				subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder], stderr=subprocess.STDOUT)
+			except subprocess.CalledProcessError as e:
+				arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(e.returncode, e.output))
 
 
 class LinearRef(object):
