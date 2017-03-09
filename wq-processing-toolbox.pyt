@@ -93,14 +93,14 @@ class WQMappingBase(object):
 		self._filter_to_layer_mapping = {
 										"CHL": "CHL_regular.lyr",
 										"CHL Corrected": "CHL_corrected.lyr",
-										"Dissolved Oxygen": "DO.lyr",
-										"DO Percent Saturation": "DOPerCentSat.lyr",
+										"Dissolved Oxygen": "DO_v2.lyr",
+										"DO Percent Saturation": "DOPerCentSat_v2.lyr",
 										"pH": "pH.lyr",
-										"RPAR": "RPAR.lyr",
+										"RPAR": "RPAR_v2.lyr",
 										"Salinity": "Sal.lyr",
 										"SpCond": "SpCond.lyr",
 										"Temperature": "Temp.lyr",
-										"Turbidity": "Turbid.lyr"
+										"Turbidity": "Turbid.lyr",
 									}
 
 		self.select_wq_param.filter.type = "ValueList"
@@ -145,6 +145,9 @@ class WQMappingBase(object):
 
 		if parameters[year_field_index].filter.list is None or parameters[year_field_index].filter.list == "" or len(parameters[year_field_index].filter.list) == 0:  # if this is our first time through, set it all up
 			self.initialize_year_and_month_fields(parameters, year_field_index)
+
+		if not arcpy.Exists(self.temporary_date_table):
+			return  # this seems to occur in Pro, when running the tool - the data doesn't get loaded, but it is calling this function - may be a bug to squash somewhere here.
 
 		year = int(parameters[year_field_index].value)
 		months = arcpy.SearchCursor(self.temporary_date_table, where_clause="data_year={}".format(year))
@@ -653,7 +656,7 @@ class GenerateWQLayer(WQMappingBase):
 class GenerateMonth(WQMappingBase):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Map Layer - Full Month "
+		self.label = "Map Layer - Full Month"
 		self.description = "Generate a layer of all the water quality transects for a given month and year"
 		self.canRunInBackground = False
 		self.category = "Mapping"
@@ -1162,7 +1165,7 @@ class LinearRef(object):
 class GenerateSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Map Layer - single transect (all days)"
+		self.label = "Map Layer - Single Transect (all days)"
 		self.description = ""
 		self.canRunInBackground = False
 		self.category = "Mapping"
@@ -1337,7 +1340,7 @@ class ModifySelectedSite(object):
 class DeleteMonth(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Deletes records for month"
+		self.label = "Delete Records for Month"
 		self.description = "Deletes the water quality transects and gain files for a given month and year"
 		self.canRunInBackground = False
 		self.category = "Modify"
