@@ -85,7 +85,7 @@ def replaceDefaultNull(fc, placeholder=-9999):
 		with arcpy.da.UpdateCursor(fc, '*') as cursor:
 			for row in cursor:
 				for i in range(len(row)):
-					if row[i] == placeholder:
+					if int(row[i]) == placeholder:
 						row[i] = None
 						cursor.updateRow(row)
 	except Exception as e:

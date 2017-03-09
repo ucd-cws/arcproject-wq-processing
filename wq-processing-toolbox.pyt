@@ -56,6 +56,10 @@ class WQMappingBase(object):
 		 and make sure the tool init includes a call to super(NewClassName, self).__init__() at the beginning of __init__
 	"""
 	def __init__(self):
+		self.table_workspace = "in_memory"
+		self.table_name = "arcproject_temp_date_table"
+		self.temporary_date_table = "{}\\{}".format(self.table_workspace, self.table_name)
+
 		self.select_wq_param = arcpy.Parameter(
 			displayName="Symbolize Data by",
 			name="symbology",
@@ -132,49 +136,80 @@ class WQMappingBase(object):
 
 	def update_month_fields(self, parameters, year_field_index=0, month_field_index=1):
 		"""
+			Retrieve months from the temporary data table in memory
+		:param parameters:
+		:param year_field_index:
+		:param month_field_index:
+		:return:
+		"""
+
+		if parameters[year_field_index].filter.list is None or parameters[year_field_index].filter.list == "" or len(parameters[year_field_index].filter.list) == 0:  # if this is our first time through, set it all up
+			self.initialize_year_and_month_fields(parameters, year_field_index)
+
+		year = int(parameters[year_field_index].value)
+		months = arcpy.SearchCursor(self.temporary_date_table, where_clause="data_year={}".format(year))
+
+		filter_months = []
+		for month in months:
+			filter_months.append(month.getValue("data_month"))
+
+		parameters[month_field_index].filter.type = 'ValueList'
+		parameters[month_field_index].filter.list = filter_months
+
+	def initialize_year_and_month_fields(self, parameters, year_field_index=0):
+		"""
 			Used on Generate Month and Generate Map
 		:param parameters:
 		:return:
 		"""
 
-		# get years with data from the database to use as selection for tool input
-		session = classes.get_new_session()
-		try:
-			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
+		# set up the temporary table
+		if arcpy.Exists(self.temporary_date_table):  # if it exists, it's stale
+			arcpy.Delete_management(self.temporary_date_table)
 
-			print(q)
-			years = []
-			# add profile name to site list
-			for year in q:
-				print(year[0])
-				years.append(year[0])
+		arcpy.CreateTable_management(self.table_workspace, self.table_name)
+		arcpy.AddField_management(self.temporary_date_table, "data_year", "LONG")
+		arcpy.AddField_management(self.temporary_date_table, "data_month", "TEXT")
+
+		# load the data from the DB
+		session = classes.get_new_session()
+
+		try:
+			# get years with data from the database to use as selection for tool input
+
+			curs = arcpy.InsertCursor(self.temporary_date_table)
+			q = session.query(extract('year', classes.WaterQuality.date_time), extract('month', classes.WaterQuality.date_time)).distinct()
+			years = {}
+			month_names = list(calendar.month_name)  # helps translate numeric months to
+			for row in q:  # translate the results to the temporary table
+				new_record = curs.newRow()
+				new_record.setValue("data_year", row[0])
+				new_record.setValue("data_month", month_names[row[1]])
+				curs.insertRow(new_record)
+
+				years[row[0]] = True  # indicate we have data for a year
+
 			parameters[year_field_index].filter.type = 'ValueList'
-			parameters[year_field_index].filter.list = years
+			parameters[year_field_index].filter.list = sorted(list(years.keys()))  # get the distinct set of years
 
 		finally:
 			session.close()
 
-		# get valid months for the selected year as the options for the tool input
-		if parameters[year_field_index].value:
-			Y = int(parameters[year_field_index].value)
 
-			session = classes.get_new_session()
-			try:
+			# # get valid months for the selected year as the options for the tool input
+			# if parameters[year_field_index].value:
+			# 	Y = int(parameters[year_field_index].value)
+			#
+			# 	q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
+			# 		extract('year', classes.WaterQuality.date_time) == Y).distinct()
+			# 	months = []
+			# 	t = list(calendar.month_name)
+			# 	for month in q2:
+			# 		months.append(t[month[0]])
+			#
+			# 	parameters[month_field_index].filter.type = 'ValueList'
+			# 	parameters[month_field_index].filter.list = months
 
-				q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
-					extract('year', classes.WaterQuality.date_time) == Y).distinct()
-				months = []
-				t = list(calendar.month_name)
-				for month in q2:
-					print(month[0])
-					months.append(t[month[0]])
-
-				print(months)
-				parameters[month_field_index].filter.type = 'ValueList'
-				parameters[month_field_index].filter.list = months
-			finally:
-				session.close()
-		return
 
 	def convert_year_and_month(self, year, month):
 		year_to_use = int(year.value)
@@ -720,6 +755,7 @@ class GenerateMap(WQMappingBase):
 			)
 
 		params = [self.year_to_generate, self.month_to_generate, self.select_wq_param, map_output, export_pdf, export_png]
+
 		return params
 
 	def isLicensed(self):
@@ -744,52 +780,54 @@ class GenerateMap(WQMappingBase):
 		:param parameters:
 		:return:
 		"""
+		try:
+			year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
+			symbology_param = parameters[2]
 
-		# TODO: STILL NEEDS TO HANDLE STATIC MAP EXPORTS
+			template = mapping.arcgis_10_template
+			output_map_path = parameters[3].valueAsText
+			output_pdf_path = parameters[4].valueAsText
+			output_png_path = parameters[5].valueAsText
+			new_layout_name = "{} Layout".format(output_map_path)
+			if amaptor.PRO:
+				if "testing_project" in globals(): # this is a hook for our testing code to set a value in the module and have this use it instead of "CURRENT"
+					project = globals()["testing_project"]
+				else:
+					project = "CURRENT"
+				map_project = amaptor.Project(project)
+				new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
+				new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="base_template")
+				new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
 
-		year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
-		symbology_param = parameters[2]
-
-		template = mapping.arcgis_10_template
-		output_map_path = parameters[3].valueAsText
-		output_pdf_path = parameters[4].valueAsText
-		output_png_path = parameters[5].valueAsText
-		new_layout_name = "{} Layout".format(output_map_path)
-		if amaptor.PRO:
-			if "testing_project" in globals(): # this is a hook for our testing code to set a value in the module and have this use it instead of "CURRENT"
-				project = globals()["testing_project"]
+				output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
 			else:
-				project = "CURRENT"
-			map_project = amaptor.Project(project)
-			new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
-			new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="base_template")
-			new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
+				shutil.copyfile(template, output_map_path)
+				map_project = amaptor.Project(output_map_path)
+				new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
 
-			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
-		else:
-			shutil.copyfile(template, output_map_path)
-			map_project = amaptor.Project(output_map_path)
-			new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
+				output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer")
 
-			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer")
+			arcpy.AddMessage("Map Document set up complete. Creating new layer")
+			generate_layer_for_month(month_to_use, year_to_use, output_location)
 
-		arcpy.AddMessage("Map Document set up complete. Creating new layer")
-		generate_layer_for_month(month_to_use, year_to_use, output_location)
+			self.insert_layer(output_location, symbology_param, map_or_project=new_map)
+			new_layer = new_map.find_layer(path=output_location)
+			new_layer.name = symbology_param.valueAsText
+			new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
+			map_project.save()
 
-		self.insert_layer(output_location, symbology_param, map_or_project=new_map)
-		new_layer = new_map.find_layer(path=output_location)
-		new_layer.name = symbology_param.valueAsText
-		new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
-		map_project.save()
+			if output_png_path and output_png_path != "":
+				new_map.export_png(output_png_path, resolution=300)
+			if output_pdf_path and output_pdf_path != "":
+				new_map.export_pdf(output_pdf_path)
 
-		if output_png_path and output_png_path != "":
-			new_map.export_png(output_png_path, resolution=300)
-		if output_pdf_path and output_pdf_path != "":
-			pass
+			if amaptor.PRO:
+				arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
 
-
-		if amaptor.PRO:
-			arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
+		finally:
+			# clean up from tool setup
+			if arcpy.Exists(self.temporary_date_table):
+				arcpy.Delete_management(self.temporary_date_table)
 
 
 class ModifyWQSite(object):

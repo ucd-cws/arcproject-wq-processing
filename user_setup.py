@@ -11,6 +11,7 @@ try:
 except ImportError:
 	import _winreg as winreg
 
+
 def get_r_exec():
 	"""
 		We make this a function and call it first because setuptools just puts "error:none" if it errors out inside the
@@ -37,25 +38,32 @@ def get_r_exec():
 
 
 def write_r_package_install_file(r_exec, new_r_package_folder):
-
-	print("Installing R packages using interpreter at {}".format(r_exec))
+	print("Installing R packages using interpreter at {}. This may take some time".format(r_exec))
 
 	dependencies_file = os.path.join(os.path.split(os.path.abspath(__file__))[0], "install_packages.R")
 	with open(dependencies_file, 'w') as rdeps:
 		# for every item in the dependecies list, fill the values into the installation expression, and write that out to the file
-		rdeps.write("install.packages(c({}), dependencies=TRUE, lib=\"{}\", repos='http://cran.us.r-project.org')".format(", ".join(r_dependencies), new_r_package_folder.replace("\\", "\\\\")))
+		rdeps.write(
+			"install.packages(c({}), dependencies=TRUE, lib=\"{}\", repos='http://cran.us.r-project.org')".format(
+				", ".join(r_dependencies), new_r_package_folder.replace("\\", "\\\\")))
 
 	return dependencies_file
 
 
 def set_up_r_dependencies(new_r_package_folder, r_exec):
-
 	if not os.path.exists(new_r_package_folder):
 		os.makedirs(new_r_package_folder)
 
 	dependencies_file = write_r_package_install_file(r_exec=r_exec, new_r_package_folder=new_r_package_folder)
 
-	subprocess.call([r_exec, dependencies_file])  # call the code to set up R packages
+	try:
+		subprocess.check_output([r_exec, dependencies_file],
+								stderr=subprocess.STDOUT)  # call the code to set up R packages
+	except subprocess.CalledProcessError as e:
+		print(
+			"Installation of R packages failed {}.\nR Package installer output the following while processing:\n{}".format(
+				e.returncode, e.output))
+		sys.exit(1)
 
 
 def find_wheels(path):
@@ -75,14 +83,24 @@ if __name__ == "__main__":
 		raise WindowsError(
 			"R does not appear to be installed on this machine. Please install it, making sure to install with version number in registry (installation option) then try again")
 
-	subprocess.call([sys.executable, "-m", "pip", "install", "--upgrade", "pip"])
+	try:
+		subprocess.check_output([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], stderr=subprocess.STDOUT)
+	except subprocess.CalledProcessError as e:
+		print("arcproject package install failed {}.\nInstaller output the following while processing:\n{}".format(
+			e.returncode, e.output))
+		sys.exit(1)
 
 	install_folder = os.path.split(os.path.abspath(__file__))[0]
 	for wheel in find_wheels(install_folder):
 		print("Install wheel file {}".format(wheel))
-		subprocess.call([sys.executable, "-m", "pip", "install", os.path.join(install_folder, wheel)])
+		try:
+			subprocess.check_output([sys.executable, "-m", "pip", "install", os.path.join(install_folder, wheel)],
+									stderr=subprocess.STDOUT)  # should install requirements too
+		except subprocess.CalledProcessError as e:
+			print("arcproject package install failed {}.\nInstaller output the following while processing:\n{}".format(
+				e.returncode, e.output))
+			sys.exit(1)
+
 	set_up_r_dependencies(new_r_package_folder, r_exec)
 
 	print("Installation complete")
-
-
