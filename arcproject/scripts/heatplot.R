@@ -1,5 +1,8 @@
 # function to create heatplot from a dataframe with date, distance, water quality info
-library(ggplot2)
+if(!require(ggplot2)){
+  install.packages("ggplot2")
+  library(ggplot2)
+}
 
 ######################################################
 unique_dates <- function(dataframe, dateField){
@@ -40,6 +43,7 @@ heatplot <- function(df, dateField, distanceField, wqVariable, title){
       guides(fill = guide_colorbar(ticks = FALSE)) + # no tick marks
       theme_bw() +  # change theme simple with no axis or tick marks
       theme(panel.border = element_blank(), panel.grid.major = element_blank(),
+            plot.title = element_text(hjust = 0.5),
             panel.grid.minor = element_blank(),
             #axis.title.y=element_blank(),
             #axis.text.y=element_blank(),
@@ -51,7 +55,7 @@ heatplot <- function(df, dateField, distanceField, wqVariable, title){
             legend.direction="horizontal", # orientation of legend
             legend.title= element_blank(), # no title for legend
             legend.key.size = unit(1.5, "cm") # size of legend
-     )
+            )
     p
 }
 
