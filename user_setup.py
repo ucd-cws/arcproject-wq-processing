@@ -80,7 +80,9 @@ if __name__ == "__main__":
 	install_folder = os.path.split(os.path.abspath(__file__))[0]
 	for wheel in find_wheels(install_folder):
 		print("Install wheel file {}".format(wheel))
-		subprocess.call([sys.executable, "-m", "pip", "install", os.path.join(install_folder, wheel)])
+		subprocess.check_output([sys.executable, "-m", "pip", "install", os.path.join(install_folder, wheel)], stderr=subprocess.STDOUT)  # should install requirements too
+
+
 	set_up_r_dependencies(new_r_package_folder, r_exec)
 
 	print("Installation complete")

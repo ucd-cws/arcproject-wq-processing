@@ -56,6 +56,10 @@ class WQMappingBase(object):
 		 and make sure the tool init includes a call to super(NewClassName, self).__init__() at the beginning of __init__
 	"""
 	def __init__(self):
+		self.table_workspace = "in_memory"
+		self.table_name = "arcproject_temp_date_table"
+		self.temporary_date_table = "{}\\{}".format(self.table_workspace, self.table_name)
+
 		self.select_wq_param = arcpy.Parameter(
 			displayName="Symbolize Data by",
 			name="symbology",
@@ -132,49 +136,80 @@ class WQMappingBase(object):
 
 	def update_month_fields(self, parameters, year_field_index=0, month_field_index=1):
 		"""
+			Retrieve months from the temporary data table in memory
+		:param parameters:
+		:param year_field_index:
+		:param month_field_index:
+		:return:
+		"""
+
+		if parameters[year_field_index].filter.list is None or parameters[year_field_index].filter.list == "" or len(parameters[year_field_index].filter.list) == 0:  # if this is our first time through, set it all up
+			self.initialize_year_and_month_fields(parameters, year_field_index)
+
+		year = int(parameters[year_field_index].value)
+		months = arcpy.SearchCursor(self.temporary_date_table, where_clause="data_year={}".format(year))
+
+		filter_months = []
+		for month in months:
+			filter_months.append(month.getValue("data_month"))
+
+		parameters[month_field_index].filter.type = 'ValueList'
+		parameters[month_field_index].filter.list = filter_months
+
+	def initialize_year_and_month_fields(self, parameters, year_field_index=0):
+		"""
 			Used on Generate Month and Generate Map
 		:param parameters:
 		:return:
 		"""
 
-		# get years with data from the database to use as selection for tool input
-		session = classes.get_new_session()
-		try:
-			q = session.query(extract('year', classes.WaterQuality.date_time)).distinct()
+		# set up the temporary table
+		if arcpy.Exists(self.temporary_date_table):  # if it exists, it's stale
+			arcpy.Delete_management(self.temporary_date_table)
 
-			print(q)
-			years = []
-			# add profile name to site list
-			for year in q:
-				print(year[0])
-				years.append(year[0])
+		arcpy.CreateTable_management(self.table_workspace, self.table_name)
+		arcpy.AddField_management(self.temporary_date_table, "data_year", "LONG")
+		arcpy.AddField_management(self.temporary_date_table, "data_month", "TEXT")
+
+		# load the data from the DB
+		session = classes.get_new_session()
+
+		try:
+			# get years with data from the database to use as selection for tool input
+
+			curs = arcpy.InsertCursor(self.temporary_date_table)
+			q = session.query(extract('year', classes.WaterQuality.date_time), extract('month', classes.WaterQuality.date_time)).distinct()
+			years = {}
+			month_names = list(calendar.month_name)  # helps translate numeric months to
+			for row in q:  # translate the results to the temporary table
+				new_record = curs.newRow()
+				new_record.setValue("data_year", row[0])
+				new_record.setValue("data_month", month_names[row[1]])
+				curs.insertRow(new_record)
+
+				years[row[0]] = True  # indicate we have data for a year
+
 			parameters[year_field_index].filter.type = 'ValueList'
-			parameters[year_field_index].filter.list = years
+			parameters[year_field_index].filter.list = sorted(list(years.keys()))  # get the distinct set of years
 
 		finally:
 			session.close()
 
-		# get valid months for the selected year as the options for the tool input
-		if parameters[year_field_index].value:
-			Y = int(parameters[year_field_index].value)
 
-			session = classes.get_new_session()
-			try:
+			# # get valid months for the selected year as the options for the tool input
+			# if parameters[year_field_index].value:
+			# 	Y = int(parameters[year_field_index].value)
+			#
+			# 	q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
+			# 		extract('year', classes.WaterQuality.date_time) == Y).distinct()
+			# 	months = []
+			# 	t = list(calendar.month_name)
+			# 	for month in q2:
+			# 		months.append(t[month[0]])
+			#
+			# 	parameters[month_field_index].filter.type = 'ValueList'
+			# 	parameters[month_field_index].filter.list = months
 
-				q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
-					extract('year', classes.WaterQuality.date_time) == Y).distinct()
-				months = []
-				t = list(calendar.month_name)
-				for month in q2:
-					print(month[0])
-					months.append(t[month[0]])
-
-				print(months)
-				parameters[month_field_index].filter.type = 'ValueList'
-				parameters[month_field_index].filter.list = months
-			finally:
-				session.close()
-		return
 
 	def convert_year_and_month(self, year, month):
 		year_to_use = int(year.value)
@@ -713,6 +748,7 @@ class GenerateMap(WQMappingBase):
 			)
 
 		params = [self.year_to_generate, self.month_to_generate, self.select_wq_param, map_output, export_pdf, export_png]
+
 		return params
 
 	def isLicensed(self):
