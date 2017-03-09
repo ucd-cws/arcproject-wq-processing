@@ -134,6 +134,10 @@ class WQMappingBase(object):
 		layer.name = os.path.split(data_path)[1]
 		l_map.add_layer(layer)
 
+	def cleanup(self):
+		if arcpy.Exists(self.temporary_date_table):
+			arcpy.Delete_management(self.temporary_date_table)
+
 	def update_month_fields(self, parameters, year_field_index=0, month_field_index=1):
 		"""
 			Retrieve months from the temporary data table in memory
@@ -166,9 +170,7 @@ class WQMappingBase(object):
 		:return:
 		"""
 
-		# set up the temporary table
-		if arcpy.Exists(self.temporary_date_table):  # if it exists, it's stale
-			arcpy.Delete_management(self.temporary_date_table)
+		self.cleanup()  # cleans up the temporary table. If it exists, it's stale
 
 		arcpy.CreateTable_management(self.table_workspace, self.table_name)
 		arcpy.AddField_management(self.temporary_date_table, "data_year", "LONG")
@@ -697,15 +699,18 @@ class GenerateMonth(WQMappingBase):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
+		try:
+			year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
 
-		arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
+			arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
 
-		output_location = parameters[3].valueAsText
+			output_location = parameters[3].valueAsText
 
-		generate_layer_for_month(month_to_use, year_to_use, output_location)
+			generate_layer_for_month(month_to_use, year_to_use, output_location)
 
-		self.insert_layer(output_location, parameters[2])
+			self.insert_layer(output_location, parameters[2])
+		finally:
+			self.cleanup()  # clean up from tool setup
 
 
 class GenerateMap(WQMappingBase):
@@ -828,9 +833,8 @@ class GenerateMap(WQMappingBase):
 				arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
 
 		finally:
-			# clean up from tool setup
-			if arcpy.Exists(self.temporary_date_table):
-				arcpy.Delete_management(self.temporary_date_table)
+			self.cleanup() # clean up from tool setup
+
 
 
 class ModifyWQSite(object):
@@ -1008,7 +1012,7 @@ class GenerateHeatPlot(object):
 
 		### DEFINE DATA PATHS ###
 		base_path = config.arcwqpro
-		rscript_path = config.rscript # path to R exe
+		rscript_path = config.rscript  # path to R exe
 		gen_heat = os.path.join(base_path, "arcproject", "scripts", "generate_heatplots.R")
 
 		for wq_var in wq_var_list:
@@ -1021,7 +1025,8 @@ class GenerateHeatPlot(object):
 
 			arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder]))
 			try:
-				subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder], stderr=subprocess.STDOUT)
+				CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
+				subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder], creationflags=CREATE_NO_WINDOW, stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
 			except subprocess.CalledProcessError as e:
 				arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(e.returncode, e.output))
 
