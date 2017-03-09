@@ -773,52 +773,54 @@ class GenerateMap(WQMappingBase):
 		:param parameters:
 		:return:
 		"""
+		try:
+			year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
+			symbology_param = parameters[2]
 
-		# TODO: STILL NEEDS TO HANDLE STATIC MAP EXPORTS
+			template = mapping.arcgis_10_template
+			output_map_path = parameters[3].valueAsText
+			output_pdf_path = parameters[4].valueAsText
+			output_png_path = parameters[5].valueAsText
+			new_layout_name = "{} Layout".format(output_map_path)
+			if amaptor.PRO:
+				if "testing_project" in globals(): # this is a hook for our testing code to set a value in the module and have this use it instead of "CURRENT"
+					project = globals()["testing_project"]
+				else:
+					project = "CURRENT"
+				map_project = amaptor.Project(project)
+				new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
+				new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="base_template")
+				new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
 
-		year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
-		symbology_param = parameters[2]
-
-		template = mapping.arcgis_10_template
-		output_map_path = parameters[3].valueAsText
-		output_pdf_path = parameters[4].valueAsText
-		output_png_path = parameters[5].valueAsText
-		new_layout_name = "{} Layout".format(output_map_path)
-		if amaptor.PRO:
-			if "testing_project" in globals(): # this is a hook for our testing code to set a value in the module and have this use it instead of "CURRENT"
-				project = globals()["testing_project"]
+				output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
 			else:
-				project = "CURRENT"
-			map_project = amaptor.Project(project)
-			new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
-			new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="base_template")
-			new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
+				shutil.copyfile(template, output_map_path)
+				map_project = amaptor.Project(output_map_path)
+				new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
 
-			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
-		else:
-			shutil.copyfile(template, output_map_path)
-			map_project = amaptor.Project(output_map_path)
-			new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
+				output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer")
 
-			output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer")
+			arcpy.AddMessage("Map Document set up complete. Creating new layer")
+			generate_layer_for_month(month_to_use, year_to_use, output_location)
 
-		arcpy.AddMessage("Map Document set up complete. Creating new layer")
-		generate_layer_for_month(month_to_use, year_to_use, output_location)
+			self.insert_layer(output_location, symbology_param, map_or_project=new_map)
+			new_layer = new_map.find_layer(path=output_location)
+			new_layer.name = symbology_param.valueAsText
+			new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
+			map_project.save()
 
-		self.insert_layer(output_location, symbology_param, map_or_project=new_map)
-		new_layer = new_map.find_layer(path=output_location)
-		new_layer.name = symbology_param.valueAsText
-		new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
-		map_project.save()
+			if output_png_path and output_png_path != "":
+				new_map.export_png(output_png_path, resolution=300)
+			if output_pdf_path and output_pdf_path != "":
+				new_map.export_pdf(output_pdf_path)
 
-		if output_png_path and output_png_path != "":
-			new_map.export_png(output_png_path, resolution=300)
-		if output_pdf_path and output_pdf_path != "":
-			pass
+			if amaptor.PRO:
+				arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
 
-
-		if amaptor.PRO:
-			arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
+		finally:
+			# clean up from tool setup
+			if arcpy.Exists(self.temporary_date_table):
+				arcpy.Delete_management(self.temporary_date_table)
 
 class ModifyWQSite(object):
 	def __init__(self):
