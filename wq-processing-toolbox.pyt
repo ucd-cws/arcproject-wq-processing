@@ -647,6 +647,7 @@ class GenerateWQLayer(WQMappingBase):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
+		arcpy.env.addOutputsToMap = True
 		date_to_use = parameters[0].value
 		output_location = parameters[2].valueAsText
 		arcpy.AddMessage("Output Location: {}".format(output_location))
@@ -700,6 +701,7 @@ class GenerateMonth(WQMappingBase):
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
 		try:
+			arcpy.env.addOutputsToMap = True
 			year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
 
 			arcpy.AddMessage("YEAR: {}, MONTH: {}".format(year_to_use, month_to_use))
@@ -789,6 +791,7 @@ class GenerateMap(WQMappingBase):
 		:return:
 		"""
 		try:
+			arcpy.env.addOutputsToMap = False
 			year_to_use, month_to_use = self.convert_year_and_month(year=parameters[0], month=parameters[1])
 			symbology_param = parameters[2]
 
@@ -833,7 +836,7 @@ class GenerateMap(WQMappingBase):
 				arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
 
 		finally:
-			self.cleanup() # clean up from tool setup
+			self.cleanup()  # clean up from tool setup
 
 
 
@@ -1235,6 +1238,7 @@ class GenerateSite(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
+		arcpy.env.addOutputsToMap = True
 		siteid_code = parameters[0].valueAsText
 		siteid = int(siteid_code.split(" - ")[0])
 
