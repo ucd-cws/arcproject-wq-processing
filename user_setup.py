@@ -83,6 +83,9 @@ if __name__ == "__main__":
 		raise WindowsError(
 			"R does not appear to be installed on this machine. Please install it, making sure to install with version number in registry (installation option) then try again")
 
+	print("Removing old versions of the code, if they exist.")
+	subprocess.call([sys.executable, "-m", "pip", "uninstall", "arcproject_wq", "-q"])
+
 	try:
 		subprocess.check_output([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], stderr=subprocess.STDOUT)
 	except subprocess.CalledProcessError as e:
