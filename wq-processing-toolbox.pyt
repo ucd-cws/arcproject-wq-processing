@@ -1162,7 +1162,7 @@ class LinearRef(object):
 class GenerateSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Map Layer - single transect (all days)"
+		self.label = "Map Layer - One Transect (all days)"
 		self.description = ""
 		self.canRunInBackground = False
 		self.category = "Mapping"
@@ -1427,9 +1427,6 @@ class DeleteMonth(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-
-
-
 		year_to_use = int(parameters[0].value)
 		month = parameters[1].value
 		# look up index position in calender.monthname
