@@ -47,7 +47,7 @@ save_wq_plot <- function(plot_obj, site_code, var, output_folder){
   filename <- paste(output_folder, "\\", name, ".png", sep="")
 
   # save the plot with ggsave()
-  ggsave(filename, plot = plot_obj, width = 7, height = 5, units="in")
+  ggsave(filename, plot = plot_obj, device = "png", width = 7, height = 5, units="in")
 }
 
 ##############################################
@@ -55,20 +55,20 @@ save_wq_plot <- function(plot_obj, site_code, var, output_folder){
 args <- commandArgs(trailingOnly=TRUE)
 if(length(args) == 5){
 
-  siteid<-args[2]
+  sitecode<-args[2]
   wqvar<-args[3]
   title<-args[4]
   output_folder<-args[5]
 
   # connect to the sqlite database
   con = dbConnect(SQLite(), dbname=db_name)
-  p <- plot_wq_var(con, siteid, title, wqvar)
+  p <- plot_wq_var(con, sitecode, title, wqvar)
 
-  # save the plot to disk using the title as the filename
-  save_wq_plot(p, siteid, wqvar, output_folder)
-
+  # save the plot to disk
+  save_wq_plot(p, sitecode, wqvar, output_folder)
+  
   # finally disconnect from the database
   dbDisconnect(con)
 
 }else(stop("Not right number of arguments"))
-p
+#p
