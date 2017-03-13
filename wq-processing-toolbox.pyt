@@ -46,7 +46,7 @@ class Toolbox(object):
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef]
+		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs]
 
 
 class WQMappingBase(object):
@@ -1490,4 +1490,144 @@ class DeleteMonth(object):
 		finally:
 			session.close()
 
+		return
+
+
+class RenameGrabs(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Rename grab + profiles for given date"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Modify"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+
+		date_to_generate = arcpy.Parameter(
+			displayName="Date",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input"
+		)
+
+		wqp = arcpy.Parameter(
+			displayName="",
+			name="wqp",
+			parameterType="GPValueTable",
+			multiValue=True,
+			direction="Input"
+		)
+
+		wqp.parameterDependencies = [date_to_generate.name]
+
+		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New']]
+
+
+		params = [date_to_generate, wqp]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		if parameters[0].valueAsText:
+			d = parameters[0].value
+			t = d + datetime.timedelta(days=1)  # add one day to get upper bound
+			lower = d.date()
+			upper = t.date()
+
+			session = classes.get_new_session()
+			try:
+				wqp_abs = session.query(classes.ProfileSite.abbreviation) \
+					.filter(classes.VerticalProfile.date_time.between(lower, upper)) \
+					.filter(classes.ProfileSite.id == classes.VerticalProfile.profile_site_id) \
+					.distinct().all()
+				# cast(classes.VerticalProfile.date_time, Date) == date
+				print(wqp_abs)
+
+				wqp_profile_abbreviation = []
+
+				for profile in wqp_abs:
+					print(profile[0])
+					wqp_profile_abbreviation.append(['WQP', profile[0], ''])
+
+				#parameters[1].filters[1].type = 'ValueList'
+				#parameters[1].filters[1].list = wqp_profile_abbreviation
+				parameters[1].values = wqp_profile_abbreviation
+
+			finally:
+				session.close()
+		#
+		# # updates the value table using the values parsed from the file name
+		# if parameters[1].value:
+		# 	vt = parameters[0].values  # values are list of lists
+		#
+		# 	for i in range(0, len(vt)):
+		# 		filename = vt[i][0]
+		# 		basename = os.path.basename(str(filename))
+		# 		base = os.path.splitext(basename)[0]  # rm extension if there is one
+		# 		parts = base.split("_")  # split on underscore
+		#
+		# 		#site = parts[int(parameters[2].value)-1]
+		# 		site = parts[wqt_timestamp_match.site_function_params.get('site_part')]
+		# 		#gain = parts[int(parameters[3].value)-1]
+		# 		gain = parts[wqt_timestamp_match.site_function_params.get('gain_part')]
+		# 		vt[i][0] = str(filename)
+		# 		vt[i][1] = site
+		#
+		# 		# strip all letters from gain setting ("GN10" -> 10)
+		# 		digits_only = ''.join(c for c in gain if c in digits)
+		# 		gain = int(digits_only)
+		# 		vt[i][2] = gain
+		# 	parameters[0].values = vt
+		#
+		# 	# set checkbox to false
+		# 	parameters[1].value = False
+
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	@parameters_as_dict
+	def execute(self, parameters, messages):
+		"""The source code of the tool."""
+		d = parameters["date_to_generate"].value
+		t = d + datetime.timedelta(days=1) # add one day to get upper bound
+		lower = d.date()
+		upper = t.date()
+		arcpy.AddMessage(lower)
+		arcpy.AddMessage(upper)
+
+		#date_as_text = date.valueAsText
+		#arcpy.AddMessage(date_as_text)
+
+		# get the parameters
+
+		# vt = parameters[0].values  # values are list of lists
+		#
+		# for i in range(0, len(vt)):
+		#
+		# 	wq_gain_file = str(vt[i][0])
+		# 	basename = os.path.basename(str(wq_gain_file))
+		# 	vt[i][0] = str(wq_gain_file)
+		# 	site_id = vt[i][1] # site
+		# 	gain_setting = vt[i][2] # gain
+		# 	arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
+		#
+		# 	try:
+		# 		wq_gain.main(wq_gain_file, site_id, gain_setting)
+		# 	except exc.IntegrityError as e:
+		# 		arcpy.AddMessage("Unable to import gain file. Record for this gain file "
+		# 		                 "already exists in the vertical_profiles table.")
 		return
