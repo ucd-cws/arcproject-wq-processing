@@ -1521,10 +1521,7 @@ class RenameGrabs(object):
 			direction="Input"
 		)
 
-		wqp.parameterDependencies = [date_to_generate.name]
-
-		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New']]
-
+		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New'], ['GPString', 'Notes']]
 
 		params = [date_to_generate, wqp]
 		return params
@@ -1538,59 +1535,56 @@ class RenameGrabs(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		if parameters[0].valueAsText:
+		if parameters[0].altered:
 			d = parameters[0].value
 			t = d + datetime.timedelta(days=1)  # add one day to get upper bound
 			lower = d.date()
 			upper = t.date()
 
+
 			session = classes.get_new_session()
 			try:
-				wqp_abs = session.query(classes.ProfileSite.abbreviation) \
+				vt = []  # blank value table
+
+				# fills out the value table with the vertical profile info
+				wqp_abs = session.query(classes.ProfileSite.abbreviation, classes.VerticalProfile.source) \
 					.filter(classes.VerticalProfile.date_time.between(lower, upper)) \
 					.filter(classes.ProfileSite.id == classes.VerticalProfile.profile_site_id) \
 					.distinct().all()
 				# cast(classes.VerticalProfile.date_time, Date) == date
 				print(wqp_abs)
 
-				wqp_profile_abbreviation = []
-
 				for profile in wqp_abs:
-					print(profile[0])
-					wqp_profile_abbreviation.append(['WQP', profile[0], ''])
+					vt.append(['WQP', profile[0], profile[0], profile[1]])
 
-				#parameters[1].filters[1].type = 'ValueList'
-				#parameters[1].filters[1].list = wqp_profile_abbreviation
-				parameters[1].values = wqp_profile_abbreviation
+				# fill out the grab sample info
+				grab_abs = session.query(classes.ProfileSite.abbreviation, classes.GrabSample.lab_num,
+				                         classes.GrabSample.sample_id,
+				                         classes.GrabSample.site_id, classes.GrabSample.source) \
+					.filter(classes.GrabSample.date.between(lower, upper)) \
+					.filter(classes.ProfileSite.id == classes.GrabSample.profile_site_id) \
+					.distinct().all()
+
+				for profile in grab_abs:
+					notes = profile[1]+", "+ profile[2]+", "+ profile[3]+", "+ profile[4]
+					vt.append(["GRAB", profile[0], profile[0], notes])
+
+				sorted_vt = sorted(vt, key = lambda x: x[1])
+				parameters[1].values = sorted_vt
+
+				# potential profile abbreviations
+				profiles = session.query(classes.ProfileSite.abbreviation).distinct().all()
+				profile_abbreviation = []
+
+				# add profile name to site list
+				for profile in profiles:
+					profile_abbreviation.append(profile[0])
+
+				parameters[1].filters[2].type = 'ValueList'
+				parameters[1].filters[2].list = profile_abbreviation
 
 			finally:
 				session.close()
-		#
-		# # updates the value table using the values parsed from the file name
-		# if parameters[1].value:
-		# 	vt = parameters[0].values  # values are list of lists
-		#
-		# 	for i in range(0, len(vt)):
-		# 		filename = vt[i][0]
-		# 		basename = os.path.basename(str(filename))
-		# 		base = os.path.splitext(basename)[0]  # rm extension if there is one
-		# 		parts = base.split("_")  # split on underscore
-		#
-		# 		#site = parts[int(parameters[2].value)-1]
-		# 		site = parts[wqt_timestamp_match.site_function_params.get('site_part')]
-		# 		#gain = parts[int(parameters[3].value)-1]
-		# 		gain = parts[wqt_timestamp_match.site_function_params.get('gain_part')]
-		# 		vt[i][0] = str(filename)
-		# 		vt[i][1] = site
-		#
-		# 		# strip all letters from gain setting ("GN10" -> 10)
-		# 		digits_only = ''.join(c for c in gain if c in digits)
-		# 		gain = int(digits_only)
-		# 		vt[i][2] = gain
-		# 	parameters[0].values = vt
-		#
-		# 	# set checkbox to false
-		# 	parameters[1].value = False
 
 		return
 
