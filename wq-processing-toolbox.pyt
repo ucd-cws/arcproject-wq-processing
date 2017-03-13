@@ -464,14 +464,14 @@ class GainToDB(object):
 
 		# parameter info for selecting multiple csv water quality files
 		wqp = arcpy.Parameter(
-			displayName="Vertical Profile file (wqp)",
+			displayName="Vertical Profile File",
 			name="wqp_files",
 			parameterType="GPValueTable",
 			multiValue=True,
 			direction="Input"
 		)
 
-		wqp.columns = [['DEFile', 'WQP'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
+		wqp.columns = [['DEFile', 'Filename'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
 
 		# TODO get list of gain settings from the data base?
 		wqp.filters[2].type = 'ValueList'
@@ -509,7 +509,6 @@ class GainToDB(object):
 
 		params = [wqp, bool,]
 		return params
-
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
