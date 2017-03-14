@@ -1499,7 +1499,7 @@ class RenameGrabs(object):
 		self.label = "Rename grab + profiles for given date"
 		self.description = ""
 		self.canRunInBackground = False
-		self.category = "Modify"
+		self.category = "Regression"
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
@@ -1595,33 +1595,68 @@ class RenameGrabs(object):
 
 	@parameters_as_dict
 	def execute(self, parameters, messages):
-		"""The source code of the tool."""
+
+
+		def lookup_profile_site_id(abbreviation):
+			session = classes.get_new_session()
+			try:
+				site_id = session.query(classes.ProfileSite.id) \
+					.filter(classes.ProfileSite.abbreviation == abbreviation).one()
+			finally:
+				session.close()
+			return site_id[0]
+
 		d = parameters["date_to_generate"].value
 		t = d + datetime.timedelta(days=1) # add one day to get upper bound
 		lower = d.date()
 		upper = t.date()
-		arcpy.AddMessage(lower)
-		arcpy.AddMessage(upper)
 
-		#date_as_text = date.valueAsText
-		#arcpy.AddMessage(date_as_text)
+		# get the vt parameters
+		vt = parameters["wqp"].values  # values are list of lists
 
-		# get the parameters
+		for i in range(0, len(vt)):
 
-		# vt = parameters[0].values  # values are list of lists
-		#
-		# for i in range(0, len(vt)):
-		#
-		# 	wq_gain_file = str(vt[i][0])
-		# 	basename = os.path.basename(str(wq_gain_file))
-		# 	vt[i][0] = str(wq_gain_file)
-		# 	site_id = vt[i][1] # site
-		# 	gain_setting = vt[i][2] # gain
-		# 	arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
-		#
-		# 	try:
-		# 		wq_gain.main(wq_gain_file, site_id, gain_setting)
-		# 	except exc.IntegrityError as e:
-		# 		arcpy.AddMessage("Unable to import gain file. Record for this gain file "
-		# 		                 "already exists in the vertical_profiles table.")
+			record_type = vt[i][0]
+			current = vt[i][1]
+			new = vt[i][2]
+
+			if current == new:
+				pass
+			
+			elif record_type == "WQP":
+				arcpy.AddMessage("Changing {} to {} for {} records on {}".format(current, new, record_type, lower))
+
+				session = classes.get_new_session()
+				try:
+					query = session.query(classes.VerticalProfile) \
+						.filter(classes.VerticalProfile.date_time.between(lower, upper)) \
+						.filter(classes.ProfileSite.id == classes.VerticalProfile.profile_site_id) \
+						.filter(classes.ProfileSite.abbreviation == current).all()
+
+					for q in query:
+						q.profile_site_id = lookup_profile_site_id(new)
+
+					session.commit()
+
+				finally:
+					session.close()
+
+			elif record_type == "GRAB":
+				arcpy.AddMessage("Changing {} to {} for {} records on {}".format(current, new, record_type, lower))
+
+				session = classes.get_new_session()
+				try:
+					query = session.query(classes.GrabSample) \
+						.filter(classes.GrabSample.date.between(lower, upper)) \
+						.filter(classes.ProfileSite.id == classes.GrabSample.profile_site_id) \
+						.filter(classes.ProfileSite.abbreviation == current).all()
+
+					for q in query:
+						q.profile_site_id = lookup_profile_site_id(new)
+
+					session.commit()
+
+				finally:
+					session.close()
+
 		return
