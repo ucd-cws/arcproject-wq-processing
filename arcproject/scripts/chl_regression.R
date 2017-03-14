@@ -231,3 +231,65 @@ confirm_commit <- function(func){
     print("Not commiting regression")
   }
 }
+
+
+#############################################################
+# get args from subprocess
+
+# user parameters
+# date <- '2013-01-07'
+# gain_setting <- 0
+# out <- "C:\\Users\\Andy\\Desktop\\test.png"
+# save_plot <- FALSE
+# commit <-FALSE
+
+# get args if calling from subprocess
+args <- commandArgs(trailingOnly=TRUE)
+if(length(args) == 6){
+  
+  date<-args[2]
+  gain_setting<-args[3]
+  out<-args[4]
+  save_plot<-args[5]
+  commit<-args[6]
+  
+  # get  all the data for a given data and gain setting from the profiles table
+  wqp_for_date <-vertical_profiles(date, gain_setting)
+  
+  # subset dataframe by the top meter of the profile
+  wqp_top_m <- wqp_1m(wqp_for_date)
+  
+  # average by the profile site
+  profile <- wqp_avg_by_site(wqp_top_m)
+  
+  # now query the database to get the grab samples for the date
+  grab_samples <- grab(date)
+  
+  # merge data 
+  field_lab_merged <- merge(profile, grab_samples, by="abbreviation")
+  
+  # view data
+  #View(field_lab_merged)
+  
+  # plot regression
+  title <- paste(date, " - gain ", gain_setting, sep=" ")
+  p <-plot_regression(field_lab_merged, title)
+  #p # view plot
+  
+  # get the results from the lm 
+  lm_coeff <- lm_results(field_lab_merged)
+  
+  # save plot
+  #out <- paste(project_folder, '/arcproject/plots/regressions/', paste('reg_', date, '_', gain_setting, '.png', sep=''), sep='')
+  ggsave(filename = out, plot = p, width = 8, height = 6)
+
+  
+  if(commit){
+    # add regression to table
+    add_regression_to_db(date, gain_setting, lm_coeff[1], lm_coeff[2], lm_coeff[3])
+  }
+  
+  
+  
+}else(stop("Not right number of arguments"))
+

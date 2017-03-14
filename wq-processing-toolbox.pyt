@@ -7,7 +7,7 @@ import datetime
 import time
 from functools import wraps
 import six
-
+import webbrowser
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
 
@@ -46,7 +46,7 @@ class Toolbox(object):
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs]
+		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs, RegressionPlot]
 
 
 class WQMappingBase(object):
@@ -1622,7 +1622,7 @@ class RenameGrabs(object):
 
 			if current == new:
 				pass
-			
+
 			elif record_type == "WQP":
 				arcpy.AddMessage("Changing {} to {} for {} records on {}".format(current, new, record_type, lower))
 
@@ -1659,4 +1659,105 @@ class RenameGrabs(object):
 				finally:
 					session.close()
 
+		return
+
+
+class RegressionPlot(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Regression Plot"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Regression"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		date_to_generate = arcpy.Parameter(
+			displayName="Date",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input")
+
+		gain_setting = arcpy.Parameter(
+			displayName="Gain Setting",
+			name="gain_setting",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input")
+
+		gain_setting.filter.type = 'ValueList'
+		gain_setting.filter.list = ['0', '1', '10', '100']
+
+		preview = arcpy.Parameter(
+			displayName="Preview?",
+			name="preview",
+			datatype="GPBoolean",
+			parameterType="Optional")
+
+		params = [date_to_generate, gain_setting, preview]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		if parameters[2].value and parameters[0].value and parameters[1].value: # add in conditional for other two params
+
+			### DEFINE DATA PATHS ###
+			base_path = config.arcwqpro
+			rscript_path = config.rscript  # path to R exe
+			gen_heat = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
+
+			date_time = parameters[0].value
+			date = str(date_time.date())
+			gain = parameters[1].valueAstext
+			output = "C:/Users/Andy/Desktop/tester.png"
+
+			try:
+				CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
+				subprocess.check_output([rscript_path, gen_heat, "--args", date, gain, output, "FALSE", "FALSE"],
+				                        creationflags=CREATE_NO_WINDOW,
+				                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
+				webbrowser.open(output)
+
+			except subprocess.CalledProcessError as e:
+				arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
+					e.returncode, e.output))
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+		### DEFINE DATA PATHS ###
+		base_path = config.arcwqpro
+		rscript_path = config.rscript  # path to R exe
+		gen_heat = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
+
+		date_time = parameters[0].value
+		date = str(date_time.date())
+		gain = parameters[1].valueAstext
+		output = "C:/Users/Andy/Desktop/tester.png"
+
+		arcpy.AddMessage("{} {} {} {} {} {} {} {}".format(rscript_path, gen_heat, "--args", date, gain, output, "FALSE", "FALSE"))
+
+		try:
+			CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
+			subprocess.check_output([rscript_path, gen_heat, "--args", date, gain, output, "FALSE", "FALSE"],
+			                        creationflags=CREATE_NO_WINDOW,
+			                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
+			webbrowser.open(output)
+
+		except subprocess.CalledProcessError as e:
+			arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
+				e.returncode, e.output))
 		return
