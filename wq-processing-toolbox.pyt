@@ -1708,21 +1708,27 @@ class RegressionPlot(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		if parameters[2].value and parameters[0].value and parameters[1].value: # add in conditional for other two params
+		if parameters[0].value and parameters[1].value:
+			# turn off params (clicking box when tool is running with crash arc)
+			parameters[2].enabled = True
+		else:
+			parameters[2].enabled = False
+
+		if parameters[2].value is True: # add in conditional for other two params
 
 			### DEFINE DATA PATHS ###
 			base_path = config.arcwqpro
 			rscript_path = config.rscript  # path to R exe
-			gen_heat = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
+			chl_reg = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
 
 			date_time = parameters[0].value
 			date = str(date_time.date())
 			gain = parameters[1].valueAstext
-			output = "C:/Users/Andy/Desktop/tester.png"
+			output = os.path.join(base_path, "arcproject", "plots", "chl_regression_tool_preview.png")
 
 			try:
 				CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
-				subprocess.check_output([rscript_path, gen_heat, "--args", date, gain, output, "FALSE", "FALSE"],
+				subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, "FALSE", "FALSE"],
 				                        creationflags=CREATE_NO_WINDOW,
 				                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
 				webbrowser.open(output)
@@ -1730,6 +1736,8 @@ class RegressionPlot(object):
 			except subprocess.CalledProcessError as e:
 				arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
 					e.returncode, e.output))
+			finally:
+				parameters[2].value = False
 		return
 
 	def updateMessages(self, parameters):
