@@ -1535,7 +1535,7 @@ class RenameGrabs(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		if parameters[0].altered:
+		if parameters[0].altered and parameters[1].values is None:
 			d = parameters[0].value
 			t = d + datetime.timedelta(days=1)  # add one day to get upper bound
 			lower = d.date()
