@@ -1687,8 +1687,8 @@ class RegressionPlot(object):
 			multiValue=False,
 			direction="Input")
 
-		gain_setting.filter.type = 'ValueList'
-		gain_setting.filter.list = ['0', '1', '10', '100']
+		#gain_setting.filter.type = 'ValueList'
+		#gain_setting.filter.list = ['0', '1', '10', '100']
 
 		preview = arcpy.Parameter(
 			displayName="Preview?",
@@ -1708,7 +1708,40 @@ class RegressionPlot(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		if parameters[0].value and parameters[1].value:
+		if parameters[0].altered:
+			# turn off params (clicking box when tool is running with crash arc)
+			parameters[1].enabled = True
+
+			d = parameters[0].value
+			t = d + datetime.timedelta(days=1)  # add one day to get upper bound
+			lower = d.date()
+			upper = t.date()
+
+			session = classes.get_new_session()
+			try:
+
+				gains = session.query(classes.VerticalProfile.gain_setting) \
+					.filter(classes.VerticalProfile.date_time.between(lower, upper)) \
+					.distinct().all()
+
+				gain_settings = []
+
+				# add profile name to site list
+				for g in gains:
+					print(g[0])
+					gain_settings.append(g[0])
+
+				parameters[1].filter.type = 'ValueList'
+				parameters[1].filter.list = gain_settings
+
+			finally:
+				session.close()
+
+		else:
+			parameters[1].enabled = False
+
+
+		if parameters[0].value and parameters[1].altered:
 			# turn off params (clicking box when tool is running with crash arc)
 			parameters[2].enabled = True
 		else:
