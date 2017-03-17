@@ -20,6 +20,7 @@ from arcproject.scripts import wqt_timestamp_match
 from arcproject.scripts.mapping import generate_layer_for_month
 from arcproject.scripts import swap_site_recs
 from arcproject.scripts import linear_ref
+from arcproject.scripts import chl_decision_tree
 from arcproject.scripts import config
 
 from arcproject.waterquality import classes
@@ -46,7 +47,8 @@ class Toolbox(object):
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs, RegressionPlot]
+		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs,
+		              RegressionPlot, CorrectChl]
 
 
 class WQMappingBase(object):
@@ -1521,7 +1523,7 @@ class RenameGrabs(object):
 			direction="Input"
 		)
 
-		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New'], ['GPString', 'Notes']]
+		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New'], ['GPString', 'Notes'], ['GPString','ID']]
 
 		params = [date_to_generate, wqp]
 		return params
@@ -1555,19 +1557,23 @@ class RenameGrabs(object):
 				print(wqp_abs)
 
 				for profile in wqp_abs:
-					vt.append(['WQP', profile[0], profile[0], profile[1]])
+					notes = "{}".format(profile[1])
+					vt.append(['WQP', profile[0], profile[0], notes, "NA"])
 
 				# fill out the grab sample info
-				grab_abs = session.query(classes.ProfileSite.abbreviation, classes.GrabSample.lab_num,
+				grab_abs = session.query(classes.GrabSample.profile_site_id, classes.GrabSample.lab_num,
 				                         classes.GrabSample.sample_id,
-				                         classes.GrabSample.site_id, classes.GrabSample.source) \
+				                         classes.GrabSample.site_id, classes.GrabSample.source, classes.GrabSample.id) \
 					.filter(classes.GrabSample.date.between(lower, upper)) \
-					.filter(classes.ProfileSite.id == classes.GrabSample.profile_site_id) \
 					.distinct().all()
 
 				for profile in grab_abs:
-					notes = profile[1]+", "+ profile[2]+", "+ profile[3]+", "+ profile[4]
-					vt.append(["GRAB", profile[0], profile[0], notes])
+					notes = "{}, {}, {}, {}".format(profile[1], profile[2], profile[3], profile[4])
+
+					# some of the grab samples don't have profile_site and should return None
+					pro_abbrev = swap_site_recs.lookup_profile_abbreviation(session, profile[0])
+
+					vt.append(["GRAB", pro_abbrev, pro_abbrev, notes, profile[5]])
 
 				sorted_vt = sorted(vt, key = lambda x: x[1])
 				parameters[1].values = sorted_vt
@@ -1596,18 +1602,8 @@ class RenameGrabs(object):
 	@parameters_as_dict
 	def execute(self, parameters, messages):
 
-
-		def lookup_profile_site_id(abbreviation):
-			session = classes.get_new_session()
-			try:
-				site_id = session.query(classes.ProfileSite.id) \
-					.filter(classes.ProfileSite.abbreviation == abbreviation).one()
-			finally:
-				session.close()
-			return site_id[0]
-
 		d = parameters["date_to_generate"].value
-		t = d + datetime.timedelta(days=1) # add one day to get upper bound
+		t = d + datetime.timedelta(days=1)  # add one day to get upper bound
 		lower = d.date()
 		upper = t.date()
 
@@ -1619,6 +1615,7 @@ class RenameGrabs(object):
 			record_type = vt[i][0]
 			current = vt[i][1]
 			new = vt[i][2]
+			grabid = vt[i][4]
 
 			if current == new:
 				pass
@@ -1634,7 +1631,7 @@ class RenameGrabs(object):
 						.filter(classes.ProfileSite.abbreviation == current).all()
 
 					for q in query:
-						q.profile_site_id = lookup_profile_site_id(new)
+						q.profile_site_id = swap_site_recs.lookup_profile_site_id(session, new)
 
 					session.commit()
 
@@ -1648,11 +1645,9 @@ class RenameGrabs(object):
 				try:
 					query = session.query(classes.GrabSample) \
 						.filter(classes.GrabSample.date.between(lower, upper)) \
-						.filter(classes.ProfileSite.id == classes.GrabSample.profile_site_id) \
-						.filter(classes.ProfileSite.abbreviation == current).all()
+						.filter(classes.GrabSample.id == grabid).one()
 
-					for q in query:
-						q.profile_site_id = lookup_profile_site_id(new)
+					query.profile_site_id = swap_site_recs.lookup_profile_site_id(session, new)
 
 					session.commit()
 
@@ -1690,13 +1685,32 @@ class RegressionPlot(object):
 		#gain_setting.filter.type = 'ValueList'
 		#gain_setting.filter.list = ['0', '1', '10', '100']
 
+		depths = arcpy.Parameter(
+			displayName="All depths?",
+			name="depths",
+			datatype="GPBoolean",
+			parameterType="Optional")
+
 		preview = arcpy.Parameter(
 			displayName="Preview?",
 			name="preview",
 			datatype="GPBoolean",
 			parameterType="Optional")
 
-		params = [date_to_generate, gain_setting, preview]
+		output = arcpy.Parameter(
+			displayName="Output Location for Graph",
+			name="output",
+			datatype="DEFile",
+			parameterType="Optional",
+			direction="Output")
+
+		commit = arcpy.Parameter(
+			displayName="Commit regression to the database?",
+			name="commit",
+			datatype="GPBoolean",
+			parameterType="Optional")
+
+		params = [date_to_generate, gain_setting, depths, preview, output, commit]
 		return params
 
 	def isLicensed(self):
@@ -1744,10 +1758,12 @@ class RegressionPlot(object):
 		if parameters[0].value and parameters[1].altered:
 			# turn off params (clicking box when tool is running with crash arc)
 			parameters[2].enabled = True
+			parameters[3].enabled = True
 		else:
 			parameters[2].enabled = False
+			parameters[3].enabled = False
 
-		if parameters[2].value is True: # add in conditional for other two params
+		if parameters[3].value is True: # add in conditional for other two params
 
 			### DEFINE DATA PATHS ###
 			base_path = config.arcwqpro
@@ -1759,9 +1775,14 @@ class RegressionPlot(object):
 			gain = parameters[1].valueAstext
 			output = os.path.join(base_path, "arcproject", "plots", "chl_regression_tool_preview.png")
 
+			if parameters[2].value:
+				depths = "TRUE"
+			else:
+				depths = "FALSE"
+
 			try:
 				CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
-				subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, "FALSE", "FALSE"],
+				subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, depths, "FALSE"],
 				                        creationflags=CREATE_NO_WINDOW,
 				                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
 				webbrowser.open(output)
@@ -1770,7 +1791,7 @@ class RegressionPlot(object):
 				arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
 					e.returncode, e.output))
 			finally:
-				parameters[2].value = False
+				parameters[3].value = False
 		return
 
 	def updateMessages(self, parameters):
@@ -1779,26 +1800,163 @@ class RegressionPlot(object):
 		return
 
 	def execute(self, parameters, messages):
+
 		### DEFINE DATA PATHS ###
 		base_path = config.arcwqpro
 		rscript_path = config.rscript  # path to R exe
-		gen_heat = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
-
+		chl_reg = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
 		date_time = parameters[0].value
 		date = str(date_time.date())
 		gain = parameters[1].valueAstext
-		output = "C:/Users/Andy/Desktop/tester.png"
+		output = parameters[4].valueAstext
 
-		arcpy.AddMessage("{} {} {} {} {} {} {} {}".format(rscript_path, gen_heat, "--args", date, gain, output, "FALSE", "FALSE"))
+		if parameters[2].value:
+			depths = "TRUE"
+		else:
+			depths = "FALSE"
+
+
+		if parameters[5].value:
+			commit = "TRUE"
+		else:
+			commit = "FALSE"
+
+		if output is None:
+			output = os.path.join(base_path, "arcproject", "plots", "chl_regression_tool_preview.png")
+
+		arcpy.AddMessage("{}, {}, {}, {}, {}, {}, {},{}".format(rscript_path, chl_reg, "--args", date, gain, output, depths, commit))
 
 		try:
 			CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
-			subprocess.check_output([rscript_path, gen_heat, "--args", date, gain, output, "FALSE", "FALSE"],
+			subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, depths, commit],
 			                        creationflags=CREATE_NO_WINDOW,
 			                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
-			webbrowser.open(output)
 
 		except subprocess.CalledProcessError as e:
 			arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
 				e.returncode, e.output))
+
+		return
+
+
+class CorrectChl(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Correct Chl Values"
+		self.description = "Correct Chl values from regression table."
+		self.canRunInBackground = False
+		self.category = "Regression"
+
+	def getParameterInfo(self):
+
+		query = arcpy.Parameter(
+			displayName="Type of query to select records to modify?",
+			name="query",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input",
+			parameterType="Required"
+		)
+
+		query.filter.type = "ValueList"
+		query.filter.list = ["ALL", "NEW", "DATERANGE", "IDRANGE"]
+
+		date1 = arcpy.Parameter(
+			displayName="Start date",
+			name="date1",
+			datatype="GPDate",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		date2 = arcpy.Parameter(
+			displayName="End date",
+			name="date2",
+			datatype="GPDate",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		id1 = arcpy.Parameter(
+			displayName="Start ID",
+			name="id1",
+			datatype="GPLong",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		id2 = arcpy.Parameter(
+			displayName="End ID",
+			name="id2",
+			datatype="GPLong",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+
+		params = [query, date1, date2, id1, id2]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		if parameters[0].valueAsText == "DATERANGE":
+			parameters[1].enabled = True
+			parameters[2].enabled = True
+		else:
+			parameters[1].enabled = False
+			parameters[2].enabled = False
+
+		if parameters[0].valueAsText == "IDRANGE":
+			parameters[3].enabled = True
+			parameters[4].enabled = True
+		else:
+			parameters[3].enabled = False
+			parameters[4].enabled = False
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		query_type = parameters[0].valueAsText
+
+		start_date = parameters[1].value
+		end_date = parameters[2].value
+
+		start_id = parameters[3].value
+		end_id = parameters[4].value
+
+		arcpy.AddMessage("PARAMS: type = {}, start date = {}, "
+		                 "end date = {}, start id = {}, end id = {}".format(query_type, start_date,
+		                                                                    end_date, start_id, end_id))
+
+		if start_date is not None and end_date is not None:
+
+			# round python date time objects to start of the day (in case times are included in tbx input)
+			start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+			end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+			date_range = [start_date, end_date]
+
+		else:
+			date_range = None
+
+		if start_id is not None and end_id is not None:
+			id_range = [start_id, end_id]
+		else:
+			id_range = None
+
+		arcpy.AddMessage("Updating Chl values for points. Be patient...")
+		chl_decision_tree.main(query_type, daterange=date_range, idrange=id_range)
+
 		return

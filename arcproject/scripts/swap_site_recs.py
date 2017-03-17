@@ -27,6 +27,27 @@ def lookup_siteid(session, site_abbr):
 		raise Exception("{} is not a valid current site code. Add to site table in database and try again.".format(site_abbr))
 
 
+def lookup_profile_site_id(session, abbreviation):
+	try:
+		site_id = session.query(classes.ProfileSite.id) \
+			.filter(classes.ProfileSite.abbreviation == abbreviation).one()
+		site = site_id[0]
+	except orm.exc.NoResultFound:
+		raise Exception(
+			"{} is not a valid current site code. Add to site table in database and try again.".format(site))
+	return site
+
+
+def lookup_profile_abbreviation(session, profileid):
+	try:
+		abbr = session.query(classes.ProfileSite.abbreviation) \
+			.filter(classes.ProfileSite.id == profileid).one()
+		abbreviation = abbr[0]
+	except orm.exc.NoResultFound:
+		abbreviation = None
+	return abbreviation
+
+
 def recs_swap_id(session, oldid, newid, note=None):
 	"""
 	Swaps the site_ids for all the records that belong to the oldid, replacing with the new site id

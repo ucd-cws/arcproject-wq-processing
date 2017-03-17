@@ -236,12 +236,12 @@ confirm_commit <- function(func){
 #############################################################
 # get args from subprocess
 
-# user parameters
-# date <- '2013-01-07'
-# gain_setting <- 0
+#user parameters
+# date <- '2016-02-17'
+# gain_setting <- 10
 # out <- "C:\\Users\\Andy\\Desktop\\test.png"
-# save_plot <- FALSE
-# commit <-FALSE
+# all_depths <- TRUE
+# commit <-TRUE
 
 # get args if calling from subprocess
 args <- commandArgs(trailingOnly=TRUE)
@@ -250,14 +250,18 @@ if(length(args) == 6){
   date<-args[2]
   gain_setting<-args[3]
   out<-args[4]
-  save_plot<-args[5]
+  all_depths<-args[5]
   commit<-args[6]
   
   # get  all the data for a given data and gain setting from the profiles table
   wqp_for_date <-vertical_profiles(date, gain_setting)
   
+  if(all_depths){
+    wqp_top_m <- wqp_for_date
+  }  else {
   # subset dataframe by the top meter of the profile
   wqp_top_m <- wqp_1m(wqp_for_date)
+  }
   
   # average by the profile site
   profile <- wqp_avg_by_site(wqp_top_m)
@@ -287,6 +291,7 @@ if(length(args) == 6){
   if(commit){
     # add regression to table
     add_regression_to_db(date, gain_setting, lm_coeff[1], lm_coeff[2], lm_coeff[3])
+
   }
   
   
