@@ -19,7 +19,7 @@ if __name__ == "__main__":
 		description=None,
 		long_description="",
 		install_requires=["SQLAlchemy >= 1.1.2", "six",
-							"geodatabase_tempfile", "amaptor >= 0.1.1.6"],
+							"geodatabase_tempfile", "amaptor >= 0.1.1.7"],
 						## "pandas >= 0.16.1", "matplotlib", and "numpy >= 1.9.2" also needed, but cause issues on ArcGIS 10.4 install where it tries to upgrade numpy
 		author=__author__,
 		author_email="nrsantos@ucdavis.edu",

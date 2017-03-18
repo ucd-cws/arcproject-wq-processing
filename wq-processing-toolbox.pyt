@@ -825,6 +825,7 @@ class GenerateMap(WQMappingBase):
 			new_layer = new_map.find_layer(path=output_location)
 			new_layer.name = symbology_param.valueAsText
 			new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
+			new_map.replace_text("{wq_month}", "{} {}".format(parameters[1].valueAsText, parameters[0].valueAsText))  # Add the month and year to the title
 			map_project.save()
 
 			if output_png_path and output_png_path != "":
