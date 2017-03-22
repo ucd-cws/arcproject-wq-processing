@@ -5,7 +5,7 @@ __author__ = "ambell, nickrsan"
 try:
 	from arcproject import __version__ as version
 except ImportError:
-	version = '2017.03.09'
+	version = '2017.3.21'
 
 from setuptools import setup
 
