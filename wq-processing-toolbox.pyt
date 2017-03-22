@@ -13,6 +13,7 @@ from sqlalchemy import exc, func, distinct, extract
 
 import geodatabase_tempfile
 import amaptor
+import launchR
 
 from arcproject.scripts import mapping
 from arcproject.scripts import wq_gain
@@ -1016,8 +1017,9 @@ class GenerateHeatPlot(object):
 
 		### DEFINE DATA PATHS ###
 		base_path = config.arcwqpro
-		rscript_path = config.rscript  # path to R exe
 		gen_heat = os.path.join(base_path, "arcproject", "scripts", "generate_heatplots.R")
+
+		R = launchR.Interpreter()
 
 		for wq_var in wq_var_list:
 
@@ -1027,12 +1029,7 @@ class GenerateHeatPlot(object):
 			else:
 				title = title_param
 
-			arcpy.AddMessage("{}".format([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder]))
-			try:
-				CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
-				subprocess.check_output([rscript_path, gen_heat, "--args", sitecode, wq_var, title, output_folder], creationflags=CREATE_NO_WINDOW, stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
-			except subprocess.CalledProcessError as e:
-				arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(e.returncode, e.output))
+			R.run(gen_heat, "--args", sitecode, wq_var, title, output_folder)
 
 
 class LinearRef(object):
