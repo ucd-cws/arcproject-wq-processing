@@ -7,7 +7,7 @@ import datetime
 import time
 from functools import wraps
 import six
-
+import webbrowser
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
 
@@ -21,6 +21,7 @@ from arcproject.scripts import wqt_timestamp_match
 from arcproject.scripts.mapping import generate_layer_for_month
 from arcproject.scripts import swap_site_recs
 from arcproject.scripts import linear_ref
+from arcproject.scripts import chl_decision_tree
 from arcproject.scripts import config
 
 from arcproject.waterquality import classes
@@ -47,7 +48,8 @@ class Toolbox(object):
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef]
+		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs,
+		              RegressionPlot, CorrectChl]
 
 
 class WQMappingBase(object):
@@ -465,14 +467,14 @@ class GainToDB(object):
 
 		# parameter info for selecting multiple csv water quality files
 		wqp = arcpy.Parameter(
-			displayName="Vertical Profile file (wqp)",
+			displayName="Vertical Profile File",
 			name="wqp_files",
 			parameterType="GPValueTable",
 			multiValue=True,
 			direction="Input"
 		)
 
-		wqp.columns = [['DEFile', 'WQP'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
+		wqp.columns = [['DEFile', 'Filename'], ['GPString', 'Site ID'], ['GPString', 'Gain Type']]
 
 		# TODO get list of gain settings from the data base?
 		wqp.filters[2].type = 'ValueList'
@@ -510,7 +512,6 @@ class GainToDB(object):
 
 		params = [wqp, bool,]
 		return params
-
 
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
@@ -979,6 +980,7 @@ class GenerateHeatPlot(object):
 		"""Set whether tool is licensed to execute."""
 		return True
 
+
 	def updateParameters(self, parameters):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
@@ -988,29 +990,29 @@ class GenerateHeatPlot(object):
 		# get list of sites from the database profile sites table
 		session = classes.get_new_session()
 		try:
-			sites = session.query(classes.Site.code).distinct().all()
+			sites = session.query(classes.Site).distinct().all()
 			site_names = []
 
 			# add profile name to site list
 			for s in sites:
-				site_names.append(s[0])
+				combine = s.code + ' - ' + s.name
+				site_names.append(combine)
 
 			parameters[0].filter.type = 'ValueList'
+			site_names.sort()
 			parameters[0].filter.list = site_names
 
 		finally:
 			session.close()
 		return
 
-	def updateMessages(self, parameters):
-		"""Modify the messages created by internal validation for each tool
-		parameter.  This method is called after internal validation."""
-		return
 
 	@parameters_as_dict
 	def execute(self, parameters, messages):
 
-		sitecode = parameters["code"].valueAsText
+		sitecodename = parameters["code"].valueAsText
+		sitecode = sitecodename.split(" - ")[0]
+
 		wq_var_list = parameters["wq_var"].valueAsText.split(';')
 		title_param = parameters["output"].valueAsText
 		output_folder = parameters["output_folder"].valueAsText
@@ -1171,7 +1173,7 @@ class LinearRef(object):
 class GenerateSite(object):
 	def __init__(self):
 		"""Define the tool (tool name is the name of the class)."""
-		self.label = "Map Layer - Single Transect (all days)"
+		self.label = "Map Layer - One Transect (all days)"
 		self.description = ""
 		self.canRunInBackground = False
 		self.category = "Mapping"
@@ -1179,10 +1181,8 @@ class GenerateSite(object):
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
 
-		# parameter info for selecting multiple csv water quality files
-
 		siteid = arcpy.Parameter(
-			displayName="SiteID",
+			displayName="Transect",
 			name="siteid",
 			datatype="GPString",
 			multiValue=False,
@@ -1220,14 +1220,22 @@ class GenerateSite(object):
 
 			# add profile name to site list
 			for s in sites:
-				combine = str(s.id) + ' - ' + s.code
+				combine = s.code + ' - ' + s.name
 				site_names.append(combine)
 
 			parameters[0].filter.type = 'ValueList'
+			site_names.sort()
 			parameters[0].filter.list = site_names
 
 		finally:
 			session.close()
+		return
+
+
+
+
+		sitecodename = parameters["code"].valueAsText
+		sitecode = sitecodename.split(" - ")[0]
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
@@ -1237,8 +1245,11 @@ class GenerateSite(object):
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
 		arcpy.env.addOutputsToMap = True
-		siteid_code = parameters[0].valueAsText
-		siteid = int(siteid_code.split(" - ")[0])
+		site_codename = parameters[0].valueAsText
+		site_code = site_codename.split(" - ")[0]
+		session = classes.get_new_session()
+		siteid = swap_site_recs.lookup_siteid(session, site_code)
+		session.close()
 
 		output_location = parameters[1].valueAsText
 
@@ -1255,11 +1266,8 @@ class ModifySelectedSite(object):
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
-
-		# parameter info for selecting multiple csv water quality files
-
-		siteid = arcpy.Parameter(
-			displayName="New SiteID",
+		site = arcpy.Parameter(
+			displayName="New Site for Selected Features",
 			name="siteid",
 			datatype="GPString",
 			multiValue=False,
@@ -1267,13 +1275,13 @@ class ModifySelectedSite(object):
 		)
 
 		wq = arcpy.Parameter(
-			displayName="WQ points to change site code",
+			displayName="Water Quality Layer with Selection",
 			name="shp_file",
 			datatype="GPFeatureLayer",
 			direction="Input"
 		)
 
-		params = [siteid, wq]
+		params = [wq, site,]
 		return params
 
 	def isLicensed(self):
@@ -1294,11 +1302,12 @@ class ModifySelectedSite(object):
 
 			# add profile name to site list
 			for s in sites:
-				combine = str(s.id) + ' - ' + s.code
+				combine = s.code + ' - ' + s.name
 				site_names.append(combine)
 
-			parameters[0].filter.type = 'ValueList'
-			parameters[0].filter.list = site_names
+			parameters[1].filter.type = 'ValueList'
+			site_names.sort()
+			parameters[1].filter.list = site_names
 
 		finally:
 			session.close()
@@ -1310,11 +1319,12 @@ class ModifySelectedSite(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		siteid_code = parameters[0].valueAsText
-		siteid = int(siteid_code.split(" - ")[0])
+		siteid_code = parameters[1].valueAsText
+		site = siteid_code.split(" - ")[0]
+
 
 		# selected features
-		feature = parameters[1].value
+		feature = parameters[0].value
 
 		desc = arcpy.Describe(feature)
 
@@ -1329,11 +1339,13 @@ class ModifySelectedSite(object):
 
 			session = classes.get_new_session()
 
+			siteid = swap_site_recs.lookup_siteid(session, site)
+
 			try:
 				for i in ids_2_update:
 					wq = classes.WaterQuality
 					q = session.query(wq).filter(wq.id == i).one()
-					q.site_id = siteid
+					q.site_id = int(siteid)
 				session.commit()
 			finally:
 				session.close()
@@ -1341,7 +1353,6 @@ class ModifySelectedSite(object):
 			arcpy.AddMessage("No points selected. Make a selection first!")
 
 		return
-
 
 
 class DeleteMonth(object):
@@ -1437,9 +1448,6 @@ class DeleteMonth(object):
 
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-
-
-
 		year_to_use = int(parameters[0].value)
 		month = parameters[1].value
 		# look up index position in calender.monthname
@@ -1481,5 +1489,472 @@ class DeleteMonth(object):
 
 		finally:
 			session.close()
+
+		return
+
+
+class RenameGrabs(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Rename grab + profiles for given date"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Regression"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+
+		date_to_generate = arcpy.Parameter(
+			displayName="Date",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input"
+		)
+
+		wqp = arcpy.Parameter(
+			displayName="",
+			name="wqp",
+			parameterType="GPValueTable",
+			multiValue=True,
+			direction="Input"
+		)
+
+		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New'], ['GPString', 'Notes'], ['GPString','ID']]
+
+		params = [date_to_generate, wqp]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		if parameters[0].altered and parameters[1].values is None:
+			d = parameters[0].value
+			t = d + datetime.timedelta(days=1)  # add one day to get upper bound
+			lower = d.date()
+			upper = t.date()
+
+
+			session = classes.get_new_session()
+			try:
+				vt = []  # blank value table
+
+				# fills out the value table with the vertical profile info
+				wqp_abs = session.query(classes.ProfileSite.abbreviation, classes.VerticalProfile.source) \
+					.filter(classes.VerticalProfile.date_time.between(lower, upper)) \
+					.filter(classes.ProfileSite.id == classes.VerticalProfile.profile_site_id) \
+					.distinct().all()
+				# cast(classes.VerticalProfile.date_time, Date) == date
+				print(wqp_abs)
+
+				for profile in wqp_abs:
+					notes = "{}".format(profile[1])
+					vt.append(['WQP', profile[0], profile[0], notes, "NA"])
+
+				# fill out the grab sample info
+				grab_abs = session.query(classes.GrabSample.profile_site_id, classes.GrabSample.lab_num,
+				                         classes.GrabSample.sample_id,
+				                         classes.GrabSample.site_id, classes.GrabSample.source, classes.GrabSample.id) \
+					.filter(classes.GrabSample.date.between(lower, upper)) \
+					.distinct().all()
+
+				for profile in grab_abs:
+					notes = "{}, {}, {}, {}".format(profile[1], profile[2], profile[3], profile[4])
+
+					# some of the grab samples don't have profile_site and should return None
+					pro_abbrev = swap_site_recs.lookup_profile_abbreviation(session, profile[0])
+
+					vt.append(["GRAB", pro_abbrev, pro_abbrev, notes, profile[5]])
+
+				sorted_vt = sorted(vt, key = lambda x: x[1])
+				parameters[1].values = sorted_vt
+
+				# potential profile abbreviations
+				profiles = session.query(classes.ProfileSite.abbreviation).distinct().all()
+				profile_abbreviation = []
+
+				# add profile name to site list
+				for profile in profiles:
+					profile_abbreviation.append(profile[0])
+
+				parameters[1].filters[2].type = 'ValueList'
+				parameters[1].filters[2].list = profile_abbreviation
+
+			finally:
+				session.close()
+
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	@parameters_as_dict
+	def execute(self, parameters, messages):
+
+		d = parameters["date_to_generate"].value
+		t = d + datetime.timedelta(days=1)  # add one day to get upper bound
+		lower = d.date()
+		upper = t.date()
+
+		# get the vt parameters
+		vt = parameters["wqp"].values  # values are list of lists
+
+		for i in range(0, len(vt)):
+
+			record_type = vt[i][0]
+			current = vt[i][1]
+			new = vt[i][2]
+			grabid = vt[i][4]
+
+			if current == new:
+				pass
+
+			elif record_type == "WQP":
+				arcpy.AddMessage("Changing {} to {} for {} records on {}".format(current, new, record_type, lower))
+
+				session = classes.get_new_session()
+				try:
+					query = session.query(classes.VerticalProfile) \
+						.filter(classes.VerticalProfile.date_time.between(lower, upper)) \
+						.filter(classes.ProfileSite.id == classes.VerticalProfile.profile_site_id) \
+						.filter(classes.ProfileSite.abbreviation == current).all()
+
+					for q in query:
+						q.profile_site_id = swap_site_recs.lookup_profile_site_id(session, new)
+
+					session.commit()
+
+				finally:
+					session.close()
+
+			elif record_type == "GRAB":
+				arcpy.AddMessage("Changing {} to {} for {} records on {}".format(current, new, record_type, lower))
+
+				session = classes.get_new_session()
+				try:
+					query = session.query(classes.GrabSample) \
+						.filter(classes.GrabSample.date.between(lower, upper)) \
+						.filter(classes.GrabSample.id == grabid).one()
+
+					query.profile_site_id = swap_site_recs.lookup_profile_site_id(session, new)
+
+					session.commit()
+
+				finally:
+					session.close()
+
+		return
+
+
+class RegressionPlot(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Regression Plot"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Regression"
+
+	def getParameterInfo(self):
+		"""Define parameter definitions"""
+
+		date_to_generate = arcpy.Parameter(
+			displayName="Date",
+			name="date_to_generate",
+			datatype="GPDate",
+			multiValue=False,
+			direction="Input")
+
+		gain_setting = arcpy.Parameter(
+			displayName="Gain Setting",
+			name="gain_setting",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input")
+
+		#gain_setting.filter.type = 'ValueList'
+		#gain_setting.filter.list = ['0', '1', '10', '100']
+
+		depths = arcpy.Parameter(
+			displayName="All depths?",
+			name="depths",
+			datatype="GPBoolean",
+			parameterType="Optional")
+
+		preview = arcpy.Parameter(
+			displayName="Preview?",
+			name="preview",
+			datatype="GPBoolean",
+			parameterType="Optional")
+
+		output = arcpy.Parameter(
+			displayName="Output Location for Graph",
+			name="output",
+			datatype="DEFile",
+			parameterType="Optional",
+			direction="Output")
+
+		commit = arcpy.Parameter(
+			displayName="Commit regression to the database?",
+			name="commit",
+			datatype="GPBoolean",
+			parameterType="Optional")
+
+		params = [date_to_generate, gain_setting, depths, preview, output, commit]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		if parameters[0].altered:
+			# turn off params (clicking box when tool is running with crash arc)
+			parameters[1].enabled = True
+
+			d = parameters[0].value
+			t = d + datetime.timedelta(days=1)  # add one day to get upper bound
+			lower = d.date()
+			upper = t.date()
+
+			session = classes.get_new_session()
+			try:
+
+				gains = session.query(classes.VerticalProfile.gain_setting) \
+					.filter(classes.VerticalProfile.date_time.between(lower, upper)) \
+					.distinct().all()
+
+				gain_settings = []
+
+				# add profile name to site list
+				for g in gains:
+					print(g[0])
+					gain_settings.append(g[0])
+
+				parameters[1].filter.type = 'ValueList'
+				parameters[1].filter.list = gain_settings
+
+			finally:
+				session.close()
+
+		else:
+			parameters[1].enabled = False
+
+
+		if parameters[0].value and parameters[1].altered:
+			# turn off params (clicking box when tool is running with crash arc)
+			parameters[2].enabled = True
+			parameters[3].enabled = True
+		else:
+			parameters[2].enabled = False
+			parameters[3].enabled = False
+
+		if parameters[3].value is True: # add in conditional for other two params
+
+			### DEFINE DATA PATHS ###
+			base_path = config.arcwqpro
+			rscript_path = config.rscript  # path to R exe
+			chl_reg = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
+
+			date_time = parameters[0].value
+			date = str(date_time.date())
+			gain = parameters[1].valueAstext
+			output = os.path.join(base_path, "arcproject", "plots", "chl_regression_tool_preview.png")
+
+			if parameters[2].value:
+				depths = "TRUE"
+			else:
+				depths = "FALSE"
+
+			try:
+				CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
+				subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, depths, "FALSE"],
+				                        creationflags=CREATE_NO_WINDOW,
+				                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
+				webbrowser.open(output)
+
+			except subprocess.CalledProcessError as e:
+				arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
+					e.returncode, e.output))
+			finally:
+				parameters[3].value = False
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		### DEFINE DATA PATHS ###
+		base_path = config.arcwqpro
+		rscript_path = config.rscript  # path to R exe
+		chl_reg = os.path.join(base_path, "arcproject", "scripts", "chl_regression.R")
+		date_time = parameters[0].value
+		date = str(date_time.date())
+		gain = parameters[1].valueAstext
+		output = parameters[4].valueAstext
+
+		if parameters[2].value:
+			depths = "TRUE"
+		else:
+			depths = "FALSE"
+
+
+		if parameters[5].value:
+			commit = "TRUE"
+		else:
+			commit = "FALSE"
+
+		if output is None:
+			output = os.path.join(base_path, "arcproject", "plots", "chl_regression_tool_preview.png")
+
+		arcpy.AddMessage("{}, {}, {}, {}, {}, {}, {},{}".format(rscript_path, chl_reg, "--args", date, gain, output, depths, commit))
+
+		try:
+			CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
+			subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, depths, commit],
+			                        creationflags=CREATE_NO_WINDOW,
+			                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
+
+		except subprocess.CalledProcessError as e:
+			arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
+				e.returncode, e.output))
+
+		return
+
+
+class CorrectChl(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Correct Chl Values"
+		self.description = "Correct Chl values from regression table."
+		self.canRunInBackground = False
+		self.category = "Regression"
+
+	def getParameterInfo(self):
+
+		query = arcpy.Parameter(
+			displayName="Type of query to select records to modify?",
+			name="query",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input",
+			parameterType="Required"
+		)
+
+		query.filter.type = "ValueList"
+		query.filter.list = ["ALL", "NEW", "DATERANGE", "IDRANGE"]
+
+		date1 = arcpy.Parameter(
+			displayName="Start date",
+			name="date1",
+			datatype="GPDate",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		date2 = arcpy.Parameter(
+			displayName="End date",
+			name="date2",
+			datatype="GPDate",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		id1 = arcpy.Parameter(
+			displayName="Start ID",
+			name="id1",
+			datatype="GPLong",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+		id2 = arcpy.Parameter(
+			displayName="End ID",
+			name="id2",
+			datatype="GPLong",
+			direction="Input",
+			parameterType="Optional"
+		)
+
+
+		params = [query, date1, date2, id1, id2]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		if parameters[0].valueAsText == "DATERANGE":
+			parameters[1].enabled = True
+			parameters[2].enabled = True
+		else:
+			parameters[1].enabled = False
+			parameters[2].enabled = False
+
+		if parameters[0].valueAsText == "IDRANGE":
+			parameters[3].enabled = True
+			parameters[4].enabled = True
+		else:
+			parameters[3].enabled = False
+			parameters[4].enabled = False
+		return
+
+	def updateMessages(self, parameters):
+		"""Modify the messages created by internal validation for each tool
+		parameter.  This method is called after internal validation."""
+		return
+
+	def execute(self, parameters, messages):
+
+		query_type = parameters[0].valueAsText
+
+		start_date = parameters[1].value
+		end_date = parameters[2].value
+
+		start_id = parameters[3].value
+		end_id = parameters[4].value
+
+		arcpy.AddMessage("PARAMS: type = {}, start date = {}, "
+		                 "end date = {}, start id = {}, end id = {}".format(query_type, start_date,
+		                                                                    end_date, start_id, end_id))
+
+		if start_date is not None and end_date is not None:
+
+			# round python date time objects to start of the day (in case times are included in tbx input)
+			start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+			end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+			date_range = [start_date, end_date]
+
+		else:
+			date_range = None
+
+		if start_id is not None and end_id is not None:
+			id_range = [start_id, end_id]
+		else:
+			id_range = None
+
+		arcpy.AddMessage("Updating Chl values for points. Be patient...")
+		chl_decision_tree.main(query_type, daterange=date_range, idrange=id_range)
 
 		return
