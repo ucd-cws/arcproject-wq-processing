@@ -1030,8 +1030,11 @@ class GenerateHeatPlot(object):
 				title = sitecode.upper() + " - " + wq_var.upper()
 			else:
 				title = title_param
-
-			R.run(gen_heat, "--args", sitecode, wq_var, title, output_folder)
+			try:
+				R.run(gen_heat, "--args", sitecode, wq_var, title, output_folder)
+			except launchR.RExecutionError as e:
+				arcpy.AddWarning("Call to R failed - R gave the following output: {}".format(e.output))
+				raise
 
 
 class LinearRef(object):

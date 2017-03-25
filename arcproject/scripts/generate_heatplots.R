@@ -1,5 +1,5 @@
 if(!require(RSQLite)){
-  install.packages("RSQLite")
+  install.packages("RSQLite", repos="http://cran.us.r-project.org")
   library(RSQLite)
 }
 
