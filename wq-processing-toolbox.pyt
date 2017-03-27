@@ -10,6 +10,7 @@ import six
 import webbrowser
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
+import csv
 
 import geodatabase_tempfile
 import amaptor
@@ -49,7 +50,7 @@ class Toolbox(object):
 		self.tools = [AddSite, AddGainSite, JoinTimestamp,
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
 		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs,
-		              RegressionPlot, CorrectChl]
+		              RegressionPlot, CorrectChl, ExportHeatPlotData]
 
 
 class WQMappingBase(object):
@@ -1960,4 +1961,92 @@ class CorrectChl(object):
 		arcpy.AddMessage("Updating Chl values for points. Be patient...")
 		chl_decision_tree.main(query_type, daterange=date_range, idrange=id_range)
 
+		return
+
+
+class ExportHeatPlotData(object):
+	def __init__(self):
+		"""Define the tool (tool name is the name of the class)."""
+		self.label = "Export Heatplot data CSV"
+		self.description = ""
+		self.canRunInBackground = False
+		self.category = "Mapping"
+
+	def getParameterInfo(self):
+
+		code = arcpy.Parameter(
+			displayName="Code for Transect",
+			name="code",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+
+
+		output_csv = arcpy.Parameter(
+			displayName="Output CSV",
+			name="output_csv",
+			datatype="DEFile",
+			multiValue=False,
+			direction="Output"
+		)
+
+		params = [code, output_csv]
+		return params
+
+	def isLicensed(self):
+		"""Set whether tool is licensed to execute."""
+		return True
+
+
+	def updateParameters(self, parameters):
+		"""Modify the values and properties of parameters before internal
+		validation is performed.  This method is called whenever a parameter
+		has been changed."""
+
+		# validate site name by pulling creating filter with names from table
+		# get list of sites from the database profile sites table
+		session = classes.get_new_session()
+		try:
+			sites = session.query(classes.Site).distinct().all()
+			site_names = []
+
+			# add profile name to site list
+			for s in sites:
+				combine = s.code + ' - ' + s.name
+				site_names.append(combine)
+
+			parameters[0].filter.type = 'ValueList'
+			site_names.sort()
+			parameters[0].filter.list = site_names
+
+		finally:
+			session.close()
+		return
+
+
+	@parameters_as_dict
+	def execute(self, parameters, messages):
+
+		sitecodename = parameters["code"].valueAsText
+		sitecode = sitecodename.split(" - ")[0]
+
+		output_file = parameters["output_csv"].valueAsText
+
+		arcpy.AddMessage("Saving WaterQuality for site {} as csv.\n{}".format(sitecodename, output_file))
+
+		try:
+			outfile = open(output_file, 'wb')
+			outcsv = csv.writer(outfile)
+
+			session = classes.get_new_session()
+			records = session.query(classes.WaterQuality).filter(classes.Site.code == sitecode).\
+				filter(classes.Site.id == classes.WaterQuality.site_id)
+			outcsv.writerow([column.name for column in classes.WaterQuality.__mapper__.columns])  # header as row 1
+			[outcsv.writerow([getattr(curr, column.name) for column in classes.WaterQuality.__mapper__.columns]) for
+			 curr in records]
+
+			outfile.close()
+		finally:
+			session.close()
 		return
