@@ -1,10 +1,10 @@
 import os
 
 import sqlalchemy
-from sqlalchemy import orm
 from sqlalchemy import Column, Integer, String, Float, Numeric, Date, DateTime
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import ForeignKey, UniqueConstraint, CheckConstraint
+from sqlalchemy import orm
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, validates
 
 base_folder = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -222,7 +222,7 @@ class GrabSample(Base):
 	source = Column(String)
 
 
-water_quality_header_map = {
+water_quality_header_map = {  # maps header fields to database fields
 	"Temp": "temp",
 	"pH": "ph",
 	"SpCond": "sp_cond",
@@ -277,3 +277,5 @@ class WaterQuality(Base):
 
 	chl_corrected = Column(Float)  # this is the value that's corrected after running the regression.
 	notes = Column(String)
+
+
