@@ -3,6 +3,26 @@ if(!require(RSQLite)){
   library(RSQLite)
 }
 
+if(!require(ggplot2)){
+  install.packages("ggplot2", repos="http://cran.us.r-project.org")
+  library(ggplot2)
+}
+
+if(!require(scales)){
+  install.packages("scales", repos="http://cran.us.r-project.org")
+  library(scales)
+}
+
+if(!require(devtools)){
+  install.packages("devtools", repos="http://cran.us.r-project.org")
+  library(devtools)
+}
+
+if(!require(wq.heatplot)){
+  install_github("ucd-cws/wq-heatplot")
+  library(wq.heatplot)
+}
+
 # set working directory to arcproject-wq-processing folder
 # To start with, check if we're on a dev machine or a production machine
 
@@ -13,7 +33,7 @@ db_name <- Sys.getenv("arcproject_db_path")  # get the DB location
 setwd(project_folder)
 
 # source the heatplot graphing script
-source("arcproject/scripts/heatplot.R")
+#source("arcproject/scripts/heatplot.R")
 
 # get all the water quality data for a given site
 all_wq_reach <- function(connection, siteid){
@@ -71,4 +91,3 @@ if(length(args) == 5){
   dbDisconnect(con)
 
 }else(stop("Not right number of arguments"))
-#p
