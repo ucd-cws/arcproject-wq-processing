@@ -2,6 +2,12 @@ import six
 
 import numpy
 
+from . import classes
+from . import api
+from . import funcs
+from . import utils
+
+
 def shorten_float(original, places=8):
 	"""
 	Used in order to make floats a consistent length for unit tests - it's OK to shorten them because with 8

@@ -1,30 +1,29 @@
 import calendar
-import os
-import subprocess
-import shutil
-from string import digits
 import datetime
+import os
+import shutil
+import subprocess
 import time
-from functools import wraps
-import six
 import webbrowser
+import csv
+from functools import wraps
+from string import digits
+
 import arcpy
 from sqlalchemy import exc, func, distinct, extract
-import csv
 
-import geodatabase_tempfile
 import amaptor
+import geodatabase_tempfile
 import launchR
 
-from arcproject.scripts import mapping
-from arcproject.scripts import wq_gain
-from arcproject.scripts import wqt_timestamp_match
-from arcproject.scripts.mapping import generate_layer_for_month
-from arcproject.scripts import swap_site_recs
-from arcproject.scripts import linear_ref
 from arcproject.scripts import chl_decision_tree
 from arcproject.scripts import config
-
+from arcproject.scripts import linear_ref
+from arcproject.scripts import mapping
+from arcproject.scripts import swap_site_recs
+from arcproject.scripts import wq_gain
+from arcproject.scripts import wqt_timestamp_match
+from arcproject.scripts.mapping import generate_layer_for_month, WQMappingBase
 from arcproject.waterquality import classes
 
 
@@ -51,183 +50,6 @@ class Toolbox(object):
 		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
 		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs,
 		              RegressionPlot, CorrectChl, ExportHeatPlotData]
-
-
-class WQMappingBase(object):
-	"""
-		A base class for tools that want to provide a choice for how to symbolize water quality data. To use, subclass it
-		for any of the other tools, add the defined parameter to the list of params,
-		 and make sure the tool init includes a call to super(NewClassName, self).__init__() at the beginning of __init__
-	"""
-	def __init__(self):
-		self.table_workspace = "in_memory"
-		self.table_name = "arcproject_temp_date_table"
-		self.temporary_date_table = "{}\\{}".format(self.table_workspace, self.table_name)
-
-		self.select_wq_param = arcpy.Parameter(
-			displayName="Symbolize Data by",
-			name="symbology",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input",
-		)
-
-		self.year_to_generate = arcpy.Parameter(  # optional to use, but available
-			displayName="Year",
-			name="year_to_generate",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input"
-		)
-
-		self.month_to_generate = arcpy.Parameter(  # optional to use, but available
-			displayName="Month",
-			name="month_to_generate",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input"
-		)
-
-		self.month_to_generate.filter.type = 'ValueList'
-		t = list(calendar.month_name)
-		t.pop(0)
-		self.month_to_generate.filter.list = t
-
-
-		self._filter_to_layer_mapping = {
-										"CHL": "CHL_regular.lyr",
-										"CHL Corrected": "CHL_corrected.lyr",
-										"Dissolved Oxygen": "DO_v2.lyr",
-										"DO Percent Saturation": "DOPerCentSat_v2.lyr",
-										"pH": "pH.lyr",
-										"RPAR": "RPAR_v2.lyr",
-										"Salinity": "Sal.lyr",
-										"SpCond": "SpCond.lyr",
-										"Temperature": "Temp.lyr",
-										"Turbidity": "Turbid.lyr",
-									}
-
-		self.select_wq_param.filter.type = "ValueList"
-		self.select_wq_param.filter.list = ["CHL", "Corrected CHL", "Dissolved Oxygen", "DO Percent Saturation", "pH", "RPAR", "Salinity", "SpCond",
-							"Temperature", "Turbidity"]
-
-
-	def insert_layer(self, data_path, symbology_param, map_or_project="CURRENT"):
-		"""
-			Symbolizes a WQ layer based on the specified parameter and then inserts it into a map
-		:param data_path:
-		:param symbology_param:
-		:param map_or_project: a reference to a map document (including "CURRENT"), an instance of amaptor.Project, or
-			and instance of amaptor.Map
-		:return:
-		"""
-
-		if isinstance(map_or_project, amaptor.Project):
-			project = map_or_project
-			l_map = project.get_active_map()
-		elif isinstance(map_or_project, amaptor.Map):
-			l_map = map_or_project
-		else:
-			project = amaptor.Project(map_or_project)
-			l_map = project.get_active_map()
-
-		layer_name = self._filter_to_layer_mapping[symbology_param.valueAsText]
-		layer_path = os.path.join(mapping._LAYERS_FOLDER, layer_name)
-
-		layer = amaptor.functions.make_layer_with_file_symbology(data_path, layer_path)
-		layer.name = os.path.split(data_path)[1]
-		l_map.add_layer(layer)
-
-	def cleanup(self):
-		if arcpy.Exists(self.temporary_date_table):
-			arcpy.Delete_management(self.temporary_date_table)
-
-	def update_month_fields(self, parameters, year_field_index=0, month_field_index=1):
-		"""
-			Retrieve months from the temporary data table in memory
-		:param parameters:
-		:param year_field_index:
-		:param month_field_index:
-		:return:
-		"""
-
-		if parameters[year_field_index].filter.list is None or parameters[year_field_index].filter.list == "" or len(parameters[year_field_index].filter.list) == 0:  # if this is our first time through, set it all up
-			self.initialize_year_and_month_fields(parameters, year_field_index)
-
-		if not arcpy.Exists(self.temporary_date_table):
-			return  # this seems to occur in Pro, when running the tool - the data doesn't get loaded, but it is calling this function - may be a bug to squash somewhere here.
-
-		year = int(parameters[year_field_index].value)
-		months = arcpy.SearchCursor(self.temporary_date_table, where_clause="data_year={}".format(year))
-
-		filter_months = []
-		for month in months:
-			filter_months.append(month.getValue("data_month"))
-
-		parameters[month_field_index].filter.type = 'ValueList'
-		parameters[month_field_index].filter.list = filter_months
-
-	def initialize_year_and_month_fields(self, parameters, year_field_index=0):
-		"""
-			Used on Generate Month and Generate Map
-		:param parameters:
-		:return:
-		"""
-
-		self.cleanup()  # cleans up the temporary table. If it exists, it's stale
-
-		arcpy.CreateTable_management(self.table_workspace, self.table_name)
-		arcpy.AddField_management(self.temporary_date_table, "data_year", "LONG")
-		arcpy.AddField_management(self.temporary_date_table, "data_month", "TEXT")
-
-		# load the data from the DB
-		session = classes.get_new_session()
-
-		try:
-			# get years with data from the database to use as selection for tool input
-
-			curs = arcpy.InsertCursor(self.temporary_date_table)
-			q = session.query(extract('year', classes.WaterQuality.date_time), extract('month', classes.WaterQuality.date_time)).distinct()
-			years = {}
-			month_names = list(calendar.month_name)  # helps translate numeric months to
-			for row in q:  # translate the results to the temporary table
-				new_record = curs.newRow()
-				new_record.setValue("data_year", row[0])
-				new_record.setValue("data_month", month_names[row[1]])
-				curs.insertRow(new_record)
-
-				years[row[0]] = True  # indicate we have data for a year
-
-			parameters[year_field_index].filter.type = 'ValueList'
-			parameters[year_field_index].filter.list = sorted(list(years.keys()))  # get the distinct set of years
-
-		finally:
-			session.close()
-
-
-			# # get valid months for the selected year as the options for the tool input
-			# if parameters[year_field_index].value:
-			# 	Y = int(parameters[year_field_index].value)
-			#
-			# 	q2 = session.query(extract('month', classes.WaterQuality.date_time)).filter(
-			# 		extract('year', classes.WaterQuality.date_time) == Y).distinct()
-			# 	months = []
-			# 	t = list(calendar.month_name)
-			# 	for month in q2:
-			# 		months.append(t[month[0]])
-			#
-			# 	parameters[month_field_index].filter.type = 'ValueList'
-			# 	parameters[month_field_index].filter.list = months
-
-
-	def convert_year_and_month(self, year, month):
-		year_to_use = int(year.value)
-		month = month.valueAsText
-		# look up index position in calender.monthname
-		t = list(calendar.month_name)
-		month_to_use = int(t.index(month))
-		return year_to_use, month_to_use
-
 
 
 class AddSite(object):
