@@ -1,17 +1,21 @@
 import calendar
 import datetime
 import os
+import logging
+
+log = logging.getLogger("arcproject")
 
 import arcpy
+from sqlalchemy import extract
 import pandas as pd
 
 import amaptor
-from sqlalchemy import extract
 
 from arcproject.waterquality.classes import get_new_session, WaterQuality
-from . import NoRecordsError, SpatialReferenceError
+from .exceptions import NoRecordsError, SpatialReferenceError
 from .wqt_timestamp_match import pd2np
-from ..waterquality import classes, funcs as wq_funcs
+from ..waterquality import classes
+from ..scripts import funcs as wq_funcs
 
 _BASE_FOLDER = os.path.split(os.path.dirname(__file__))[0]
 _TEMPLATES_FOLDER = os.path.join(_BASE_FOLDER, "templates", )
@@ -83,13 +87,17 @@ def generate_layer_for_site(siteid, output_location):
 
 
 def replaceDefaultNull(fc, placeholder=-9999):
+	if fc.endswith(".shp"):  # skip shapefiles because they don't support null
+		return
+
 	try:
 		with arcpy.da.UpdateCursor(fc, '*') as cursor:
 			for row in cursor:
 				for i in range(len(row)):
 					if row[i] == placeholder or row[i] == str(placeholder):
 						row[i] = None
-						cursor.updateRow(row)
+
+				cursor.updateRow(row)
 	except Exception as e:
 		print(e.message)
 
@@ -110,7 +118,7 @@ def query_to_features(query, export_path):
 
 	sr_code = wq_funcs.get_wq_df_spatial_reference(df)
 
-	sr = arcpy.SpatialReference(sr_code)  # make a spatial reference object
+	sr = arcpy.SpatialReference(int(sr_code))  # make a spatial reference object
 
 	arcpy.da.NumPyArrayToFeatureClass(
 		in_array=pd2np(df),
@@ -227,7 +235,7 @@ class WQMappingBase(object):
 			l_map = project.get_active_map()
 
 		layer_name = self._filter_to_layer_mapping[symbology_param.valueAsText]
-		layer_path = os.path.join(mapping._LAYERS_FOLDER, layer_name)
+		layer_path = os.path.join(_LAYERS_FOLDER, layer_name)
 
 		layer = amaptor.functions.make_layer_with_file_symbology(data_path, layer_path)
 		layer.name = os.path.split(data_path)[1]

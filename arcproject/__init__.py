@@ -1,4 +1,6 @@
-from . import scripts
 from . import waterquality
+from . import scripts
 
-__version__ = "2017.3.21"
+__all__ = ['waterquality', 'scripts']
+
+__version__ = "2017.4.26"

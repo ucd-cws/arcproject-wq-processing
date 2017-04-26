@@ -13,12 +13,12 @@ import six
 from sqlalchemy import exc
 from sqlalchemy.orm.exc import NoResultFound
 
-from . import reproject_features
+from .config import projection_spatial_reference
+from .funcs import reproject_features
 from ..waterquality import classes
 
 # define constants
 source_field = "WQ_SOURCE"
-projection_spatial_reference = 26942  # 3310  # Teale Albers  # 26942  # CA State Plane II Meters
 
 # the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
 # a dict there, then look up the unit provided. If there's a number there, it's a multiplier to convert units to the desired

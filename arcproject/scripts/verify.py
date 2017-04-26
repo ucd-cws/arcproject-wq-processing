@@ -8,10 +8,13 @@ import pandas as pd
 import geodatabase_tempfile
 import amaptor
 
+import scripts.exceptions
+import scripts.funcs
 from .. import waterquality
-from ..waterquality import classes, funcs as wq_funcs
+from ..waterquality import classes
 from ..waterquality import api
 from .. import scripts
+from ..scripts import funcs as wq_funcs
 from . import mapping
 
 class Point(object):
@@ -83,7 +86,7 @@ def check_in_same_projection(summary_file, verification_date):
 	wq = api.get_wq_for_date(verification_date)
 
 	sr_code = wq_funcs.get_wq_df_spatial_reference(wq)
-	return scripts.reproject_features(summary_file, sr_code)
+	return scripts.funcs.reproject_features(summary_file, sr_code)
 
 
 def verify_summary_file(month, year, summary_file, max_point_distance="10 Meters", max_missing_points=50, map_package_export_folder=r"C:\Users\dsx.AD3\Box Sync\arcproject\validation"):
@@ -99,7 +102,7 @@ def verify_summary_file(month, year, summary_file, max_point_distance="10 Meters
 	temp_points = geodatabase_tempfile.create_gdb_name("arcroject", scratch=True)
 	try:
 		mapping.generate_layer_for_month(month, year_to_use=year, output_location=temp_points)
-	except scripts.NoRecordsError:
+	except scripts.exceptions.NoRecordsError:
 		print("DATE FAILED: {} {} - no records found for that date\n".format(month, year))
 		raise
 

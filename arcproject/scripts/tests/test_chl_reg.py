@@ -2,7 +2,7 @@ import unittest
 from arcproject.scripts import chl_reg
 import pandas as pd
 
-from arcproject.waterquality import shorten_float
+from waterquality.utils import shorten_float
 
 
 class LinearRegression(unittest.TestCase):

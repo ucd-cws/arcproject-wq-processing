@@ -1,12 +1,17 @@
 import os
 import unittest
+import shutil
+import logging
+
+log = logging.getLogger("arcproject_tests")
 
 from arcproject.scripts import wqt_timestamp_match
 from arcproject.scripts import verify
-from arcproject.scripts import NoRecordsError
+from scripts.exceptions import NoRecordsError
 from arcproject.waterquality import utils
 from arcproject.waterquality import classes
 
+base_path = os.path.split(os.path.abspath(__file__))[0]
 
 class TestVerify(unittest.TestCase):
 
@@ -27,11 +32,33 @@ class TestVerify(unittest.TestCase):
 		self.wq_12_13_gps = os.path.join("testfiles", "Dec_2013", "Arc_121313", "Arc_121313_GPS", "121313_PosnPnt.shp")
 
 	def _remake_db(self):
-		print("Warning! Recreating Database!")
-		utils.recreate_tables()
+		"""
+			Copies the db to a new spot, directs the software to use it, then empties the DB so that it's blank
+		:return: 
+		"""
 
-		for site in self.site_codes:
+		self.original_db = classes.db_location
+		tmp_path = os.path.join(base_path, "test_tmp")
+		self.new_db = os.path.join(tmp_path, "wqdb.sqlite")
+
+		if not os.path.exists(tmp_path):  # make sure the folders exist
+			os.makedirs(tmp_path)
+		shutil.copyfile(self.original_db, self.new_db)  # then copy the db to it
+
+		classes.db_location = self.new_db  # tell the software to use the new DB location
+
+		utils.recreate_tables()  # recreate the table structure
+
+		for site in self.site_codes:  # and add in the site codes specified
 			self._make_site(site)
+
+	def _restore_db(self):
+		classes.db_location = self.original_db
+
+		try:
+			os.remove(self.new_db)
+		except:
+			log.warning("Couldn't delete temporary database - you may need to remove it manually")
 
 	def _load_data(self, wq_files, gps_data):
 		# add one set of records for Dec 2013
@@ -62,6 +89,8 @@ class TestVerify(unittest.TestCase):
 		self.assertTrue(verify.verify_summary_file(12, 2013, self.dec_2013_summary_file, max_missing_points=15))
 		# self.assertTrue(False)  # This test should be failing as constructed because not all data is loaded
 
+		self._restore_db()
+
 	def test_verify_fail_no_records_for_date(self):
 		"""
 			Checks that if we have no records in the database for a date, that the test raises NoRecordsError
@@ -78,5 +107,6 @@ class TestVerify(unittest.TestCase):
 		self._load_data(self.wq_12_11, self.wq_12_11_gps)
 		# run verification
 		self.assertFalse(verify.verify_summary_file(12, 2013, self.dec_2013_summary_file, max_missing_points=15))
+		self._restore_db()
 
 

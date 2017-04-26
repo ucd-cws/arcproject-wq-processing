@@ -8,10 +8,15 @@ import six
 import pandas
 import arcpy
 
+import scripts.config
+import scripts.funcs
 from arcproject import scripts
 from arcproject.scripts import wqt_timestamp_match
 from arcproject.waterquality import classes
 from sqlalchemy import exc
+
+
+base_folder = os.path.dirname(os.path.abspath(__file__))
 
 class BaseDBTest(unittest.TestCase):
 	"""
@@ -19,8 +24,8 @@ class BaseDBTest(unittest.TestCase):
 	"""
 
 	def setUp(self):
-		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
-		self.gps = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.wq = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.gps = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
 		self.site_code = "WQT"
 		self.session = classes.get_new_session()
 		self._make_site()
@@ -45,7 +50,7 @@ class BaseDBTest(unittest.TestCase):
 class TestUnitConversion(unittest.TestCase):
 
 	def setUp(self):
-		self.wq = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.wq = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 		self.df = wqt_timestamp_match.wq_from_file(self.wq)  # doesn't really matter that units are already converted here - the test is just going to pretend anyway
 		self.unmodified_data = self.df["DEP25"]
 		self.unmodified_other_column = self.df["pH"]
@@ -108,8 +113,8 @@ class TestDFLoading(unittest.TestCase):
 			Set the path to normal data and foot data
 		:return:
 		"""
-		self.wq_meters = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
-		self.wq_feet = os.path.join("testfiles", "feet_conversion.csv")
+		self.wq_meters = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.wq_feet = os.path.join(base_folder, "testfiles", "feet_conversion.csv")
 
 	def load_file(self, filepath):
 		"""
@@ -183,7 +188,7 @@ class TestDBInsert(BaseDBTest):
 class LoadWQ(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
+		self.data = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 
 	def test_data_headers(self):
 		headers = wqt_timestamp_match.wq_from_file(self.data).columns.values
@@ -202,7 +207,7 @@ class LoadSHP(unittest.TestCase):
 	"""
 
 	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
+		self.data = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
 		self.shpdf = wqt_timestamp_match.wqtshp2pd(self.data)
 
 	def test_length(self):
@@ -218,10 +223,10 @@ class LoadSHP(unittest.TestCase):
 			Ensures that the reprojection code properly returns a new dataset that matches the default coordinate system.
 		:return:
 		"""
-		projected_data = scripts.reproject_features(self.data)
+		projected_data = scripts.funcs.reproject_features(self.data)
 
 		desc = arcpy.Describe(projected_data)
-		self.assertEqual(desc.spatialReference.factoryCode, wqt_timestamp_match.projection_spatial_reference)
+		self.assertEqual(desc.spatialReference.factoryCode, scripts.config.projection_spatial_reference)
 
 
 class CheckDates(unittest.TestCase):
@@ -307,7 +312,7 @@ class CheckReprojection(BaseDBTest):
 
 		wq_objects = self.session.new
 		for wqo in wq_objects:
-			self.assertEqual(wqo.spatial_reference_code, wqt_timestamp_match.projection_spatial_reference)
+			self.assertEqual(wqo.spatial_reference_code, scripts.config.projection_spatial_reference)
 
 	def test_coordinates_in_bounds(self):
 		"""
@@ -320,7 +325,7 @@ class CheckReprojection(BaseDBTest):
 		:return:
 		"""
 
-		coordinate_system = arcpy.SpatialReference(wqt_timestamp_match.projection_spatial_reference)
+		coordinate_system = arcpy.SpatialReference(scripts.config.projection_spatial_reference)
 
 		x_min, y_min, x_max, y_max = coordinate_system.domain.split(" ")
 

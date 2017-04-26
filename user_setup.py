@@ -5,6 +5,7 @@ import sys
 import subprocess
 
 r_dependencies = ["RSQLite", "plyr", "gplots", "ggplot2"]
+r_github_dependencies = ["ucd-cws/wq-heatplot"]
 
 try:
 	import winreg
@@ -15,7 +16,8 @@ def set_up_r_dependencies():
 	import launchR  # imported here because it will be installed before this is called, but won't be installed at load time in all cases
 
 	R = launchR.Interpreter()
-	R.install_packages(r_dependencies)
+	R.install_packages(r_dependencies, missing_only=False)
+	R.install_github(r_github_dependencies)
 
 
 def find_wheels(path):

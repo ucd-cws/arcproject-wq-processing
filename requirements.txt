@@ -1,10 +1,10 @@
-SQLAlchemy == 1.1.2
+SQLAlchemy >= 1.1.2
 six
 numpy >= 1.9.2
 pandas >= 0.16.1
 matplotlib
 geodatabase_tempfile
 amaptor >= 0.1.1.7
-launchR >= 0.2.5
+launchR >= 0.3.0
 
 

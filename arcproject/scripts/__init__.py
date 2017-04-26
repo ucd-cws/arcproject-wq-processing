@@ -1,33 +1,16 @@
-import sys
-import imp
-import importlib
-
-import arcpy
-
-import geodatabase_tempfile
 
 from . import config
+from . import exceptions
+from . import funcs
 
-class NoRecordsError(ValueError):
-	pass
+from . import chl_decision_tree
+from . import chl_reg
 
+from . import linear_ref
+from . import mapping
 
-class SpatialReferenceError(ValueError):
-	pass
+from . import swap_site_recs
+from . import wq_gain
+from . import wqt_timestamp_match
 
-
-def reproject_features(feature_class, sr_code):
-	"""
-	Given a feature class, it make a temporary file for it and reprojects the data to that location
-
-	:param feature_class: the path to a feature class to be reprojected
-	:return: reprojected feature class
-	"""
-
-	projected = geodatabase_tempfile.create_gdb_name()
-	spatial_reference = arcpy.SpatialReference(sr_code)
-
-	arcpy.Project_management(feature_class, projected, spatial_reference)
-
-	return projected
 

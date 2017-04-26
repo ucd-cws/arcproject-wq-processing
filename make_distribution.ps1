@@ -5,7 +5,7 @@ $destination = "C:\Users\dsx.AD3\Code\arcproject-wq-processing\distribution.zip"
 If(Test-Path $destination) {Remove-Item $destination}
 
 # Make the wheel and copy files to the distribution folder
-& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcproject-wq-processing\python" .\setup.py bdist_wheel
+& "C:\Program Files\ArcGIS\Pro\bin\Python\envs\arproject3\python" .\setup.py bdist_wheel
 Copy-Item .\user_setup.py .\distribution
 Copy-Item .\dist\arcproject*.whl .\distribution
 Copy-Item .\*.pyt .\distribution

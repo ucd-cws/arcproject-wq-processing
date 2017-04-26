@@ -6,12 +6,13 @@ from arcproject.scripts import wqt_timestamp_match
 import pandas
 from pandas.util.testing import assert_frame_equal
 
+base_path = os.path.split(os.path.abspath(__file__))[0]
 
 class LoadGainWQ(unittest.TestCase):
 
 	def setUp(self):
-		self.data = os.path.join("testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqp_ca3.csv")
-		self.gps = os.path.join("testfiles", r"Arc_040413\Arc_040413_GPS\040413_ZoopChlW.shp")
+		self.data = os.path.join(base_path, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqp_ca3.csv")
+		self.gps = os.path.join(base_path, "testfiles", r"Arc_040413\Arc_040413_GPS\040413_ZoopChlW.shp")
 		self.gain_data = wq_gain.convert_wq_dtypes(wqt_timestamp_match.wq_from_file(self.data))
 		self.depth_field = "DEP25"
 		pass
