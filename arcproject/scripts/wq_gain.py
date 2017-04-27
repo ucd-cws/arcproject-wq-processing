@@ -6,7 +6,7 @@ import os
 
 import pandas as pd
 
-from ..waterquality import classes
+from arcproject.waterquality import classes
 from . import wqt_timestamp_match as wqt
 
 

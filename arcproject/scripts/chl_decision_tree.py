@@ -4,11 +4,9 @@ from datetime import datetime
 import six
 import numpy
 import pandas
-from .. import waterquality
-from ..waterquality.utils import shorten_float
+from arcproject.waterquality import classes
+from arcproject.waterquality.utils import shorten_float
 from sqlalchemy import exc
-
-classes = waterquality.classes
 
 format_string = "%Y-%m-%d"
 

@@ -15,7 +15,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from .config import projection_spatial_reference
 from .funcs import reproject_features
-from ..waterquality import classes
+from arcproject.waterquality import classes
 
 # define constants
 source_field = "WQ_SOURCE"
