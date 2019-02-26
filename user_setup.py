@@ -12,6 +12,7 @@ try:
 except ImportError:
 	import _winreg as winreg
 
+
 def set_up_r_dependencies():
 	import launchR  # imported here because it will be installed before this is called, but won't be installed at load time in all cases
 
@@ -22,7 +23,8 @@ def set_up_r_dependencies():
 
 def find_wheels(path):
 	"""
-		find any Python wheel files in the directory provided by "path"
+		find any Python wheel files in the directory provided by "path". We build wheels and they are distributed alongside
+		this file, so this loads and installs any wheels it finds.
 	:param path:
 	:return: list of files in the provided path
 	"""

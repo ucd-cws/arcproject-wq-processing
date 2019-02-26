@@ -3,4 +3,4 @@ from . import scripts
 
 __all__ = ['waterquality', 'scripts']
 
-__version__ = "2017.4.26"
+__version__ = "2019.2.26"

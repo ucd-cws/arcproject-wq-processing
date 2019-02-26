@@ -35,6 +35,9 @@ def profile_function_historic(*args, **kwargs):
 	a field for the filename, which has the site code). Future data will have another method and use a different site
 	function that will be passed to wq_df2database
 
+	Question: Why are we using *args and **kwargs for this function? Why aren't we using directly named arguments here?
+			We should document this if we figure it out (not inclined to change it without knowing reason though)
+
 	:param args:
 	:param kwargs:
 	:return: site object

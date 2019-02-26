@@ -18,6 +18,7 @@ os.environ["arcproject_db_path"] = db_location  # set the DB path to access late
 
 Base = declarative_base()
 
+
 class db_abstract(object):
 
 	def connect_db(self, database=db_location):
@@ -44,6 +45,7 @@ class db_abstract(object):
 db_abstract_container = db_abstract()
 db_engine = db_abstract_container.connect_db(db_location)
 Session = db_abstract_container.db_session(db_engine)
+
 
 def get_new_session():
 	"""
