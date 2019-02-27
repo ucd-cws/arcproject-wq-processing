@@ -830,7 +830,7 @@ class GenerateHeatPlot(object):
 		return
 
 
-	@parameters_as_dict
+	@parameters_as_dict  # parameters_as_dict is our own custom decorator that gives us a dictionary with names for params instead of ordering them
 	def execute(self, parameters, messages):
 
 		sitecodename = parameters["code"].valueAsText
@@ -1857,11 +1857,12 @@ class ExportHeatPlotData(object):
 
 		arcpy.AddMessage("Saving WaterQuality for site {} as csv.\n{}".format(sitecodename, output_file))
 
-		try:
-			outfile = open(output_file, 'wb')
-			outcsv = csv.writer(outfile)
 
-			session = classes.get_new_session()
+		outfile = open(output_file, 'wb')
+		outcsv = csv.writer(outfile)
+
+		session = classes.get_new_session()
+		try:
 			records = session.query(classes.WaterQuality).filter(classes.Site.code == sitecode).\
 				filter(classes.Site.id == classes.WaterQuality.site_id)
 			outcsv.writerow([column.name for column in classes.WaterQuality.__mapper__.columns])  # header as row 1
@@ -1871,4 +1872,3 @@ class ExportHeatPlotData(object):
 			outfile.close()
 		finally:
 			session.close()
-		return
