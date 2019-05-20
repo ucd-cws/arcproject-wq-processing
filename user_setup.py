@@ -4,9 +4,10 @@ import os
 import sys
 import subprocess
 
-r_dependencies = ["RSQLite", "plyr", "gplots", "ggplot2"]
+r_dependencies = ["RSQLite", "plyr", "gplots", "devtools", "ggplot2"]
 r_github_dependencies = ["ucd-cws/wq-heatplot"]
 
+devtools::install_github("r-lib/remotes", ref = "e56a41e1d0cad55cbe7d60b274b99ab7b7a76b5c")
 try:
 	import winreg
 except ImportError:
@@ -17,6 +18,7 @@ def set_up_r_dependencies():
 	import launchR  # imported here because it will be installed before this is called, but won't be installed at load time in all cases
 
 	R = launchR.Interpreter()
+	R.run("-e", ["\"devtools::install_github('r-lib/remotes', ref = 'e56a41e1d0cad55cbe7d60b274b99ab7b7a76b5c')\"",])  # this is a hopefully temporary fix, which should make it so that the other packages install correctly. I believe wq-heatplot wasn't installing correctly without this.
 	R.install_packages(r_dependencies, missing_only=False)
 	R.install_github(r_github_dependencies)
 

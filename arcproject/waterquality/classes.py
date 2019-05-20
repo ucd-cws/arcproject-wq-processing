@@ -8,7 +8,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, validates
 
 base_folder = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if os.path.exists(os.path.join(base_folder, "DEV_MODE")):
+if os.path.exists(os.path.join(base_folder, "DEV_MODE")):  # This would be safer if there was a positive flag for production instead of a negative flag indicating dev mode
 	db_name = "wqdb.sqlite"
 	db_location = os.path.join(base_folder, "arcproject", db_name)
 else:
