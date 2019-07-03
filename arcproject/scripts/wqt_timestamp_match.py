@@ -642,6 +642,30 @@ def np2feature(np_array, output_feature, spatial_ref):
 	return
 
 
+def dms_to_dd(coordinate_string, force_negative=False):
+	"""
+	:param coordinate_string: A single value, in DMS (not a coordinate pair)
+	:param force_negative: For the new sonde, the coordinates are missing the negative sign, and don't have the "W"
+		signal indicating it is in the western hemisphere 
+	:return: 
+	"""
+
+	degrees, minsec = coordinate_string.split('°')
+	minutes, seconds = minsec.split('\'')  # split at the minutes indicator
+	seconds = seconds.replace('"','')  # remove the trailing quote indicating seconds
+
+	degrees = float(degrees)
+	minutes = float(minutes)
+	seconds = float(seconds)
+
+	decimal_degrees = degrees + float(minutes)/60 + float(seconds)/3600  # make a decimal degree notation of it
+
+	if force_negative and decimal_degrees > 0:
+		decimal_degrees = -decimal_degrees
+
+	return decimal_degrees
+
+
 def dst_closest_match(wq, pts):
 	"""
 	Test shifting timestamp by +1, 0, -1 hour to account for daylight saving time errors
