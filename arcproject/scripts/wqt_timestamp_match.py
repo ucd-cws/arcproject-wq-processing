@@ -27,7 +27,7 @@ source_field = "WQ_SOURCE"
 unit_conversion = {
 	u"DEP25": {
 		u"meters": None,
-		u"feet": 0.3048,
+		u"feet": 0.3048,  # convert feet to meters
 	},
 	u"DEPX": {
 		u"meters": None,
@@ -93,7 +93,6 @@ unit_conversion = {
 	u"Wiper": None,
 	u"SpCond1": None,
 	u"DepthY": None,
-
 }
 
 
@@ -106,7 +105,7 @@ def get_unit_conversion_scale(field, current_units):
 	:return: scaling value to be multiplied against entire field or None
 	"""
 	if field in unit_conversion:
-		if unit_conversion[field] is None:
+		if field not in unit_conversion or unit_conversion[field] is None:
 			return None
 
 		if current_units in unit_conversion[field]:
@@ -342,11 +341,11 @@ def wqtshp2pd(feature_class):
 
 def replaceIllegalFieldnames(df):
 	"""
-	Renames fieldnames
+	Renames fieldnames with illegal characters in them
 	:param df: dataframe with bad fieldnames
 	:return: dataframe with replaced fieldnames
 	"""
-	df = df.rename(columns={'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT', 'DEPX': 'DEP25'})  # TODO make this catch other potential errors
+	df = df.rename(columns={'°C': 'degrees_C', 'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT', 'DEPX': 'DEP25'})  # TODO make this catch other potential errors
 	return df
 
 
@@ -450,7 +449,7 @@ def gps_append_fromlist(list_gps_files):
 
 	return master_pts
 
-# set the default settings for parsing the site codes (and gain settings) from the filename spliting on underscores
+# set the default settings for parsing the site codes (and gain settings) from the filename splitting on underscores
 site_function_params = {"site_part": 2,
                         "gain_part": 4}
 
@@ -675,7 +674,7 @@ def dst_closest_match(wq, pts):
 	return offset_df
 
 
-def main(water_quality_files, transect_gps, output_feature=None, site_function=site_function_historic,
+def main(water_quality_files, transect_gps=None, output_feature=None, site_function=site_function_historic,
          site_func_params=site_function_params, dst_adjustment=False):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
@@ -690,25 +689,29 @@ def main(water_quality_files, transect_gps, output_feature=None, site_function=s
 	# water quality
 	wq = wq_append_fromlist(water_quality_files)
 
-	# shapefile for transect
-	if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
-		pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
+	if transect_gps:
+		# shapefile for transect
+		if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
+			pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
+		else:
+			pts = wqtshp2pd(transect_gps)
+
+		# DST adjustment
+		if dst_adjustment:
+			wq = dst_closest_match(wq, pts)
+
+		# join using time stamps with exact match
+		joined_data = JoinByTimeStamp(wq, pts)
+		matches = splitunmatched(joined_data)[0]
+		nogpswq = splitunmatched(joined_data)[1]
+
+		print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
+
+		# concatenate matches with nogpswq
+		result = pd.concat([matches, nogpswq])
 	else:
-		pts = wqtshp2pd(transect_gps)
-
-	# DST adjustment
-	if dst_adjustment:
-		wq = dst_closest_match(wq, pts)
-
-	# join using time stamps with exact match
-	joined_data = JoinByTimeStamp(wq, pts)
-	matches = splitunmatched(joined_data)[0]
-	nogpswq = splitunmatched(joined_data)[1]
-
-	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
-
-	# concatenate matches with nogpswq
-	result = pd.concat([matches, nogpswq])
+		result = wq  # if we don't have separate transect GPS, check that the wq data has spatial information
+					# and then raise an error if it doesn't
 
 	wq_df2database(result, site_function=site_function, site_func_params=site_func_params)
 
