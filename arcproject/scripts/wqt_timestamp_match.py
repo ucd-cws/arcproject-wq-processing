@@ -20,6 +20,23 @@ from arcproject.waterquality import classes
 # define constants
 source_field = "WQ_SOURCE"
 
+
+class Instrument(object):
+	"""
+		Could do this with a namedtuple too, but whatever
+	"""
+	def __init__(self, name, handler_function, default_crs):
+		self.name = name
+		self.handler_function = handler_function
+		self.default_crs = default_crs  # what is the CRS of the coordinates that this data come in.
+
+	def __repr__(self):
+		return self.name
+
+	def __str__(self):
+		return self.name
+
+
 # the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
 # a dict there, then look up the unit provided. If there's a number there, it's a multiplier to convert units to the desired
 # standard units for that field
@@ -666,6 +683,29 @@ def dms_to_dd(coordinate_string, force_negative=False):
 	return decimal_degrees
 
 
+def handle_ysi():
+	pass
+
+def handle_hydrolab():
+	pass
+
+def load_ysi_sonde_data():
+	"""
+		The new YSI Sonde has a different format - it has a bunch of changes it needs in the file.
+		1. The first 17 rows need to be stripped off - they're not useful to us
+		2. Many fields need to be renamed - special characters, percents, degree symbols, hyphens, spaces, and slashes
+		3. The coordinate data is in DMS. Add new fields for each row in decimal degrees (I'm told it's in WGS84, but will verify)
+			Use dms_to_dd in this same module, and for the longitude field, set force_negative to true, because the coordinates
+			off this device are BS and don't include North or West indicators, *nor* positive/negative, so the values
+			are all positive even in the western hemisphere :facepalm:
+		4. We may need to change the encoding of the file, which comes in as UCS-2 LE BOM, at least in Notepad++
+
+	Then, we'll need to send it through the rest of the normal process, but skip the GPS joining since that's already
+	happening here. Probably what we want to do is add an instrument selection to the loading tool and code - then we can
+	follow a mapping of controller functions based on the instrument.
+	:return:
+	"""
+
 def dst_closest_match(wq, pts):
 	"""
 	Test shifting timestamp by +1, 0, -1 hour to account for daylight saving time errors
@@ -749,3 +789,16 @@ def main(water_quality_files, transect_gps=None, output_feature=None, site_funct
 		# convert structured array to output feature class
 		np2feature(match_np, output_feature, spatial_ref)
 	return
+
+
+
+instruments = [Instrument("YSI EXO2 Sonde",
+						  handler_function=handle_ysi,
+						  default_crs=arcpy.SpatialReference(4326)
+						  ),
+				Instrument("Hach Hydrolab Datasonde5/Trimble Yuma 2",
+						  handler_function=handle_hydrolab,
+						  default_crs=None)
+				]
+
+instruments_dict = dict((item.name, item) for item in instruments)  # make it so we can look them up by name later

@@ -35,7 +35,15 @@ def parameters_as_dict(f):
 		for param in params:
 			parameters[param.name] = param
 
-		f(self=args[0], parameters=parameters, messages=args[1])
+		if "self" in kwargs:
+			kwargs.pop("self")
+		if "parameters" in kwargs:
+			kwargs.pop("parameters")
+
+		if len(args) > 2 and "messages" not in kwargs:
+			kwargs["messages"] = args[2]
+
+		f(self=args[0], parameters=parameters, **kwargs)
 
 	return wrapper
 
@@ -212,6 +220,17 @@ class JoinTimestamp(object):
 			direction="Input"
 		)
 
+		instrument = arcpy.Parameter(
+			displayName="Data Collection Insrument",
+			name="instrument",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input",
+		)
+
+		instrument.filter.type = "ValueList"
+		instrument.filter.list = [inst.name for inst in wqt_timestamp_match.instruments]
+
 		# shapefile for the transects GPS breadcrumbs
 		bc = arcpy.Parameter(
 			displayName="Transect Shapefile",
@@ -236,7 +255,7 @@ class JoinTimestamp(object):
 			parameterType="Optional"
 		)
 
-		params = [wqt, bc, site, out]
+		params = [wqt, instrument, bc, site, out]
 
 		return params
 
@@ -244,30 +263,36 @@ class JoinTimestamp(object):
 		"""Set whether tool is licensed to execute."""
 		return True
 
+	@parameters_as_dict
 	def updateParameters(self, parameters):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
-		return
+
+		if parameters["instrument"].value == "YSI EXO2 Sonde":
+			parameters["shp_file"].enabled = False
+		else:
+			parameters["shp_file"].enabled = True
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
 		parameter.  This method is called after internal validation."""
 		return
 
+	@parameters_as_dict
 	def execute(self, parameters, messages):
 		"""The source code of the tool."""
-		wq_transect_list = parameters[0].valueAsText.split(";")
+		wq_transect_list = parameters["wqt"].valueAsText.split(";")
 
-		pts = parameters[1].valueAsText
+		pts = parameters["shp_file"].valueAsText
 
-		site_code = parameters[2].valueAsText
+		site_code = parameters["site_code"].valueAsText
 		if not site_code or site_code == "":
 			site_function = wqt_timestamp_match.site_function_historic
 		else:
 			site_function = site_code
 
-		output_path = parameters[3].valueAsText
+		output_path = parameters["Output"].valueAsText
 		if output_path == "":
 			output_path = None
 
