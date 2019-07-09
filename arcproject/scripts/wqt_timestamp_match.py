@@ -76,17 +76,15 @@ class YSIInstrument(Instrument):
 		self.spatial_reference = arcpy.SpatialReference(4326)
 		self.water_quality_header_map = {  # maps header fields to database fields - this is default, but is for the
 			"degrees_C": "temp",
+			"C": "temp",
 			"pH": "ph",
 			"SPC_uS_cm": "sp_cond",
 			"SAL_ppt": "salinity",
 			"DO_pct": "dissolved_oxygen_percent",
 			"DO_mg_L": "dissolved_oxygen",
 			"DEP_m": "dep_25",
-			"": "par",
-			"": "rpar",
 			"TSS_mg_L": "turbidity_sc",
 			"Chl_ug_L": "chl",
-			"": "chl_volts",
 			"Date_Time": "date_time",
 			"WQ_SOURCE": "source",  # a None here means it'll skip it
 			"GPS_SOURCE": None,
@@ -99,13 +97,24 @@ class YSIInstrument(Instrument):
 	def handle(self, wq, transect_gps=None, dst_adjustment=None, skip_rows=17, ):
 		"""
 			The new YSI Sonde has a different format - it has a bunch of changes it needs in the file.
-			1. The first 17 rows need to be stripped off - they're not useful to us
+			1. The first 17 rows need to be stripped off - they're not useful to us - check the header first to see if
+				it's there - if the stuff we don't need is still there, strip it - if not, then don't
 			2. Many fields need to be renamed - special characters, percents, degree symbols, hyphens, spaces, and slashes
 			3. The coordinate data is in DMS. Add new fields for each row in decimal degrees (I'm told it's in WGS84, but will verify)
 				Use dms_to_dd in this same module, and for the longitude field, set force_negative to true, because the coordinates
 				off this device are BS and don't include North or West indicators, *nor* positive/negative, so the values
 				are all positive even in the western hemisphere :facepalm:
-			4. We may need to change the encoding of the file, which comes in as UCS-2 LE BOM, at least in Notepad++
+			4. We may need to change the encoding of the file, which comes in as UCS-2 LE BOM (AKA, UTF-16 LE BOM, but not
+				exactly the same), at least in Notepad++. Can
+				we detect the file encoding instead of always reading it as coming from one codec? That way if they
+				export from Excel and it comes in as ANSI, then we're fine, but if it's in UCS-2, then we can use the
+				conversion.
+			5. Excel may also quote the coordinates (and *only* the coordinates because they have a quote in them) - does
+				the CSV module handle this for us?
+			6. Need to adjust the scale of a single field - probably won't use the existing scaling code for that - it'd
+				be too big of a refactor to do right now and we're not handling units the same way, so we'll need to just
+				scale that value. Possibly just a field calculation in arcpy since we'll have it loaded already, then
+				we only map the secondary field we create to the DB.
 
 		Then, we'll need to send it through the rest of the normal process, but skip the GPS joining since that's already
 		happening here. Probably what we want to do is add an instrument selection to the loading tool and code - then we can
@@ -162,16 +171,20 @@ class YSIInstrument(Instrument):
 										  new_latitude_field,
 										  spatial_reference=self.spatial_reference)
 
-		# need to figure out unit conversion issues - move both field maps to instruments??
+
+		# Make it complain about missing fields so we can catch changes in field names/units
 		# make this table into features so that it can be passed into wqtshp2pd, which will handle projection, etc
 		# rework wqtshp2pd to handle this
 
-
-instruments = [YSIInstrument(), HydroLabInstrument()]
+ysi = YSIInstrument()
+hydrolab = HydroLabInstrument()
+instruments = [ysi, hydrolab]
 instruments_dict = dict((item.name, item) for item in instruments)  # make it so we can look them up by name later
 
 
-# ONLY USED FOR HYDROLAB - the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
+# ONLY USED FOR HYDROLAB - the YSI field mapping is just a static mapping of fields to DB without unit conversion.
+# If the YSI units change, the field names will change, so we need to make it loudly complain if the field names chang
+# the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
 # a dict there, then look up the unit provided. If there's a number there, it's a multiplier to convert units to the desired
 # standard units for that field
 unit_conversion = {
