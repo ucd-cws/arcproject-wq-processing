@@ -5,6 +5,8 @@ import os
 import tempfile
 import traceback
 from datetime import datetime, timedelta
+import csv
+import codecs
 
 import arcpy
 import numpy as np
@@ -25,10 +27,6 @@ class Instrument(object):
 	"""
 		Could do this with a namedtuple too, but whatever
 	"""
-	def __init__(self, name, handler_function, default_crs):
-		self.name = name
-		self.handler_function = handler_function
-		self.default_crs = default_crs  # what is the CRS of the coordinates that this data come in.
 
 	def __repr__(self):
 		return self.name
@@ -37,10 +35,145 @@ class Instrument(object):
 		return self.name
 
 
-# the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
+class HydroLabInstrument(Instrument):
+
+	def __init__(self):
+		self.name = "Hach Hydrolab Datasonde5/Trimble Yuma 2"
+		self.has_gps = False  # does the instrument have GPS data on its own?
+		self.spatial_reference = arcpy.SpatialReference(4326)
+		self.water_quality_header_map = {  # maps header fields to database fields - this is default, but is for the
+			"Temp": "temp",
+			"pH": "ph",
+			"SpCond": "sp_cond",
+			"Sal": "salinity",
+			"DO_PCT": "dissolved_oxygen_percent",
+			"DO": "dissolved_oxygen",
+			"DEP25": "dep_25",
+			"DEPX": "dep_25",
+			"PAR": "par",
+			"RPAR": "rpar",
+			"TurbSC": "turbidity_sc",
+			"CHL": "chl",
+			"CHL_VOLTS": "chl_volts",
+			"Date_Time": "date_time",
+			"WQ_SOURCE": "source",  # a None here means it'll skip it
+			"GPS_SOURCE": None,
+			"GPS_Time": None,
+			"GPS_Date": None,
+			"POINT_Y": "y_coord",
+			"POINT_X": "x_coord",
+		}
+
+	def handle(self, wq, transect_gps, dst_adjustment=None):
+		return join_gps_by_time(wq, transect_gps, dst_adjustment)
+
+
+class YSIInstrument(Instrument):
+
+	def __init__(self):
+		self.name = "YSI EXO2 Sonde"
+		self.has_gps = True  # does the instrument have GPS data on its own?
+		self.spatial_reference = arcpy.SpatialReference(4326)
+		self.water_quality_header_map = {  # maps header fields to database fields - this is default, but is for the
+			"degrees_C": "temp",
+			"pH": "ph",
+			"SPC_uS_cm": "sp_cond",
+			"SAL_ppt": "salinity",
+			"DO_pct": "dissolved_oxygen_percent",
+			"DO_mg_L": "dissolved_oxygen",
+			"DEP_m": "dep_25",
+			"": "par",
+			"": "rpar",
+			"TSS_mg_L": "turbidity_sc",
+			"Chl_ug_L": "chl",
+			"": "chl_volts",
+			"Date_Time": "date_time",
+			"WQ_SOURCE": "source",  # a None here means it'll skip it
+			"GPS_SOURCE": None,
+			"GPS_Time": None,
+			"GPS_Date": None,
+			"POINT_Y": "y_coord",
+			"POINT_X": "x_coord",
+		}
+
+	def handle(self, wq, transect_gps=None, dst_adjustment=None, skip_rows=17, ):
+		"""
+			The new YSI Sonde has a different format - it has a bunch of changes it needs in the file.
+			1. The first 17 rows need to be stripped off - they're not useful to us
+			2. Many fields need to be renamed - special characters, percents, degree symbols, hyphens, spaces, and slashes
+			3. The coordinate data is in DMS. Add new fields for each row in decimal degrees (I'm told it's in WGS84, but will verify)
+				Use dms_to_dd in this same module, and for the longitude field, set force_negative to true, because the coordinates
+				off this device are BS and don't include North or West indicators, *nor* positive/negative, so the values
+				are all positive even in the western hemisphere :facepalm:
+			4. We may need to change the encoding of the file, which comes in as UCS-2 LE BOM, at least in Notepad++
+
+		Then, we'll need to send it through the rest of the normal process, but skip the GPS joining since that's already
+		happening here. Probably what we want to do is add an instrument selection to the loading tool and code - then we can
+		follow a mapping of controller functions based on the instrument.
+		:return:
+		"""
+
+		# wq = convert_file_encoding(wq)  # the source data is in UCS-2 LE BOM, which Python sees as null bytes. Let's make it unicode instead
+
+		# basic input cleaning
+		with open(wq, 'r') as wq_data:
+			wq_data_converted = codecs.EncodedFile(wq_data, data_encoding='utf_8', file_encoding='utf_16_le')
+			wq_rows = wq_data_converted.readlines()
+			cleaned_data = wq_rows[skip_rows:]  # strip off the first skip_rows rows because they mess things up
+
+			# then make the header characters legal
+			cleaned_data[0] = cleaned_data[0].replace("°C", "degrees_C")
+			cleaned_data[0] = cleaned_data[0].replace(" ", "_")
+			cleaned_data[0] = cleaned_data[0].replace("-", "_")
+			cleaned_data[0] = cleaned_data[0].replace("/", "_")
+			cleaned_data[0] = cleaned_data[0].replace("%", "pct")
+
+			output_temp = tempfile.mkstemp(prefix="arcproject_wq_", suffix=".csv")
+			output_temp_path = output_temp[1]
+			print("temp file at {}".format(output_temp_path))
+			with open(output_temp_path, 'w') as outfile:
+				for line in cleaned_data:
+					outfile.write(line)
+
+		# *now* we want to open it as a CSV and make new location fields in DD from the DMS data, but we need to make
+		# some corrections of our own.
+		new_longitude_field = "Lon_DD"
+		new_latitude_field = "Lat_DD"
+		with open(output_temp_path, 'r') as cleaned_data_csv:
+			cleaned_rows = csv.DictReader(cleaned_data_csv)
+			output_records = []
+			fieldnames = cleaned_rows.fieldnames
+			fieldnames.append(new_latitude_field)
+			fieldnames.append(new_longitude_field)
+			for record in cleaned_rows:
+				record[new_latitude_field] = dms_to_dd(record["Lat"], force_negative=False)  # convert the latitude
+				record[new_longitude_field] = dms_to_dd(record["Lon"],
+														force_negative=True)  # convert the longitude, force it to western hemisphere
+				output_records.append(record)
+
+		with open(output_temp_path,
+				  'wb') as cleaned_data_csv:  # wb probably won't work under Python 3 and we'd want to just be explicit about line endings instead.
+			writer = csv.DictWriter(cleaned_data_csv, fieldnames=fieldnames)
+			writer.writeheader()
+			writer.writerows(output_records)
+
+		arcpy.MakeXYEventLayer_management(cleaned_data,
+										  new_longitude_field,
+										  new_latitude_field,
+										  spatial_reference=self.spatial_reference)
+
+		# need to figure out unit conversion issues - move both field maps to instruments??
+		# make this table into features so that it can be passed into wqtshp2pd, which will handle projection, etc
+		# rework wqtshp2pd to handle this
+
+
+instruments = [YSIInstrument(), HydroLabInstrument()]
+instruments_dict = dict((item.name, item) for item in instruments)  # make it so we can look them up by name later
+
+
+# ONLY USED FOR HYDROLAB - the following dict of dicts is to convert units when they vary in the data frame - look up the field and if there's
 # a dict there, then look up the unit provided. If there's a number there, it's a multiplier to convert units to the desired
 # standard units for that field
-
 unit_conversion = {
 	u"DEP25": {
 		u"meters": None,
@@ -309,10 +442,12 @@ def check_projection(feature_class):
 	return feature_class
 
 
-def wqtshp2pd(feature_class):
+def wqtshp2pd(feature_class, date_field="GPS_Date", time_field="GPS_Time"):
 	"""
 	Add XY coords, converts wq transect shp into a pandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
 	:param feature_class: input shapefile
+	:param date_field: the field in the feature class that has the date information
+	:param time_field: the field in the feature class that has the time information
 	:return: geopandas data frame
 	"""
 
@@ -341,10 +476,10 @@ def wqtshp2pd(feature_class):
 		addsourcefield(df, "GPS_SOURCE", feature_class)
 
 		# cast Date field to str instead of timestamp
-		df["GPS_Date"] = df["GPS_Date"].dt.date.astype(str)  # ArcGis adds some artificial times
+		df[date_field] = df[date_field].dt.date.astype(str)  # ArcGis adds some artificial times
 
 		# combine GPS date and GPS time fields into a single column
-		df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row["GPS_Date"], row["GPS_Time"]), axis=1)
+		df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[date_field], row[time_field]), axis=1)
 
 		# drop duplicated rows in the data frame
 		#df = df.drop_duplicates(["Date_Time"], 'first')
@@ -468,7 +603,7 @@ def gps_append_fromlist(list_gps_files):
 
 # set the default settings for parsing the site codes (and gain settings) from the filename splitting on underscores
 site_function_params = {"site_part": 2,
-                        "gain_part": 4}
+						"gain_part": 4}
 
 
 def site_function_historic(*args, **kwargs):
@@ -683,29 +818,6 @@ def dms_to_dd(coordinate_string, force_negative=False):
 	return decimal_degrees
 
 
-def handle_ysi():
-	pass
-
-def handle_hydrolab():
-	pass
-
-def load_ysi_sonde_data():
-	"""
-		The new YSI Sonde has a different format - it has a bunch of changes it needs in the file.
-		1. The first 17 rows need to be stripped off - they're not useful to us
-		2. Many fields need to be renamed - special characters, percents, degree symbols, hyphens, spaces, and slashes
-		3. The coordinate data is in DMS. Add new fields for each row in decimal degrees (I'm told it's in WGS84, but will verify)
-			Use dms_to_dd in this same module, and for the longitude field, set force_negative to true, because the coordinates
-			off this device are BS and don't include North or West indicators, *nor* positive/negative, so the values
-			are all positive even in the western hemisphere :facepalm:
-		4. We may need to change the encoding of the file, which comes in as UCS-2 LE BOM, at least in Notepad++
-
-	Then, we'll need to send it through the rest of the normal process, but skip the GPS joining since that's already
-	happening here. Probably what we want to do is add an instrument selection to the loading tool and code - then we can
-	follow a mapping of controller functions based on the instrument.
-	:return:
-	"""
-
 def dst_closest_match(wq, pts):
 	"""
 	Test shifting timestamp by +1, 0, -1 hour to account for daylight saving time errors
@@ -739,7 +851,7 @@ def dst_closest_match(wq, pts):
 
 
 def main(water_quality_files, transect_gps=None, output_feature=None, site_function=site_function_historic,
-         site_func_params=site_function_params, dst_adjustment=False):
+         site_func_params=site_function_params, dst_adjustment=False, instrument=hydrolab):
 	"""
 	:param water_quality_files: list of water quality files collected during the transects
 	:param transect_gps: gps shapefile of transect tract
@@ -747,58 +859,65 @@ def main(water_quality_files, transect_gps=None, output_feature=None, site_funct
 	:param site_function: A site code or function that identifies the site and returns the site object for the record.
 	:param site_func_params: parameters to pass to the site function
 	:param dst_adjustment: boolean to control if to adjust for daylight saving time
+	:param instrument: Which instrument was used to collect this data? Defaults to hydrolab for legacy purposes
+		but all new data should be from the YSI, so could be worth toggling over at some point.
 	:return:
 	"""
 
 	# water quality
 	wq = wq_append_fromlist(water_quality_files)
 
-	if transect_gps:
-		# shapefile for transect
-		if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
-			pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
-		else:
-			pts = wqtshp2pd(transect_gps)
+	if not instrument.has_gps:  # if the instrument doesn't have GPS data built in, then we need to attach it
+		if transect_gps == "" or transect_gps is None:
+			raise ValueError("Instrument \"{}\" doesn't have GPS data attached and separate transect_gps data not provided".format(instrument.name))
 
-		# DST adjustment
-		if dst_adjustment:
-			wq = dst_closest_match(wq, pts)
+	data_with_gps = instrument.handler_function(wq, transect_gps, dst_adjustment)
 
-		# join using time stamps with exact match
-		joined_data = JoinByTimeStamp(wq, pts)
-		matches = splitunmatched(joined_data)[0]
-		nogpswq = splitunmatched(joined_data)[1]
-
-		print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
-
-		# concatenate matches with nogpswq
-		result = pd.concat([matches, nogpswq])
-	else:
-		result = wq  # if we don't have separate transect GPS, check that the wq data has spatial information
-					# and then raise an error if it doesn't
-
-	wq_df2database(result, site_function=site_function, site_func_params=site_func_params)
+	wq_df2database(data_with_gps,
+				   field_map=instrument.water_quality_header_map,
+				   site_function=site_function,
+				   site_func_params=site_func_params)
 
 	if output_feature:
 		# Define a spatial reference for the output feature class by copying the input
-		spatial_ref = arcpy.Describe(transect_gps).spatialReference
+		spatial_ref = instrument.spatial_reference
 
 		# convert pandas dataframe to structured numpy array
-		match_np = pd2np(result)
+		match_np = pd2np(data_with_gps)
 
 		# convert structured array to output feature class
 		np2feature(match_np, output_feature, spatial_ref)
-	return
 
 
+def join_gps_by_time(wq, transect_gps, dst_adjustment):
+	"""
+		This method isn't *strictly* for the hydrolab, it's more of a generic process for matching GPS data
+		from a separate device to the water quality data using the timestamp. But we only have one instrument
+		that needs that right now, so we'll leave it in the handle_hydrolab method.
 
-instruments = [Instrument("YSI EXO2 Sonde",
-						  handler_function=handle_ysi,
-						  default_crs=arcpy.SpatialReference(4326)
-						  ),
-				Instrument("Hach Hydrolab Datasonde5/Trimble Yuma 2",
-						  handler_function=handle_hydrolab,
-						  default_crs=None)
-				]
+	:param dst_adjustment:
+	:param transect_gps:
+	:param wq:
+	:return:
+	"""
 
-instruments_dict = dict((item.name, item) for item in instruments)  # make it so we can look them up by name later
+	# shapefile for transect
+	if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
+		pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
+	else:
+		pts = wqtshp2pd(transect_gps)
+
+	# DST adjustment
+	if dst_adjustment:
+		wq = dst_closest_match(wq, pts)
+
+	# join using time stamps with exact match
+	joined_data = JoinByTimeStamp(wq, pts)
+	matches = splitunmatched(joined_data)[0]
+	nogpswq = splitunmatched(joined_data)[1]
+
+	print("Percent Matched: {}".format(JoinMatchPercent(wq, matches)))
+	# concatenate matches with nogpswq
+
+	result = pd.concat([matches, nogpswq])
+	return result

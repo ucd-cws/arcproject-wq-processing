@@ -8,8 +8,8 @@ import six
 import pandas
 import arcpy
 
-import scripts.config
-import scripts.funcs
+from arcproject.scripts import config
+from arcproject.scripts import funcs
 from arcproject import scripts
 from arcproject.scripts import wqt_timestamp_match
 from arcproject.waterquality import classes
@@ -334,6 +334,12 @@ class CheckReprojection(BaseDBTest):
 			self.assertTrue(float(y_min) <= float(record.y_coord) <= float(y_max))
 
 
+class TestYSI(unittest.TestCase):
+	def setUp(self):
+		self.test_file = os.path.join(base_folder, "testfiles", "new_sonde_samples", "ARC_011519_WQT", "ARC_011519_WQT_RawData", "190115-074028-_.csv")
+
+	def test_coordinate_cleaning(self):
+		wqt_timestamp_match.handle_ysi(self.test_file)
 
 
 if __name__ == '__main__':

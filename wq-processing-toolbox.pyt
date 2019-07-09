@@ -284,7 +284,8 @@ class JoinTimestamp(object):
 		"""The source code of the tool."""
 		wq_transect_list = parameters["wqt"].valueAsText.split(";")
 
-		pts = parameters["shp_file"].valueAsText
+		pts = parameters["shp_file"].valueAsText  # we'll get the GPS data regardless of if we have it,
+												# and then filter whether the instrument requires it in main
 
 		site_code = parameters["site_code"].valueAsText
 		if not site_code or site_code == "":
@@ -292,14 +293,14 @@ class JoinTimestamp(object):
 		else:
 			site_function = site_code
 
+		instrument = wqt_timestamp_match.instruments_dict[parameters["instrument"].valueAsText]
+
 		output_path = parameters["Output"].valueAsText
 		if output_path == "":
 			output_path = None
 
 		# run wq_join_match
-		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function)
-
-		pass
+		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function, instrument=instrument)
 
 
 class GainToDB(object):

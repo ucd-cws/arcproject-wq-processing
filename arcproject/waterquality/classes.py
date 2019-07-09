@@ -224,29 +224,6 @@ class GrabSample(Base):
 	source = Column(String)
 
 
-water_quality_header_map = {  # maps header fields to database fields
-	"Temp": "temp",
-	"pH": "ph",
-	"SpCond": "sp_cond",
-	"Sal": "salinity",
-	"DO_PCT": "dissolved_oxygen_percent",
-	"DO": "dissolved_oxygen",
-	"DEP25": "dep_25",
-	"DEPX": "dep_25",
-	"PAR": "par",
-	"RPAR": "rpar",
-	"TurbSC": "turbidity_sc",
-	"CHL": "chl",
-	"CHL_VOLTS": "chl_volts",
-	"Date_Time": "date_time",
-	"WQ_SOURCE": "source",  # a None here means it'll skip it
-	"GPS_SOURCE": None,
-	"GPS_Time": None,
-	"GPS_Date": None,
-	"POINT_Y": "y_coord",
-	"POINT_X": "x_coord",
-}
-
 class WaterQuality(Base):
 	"""
 		Each instance of this class is an observation in the database
