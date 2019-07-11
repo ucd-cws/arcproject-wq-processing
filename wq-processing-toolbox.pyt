@@ -221,7 +221,7 @@ class JoinTimestamp(object):
 		)
 
 		instrument = arcpy.Parameter(
-			displayName="Data Collection Insrument",
+			displayName="Data Collection Instrument",
 			name="instrument",
 			datatype="GPString",
 			multiValue=False,
@@ -271,8 +271,10 @@ class JoinTimestamp(object):
 
 		if parameters["instrument"].value == "YSI EXO2 Sonde":
 			parameters["shp_file"].enabled = False
+			parameters["shp_file"].parameterType="Optional"
 		else:
 			parameters["shp_file"].enabled = True
+			parameters["shp_file"].parameterType="Required"
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool

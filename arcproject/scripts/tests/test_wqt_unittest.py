@@ -8,10 +8,8 @@ import six
 import pandas
 import arcpy
 
-from arcproject.scripts import config
-from arcproject.scripts import funcs
 from arcproject import scripts
-from arcproject.scripts import wqt_timestamp_match
+from .. import wqt_timestamp_match
 from arcproject.waterquality import classes
 from sqlalchemy import exc
 
