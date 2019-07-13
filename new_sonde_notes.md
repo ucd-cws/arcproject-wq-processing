@@ -18,3 +18,7 @@
         coordinate information before running further
     - Workflow-wise, should we assume "Lat" and "Lon" are the fields, or should
         we have a field name option in the tool
+        
+5. Do we need to correct this data, and if we don't, will our other items work on
+    non-corrected data? I think they let you select any variable, but worth
+    confirming.

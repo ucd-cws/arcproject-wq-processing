@@ -38,7 +38,11 @@ class Slurper(object):
 		self.add_new_sites = False  # adds unknown sites to the database
 
 	def find_files(self, directory, pattern='*', exclude=None, skipext=None):
-		"""http://stackoverflow.com/questions/14798220/how-can-i-search-sub-folders-using-glob-glob-module-in-python"""
+		"""
+			Adapted from:
+			http://stackoverflow.com/questions/14798220/how-can-i-search-sub-folders-using-glob-glob-module-in-python
+		"""
+
 		if not os.path.exists(directory):
 			raise ValueError("Directory not found {}".format(directory))
 

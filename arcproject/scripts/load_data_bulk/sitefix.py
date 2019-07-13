@@ -1,3 +1,7 @@
+"""
+	Appears to change the site tags of certain files that were named in known nonstandard ways
+"""
+
 from arcproject.scripts import swap_site_recs
 import os
 import csv

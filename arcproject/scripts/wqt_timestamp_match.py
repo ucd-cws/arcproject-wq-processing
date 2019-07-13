@@ -34,6 +34,10 @@ class Instrument(object):
 	def __str__(self):
 		return self.name
 
+	@property
+	def load_fields(self):
+		return [key for key in self.water_quality_header_map if self.water_quality_header_map[key] is not None]
+
 
 class HydroLabInstrument(Instrument):
 
@@ -95,6 +99,12 @@ class YSIInstrument(Instrument):
 			"POINT_X": "x_coord",
 		}
 
+		# make a list of the fields we actually want to load - just the ones we've defined in the field map. Others
+		# can be there and muck up the loading process (crashes when making the pandas data frame
+
+		self.new_latitude_field = "Lat_DD"
+		self.new_longitude_field = "Lon_DD"
+
 	def handle(self, wq, transect_gps=None, dst_adjustment=None, skip_rows=17, ):
 		"""
 			The new YSI Sonde has a different format - it has a bunch of changes it needs in the file.
@@ -126,30 +136,42 @@ class YSIInstrument(Instrument):
 		# wq = convert_file_encoding(wq)  # the source data is in UCS-2 LE BOM, which Python sees as null bytes. Let's make it unicode instead
 		self.wq = wq
 		# basic input cleaning
-		cleaned_data = self.fix_csv_header(skip_rows=skip_rows)
+		self.fix_csv_header(skip_rows=skip_rows)
 
 		# *now* we want to open it as a CSV and make new location fields in DD from the DMS data, but we need to make
 		# some corrections of our own.
-		new_latitude_field, new_longitude_field = self.correct_coordinates()
 
-		xy_event_layer = "xy_event_layer"
-		arcpy.MakeXYEventLayer_management(cleaned_data,
-										  new_longitude_field,
-										  new_latitude_field,
-										  out_layer=xy_event_layer,
-										  spatial_reference=self.spatial_reference)
+		self.correct_coordinates()
+
+		reprojected_features = self.make_spatial_and_calculate_fields()
+
+		return wqtshp2pd(reprojected_features, date_field="lDate", time_field="lTime", instrument=self)
+
+	def make_spatial_and_calculate_fields(self):
+		table_view = "xy_table_view"
+		arcpy.MakeTableView_management(self.cleaned_csv_file, table_view)
 		try:
-			# we don't strictly need to do this, but it gives us an on-disk representation that we can calculate fields on
-			# too. Otherwise, if we skip it, reprojection will happen in wqtshp2pd
-			reprojected_features = reproject_features(xy_event_layer, projection_spatial_reference)
-			arcpy.AddField_management(reprojected_features, field_name="turbidity", field_type="DOUBLE")
+			xy_event_layer = "xy_event_layer"
+			arcpy.MakeXYEventLayer_management("xy_table_view",
+											  self.new_longitude_field,
+											  self.new_latitude_field,
+											  out_layer=xy_event_layer,
+											  spatial_reference=self.spatial_reference)
 
-			# change proprietary FNU to NTU based on scaling factor from Chris Jasper
-			arcpy.CalculateField_management(reprojected_features, field="turbidity", expression="!FNU! * 1.24", expression_type="PYTHON")
-
-			return wqtshp2pd(reprojected_features, date_field="Date", time_field="Time")
+			try:
+				# we don't strictly need to do this, but it gives us an on-disk representation that we can calculate fields on
+				# too. Otherwise, if we skip it, reprojection will happen in wqtshp2pd
+				reprojected_features = reproject_features(xy_event_layer, projection_spatial_reference)
+			finally:
+				arcpy.Delete_management(xy_event_layer)  # clean up the layer in memory if something happens
 		finally:
-			arcpy.Delete_management(xy_event_layer)  # clean up the layer in memory if something happens
+			arcpy.Delete_management("xy_table_view")
+
+		arcpy.AddField_management(reprojected_features, field_name="turbidity", field_type="DOUBLE")
+		# change proprietary FNU to NTU based on scaling factor from Chris Jasper
+		arcpy.CalculateField_management(reprojected_features, field="turbidity", expression="!FNU! * 1.24",
+										expression_type="PYTHON")
+		return reprojected_features
 
 	def fix_csv_header(self, skip_rows):
 		with open(self.wq, 'r') as wq_data:
@@ -163,6 +185,8 @@ class YSIInstrument(Instrument):
 			cleaned_data[0] = cleaned_data[0].replace("-", "_")
 			cleaned_data[0] = cleaned_data[0].replace("/", "_")
 			cleaned_data[0] = cleaned_data[0].replace("%", "pct")
+			cleaned_data[0] = cleaned_data[0].replace("Date", "lDate")
+			cleaned_data[0] = cleaned_data[0].replace("Time", "lTime")
 
 			output_temp = tempfile.mkstemp(prefix="arcproject_wq_", suffix=".csv")
 			self.cleaned_csv_file = output_temp[1]
@@ -170,34 +194,27 @@ class YSIInstrument(Instrument):
 			with open(self.cleaned_csv_file, 'w') as outfile:
 				for line in cleaned_data:
 					outfile.write(line)
-		return cleaned_data
 
 	def correct_coordinates(self):
 		"""
 			The YSI sonde produces incorrect coordinates. This fixes them.
 		:return:
 		"""
-		new_longitude_field = "Lon_DD"
-		new_latitude_field = "Lat_DD"
 		with open(self.cleaned_csv_file, 'r') as cleaned_data_csv:
 			cleaned_rows = csv.DictReader(cleaned_data_csv)
 			output_records = []
 			fieldnames = cleaned_rows.fieldnames
-			fieldnames.append(new_latitude_field)
-			fieldnames.append(new_longitude_field)
+			fieldnames.append(self.new_latitude_field)
+			fieldnames.append(self.new_longitude_field)
 			for record in cleaned_rows:
-				record[new_latitude_field] = dms_to_dd(record["Lat"], force_negative=False)  # convert the latitude
-				record[new_longitude_field] = dms_to_dd(record["Lon"],
-														force_negative=True)  # convert the longitude, force it to western hemisphere
+				record[self.new_latitude_field] = dms_to_dd(record["Lat"], force_negative=False)  # convert the latitude
+				record[self.new_longitude_field] = dms_to_dd(record["Lon"], force_negative=True)  # convert the longitude, force it to western hemisphere
 				output_records.append(record)
 
-		with open(self.cleaned_csv_file,
-				  'wb') as cleaned_data_csv:  # wb probably won't work under Python 3 and we'd want to just be explicit about line endings instead.
+		with open(self.cleaned_csv_file, 'wb') as cleaned_data_csv:  # wb probably won't work under Python 3 and we'd want to just be explicit about line endings instead.
 			writer = csv.DictWriter(cleaned_data_csv, fieldnames=fieldnames)
 			writer.writeheader()
 			writer.writerows(output_records)
-
-		return new_latitude_field, new_longitude_field
 
 	# break this up so it can be unit tested still - even just something that runs each chunk is fine.
 		# Make it complain about missing fields so we can catch changes in field names/units (HOW SHOULD WE HANDLE THIS??)
@@ -483,7 +500,7 @@ def check_projection(feature_class):
 	return feature_class
 
 
-def wqtshp2pd(feature_class, date_field="GPS_Date", time_field="GPS_Time"):
+def wqtshp2pd(feature_class, date_field="GPS_Date", time_field="GPS_Time", instrument=None):
 	"""
 	Add XY coords, converts wq transect shp into a pandas dataframe, adds source field, merges GPS_Data and GPS_Time into date_object
 	:param feature_class: input shapefile
@@ -508,11 +525,15 @@ def wqtshp2pd(feature_class, date_field="GPS_Date", time_field="GPS_Time"):
 		# list of field names that can be converted to pandas df
 		# http://gis.stackexchange.com/questions/151357/ignoring-field-types-in-python-list-returned-by-arcpy-listfields
 		# Data must be 1-dimensional
-		f_list = [f.name for f in arcpy.ListFields("wqt_xy") if
-				  f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
+		available_fields = [f.name for f in arcpy.ListFields("wqt_xy") if
+							f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
+		if not instrument:
+			load_fields = available_fields
+		else:
+			load_fields = list(set(instrument.load_fields).intersection(available_fields))  # only use the fields that are available and specified for loading
 
 		# convert attribute table to pandas dataframe
-		df = feature_class_to_pandas_data_frame("wqt_xy", f_list)
+		df = feature_class_to_pandas_data_frame("wqt_xy", load_fields)
 
 		addsourcefield(df, "GPS_SOURCE", feature_class)
 
