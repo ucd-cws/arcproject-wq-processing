@@ -22,3 +22,6 @@
 5. Do we need to correct this data, and if we don't, will our other items work on
     non-corrected data? I think they let you select any variable, but worth
     confirming.
+    
+6. Need to add "instrument" to wq gain profiles - used in wq_gain.main. Check that the "site" should
+also equal "profile_function_historic"

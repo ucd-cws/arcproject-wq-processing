@@ -51,7 +51,7 @@ class TestUnitConversion(unittest.TestCase):
 
 	def setUp(self):
 		self.wq = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
-		self.df = wqt_timestamp_match.wq_from_file(self.wq)  # doesn't really matter that units are already converted here - the test is just going to pretend anyway
+		self.df = wqt_timestamp_match.hydrolab.wq_from_file(self.wq)  # doesn't really matter that units are already converted here - the test is just going to pretend anyway
 		self.unmodified_data = self.df["DEP25"]
 		self.unmodified_other_column = self.df["pH"]
 
@@ -116,6 +116,8 @@ class TestDFLoading(unittest.TestCase):
 		self.wq_meters = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 		self.wq_feet = os.path.join(base_folder, "testfiles", "feet_conversion.csv")
 
+		self.instrument = wqt_timestamp_match.hydrolab
+
 	def load_file(self, filepath):
 		"""
 			Imitates the first part of the data loading code in wqt_timestamp_match
@@ -138,7 +140,7 @@ class TestDFLoading(unittest.TestCase):
 		return wqt_timestamp_match.replaceIllegalFieldnames(wq)
 
 	def test_no_data_conversion(self):
-		df = wqt_timestamp_match.wq_from_file(self.wq_meters)
+		df = self.instrument.wq_from_file(self.wq_meters)
 		wq = self.load_file(self.wq_meters)
 
 		for index, value in enumerate(wq["DEP25"]):
@@ -149,7 +151,7 @@ class TestDFLoading(unittest.TestCase):
 				self.assertEqual(value, df["DEP25"][index])
 
 	def test_data_conversion(self):
-		df = wqt_timestamp_match.wq_from_file(self.wq_feet)
+		df = self.instrument.wq_from_file(self.wq_feet)
 		wq = self.load_file(self.wq_feet)
 
 		for index, value in enumerate(wq["DEP25"]):
@@ -162,7 +164,8 @@ class TestDFLoading(unittest.TestCase):
 class TestDBInsert(BaseDBTest):
 
 	def test_data_insert(self):
-		matched = wqt_timestamp_match.wq_from_file(self.wq)
+		instrument = wqt_timestamp_match.hydrolab
+		matched = instrument.wq_from_file(self.wq)
 		wqt_timestamp_match.wq_df2database(matched, field_map=self.instrument.water_quality_header_map, session=self.session)
 
 		expected = len(matched)
@@ -188,17 +191,18 @@ class TestDBInsert(BaseDBTest):
 class LoadWQ(unittest.TestCase):
 
 	def setUp(self):
+		self.instrument = wqt_timestamp_match.hydrolab
 		self.data = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_WQ", "Arc_040413_wqt_cc.csv")
 
 	def test_data_headers(self):
-		headers = wqt_timestamp_match.wq_from_file(self.data).columns.values
+		headers = self.instrument.wq_from_file(self.data).columns.values
 
 		for head in headers:
 			self.assertIn(head, ['Date_Time', 'Temp', 'pH', 'SpCond', 'DO%', 'DO', 'DEP25',
 			                     'PAR', 'RPAR', 'TurbSC', 'CHL', 'CHL_VOLTS', 'Sal', 'WQ_SOURCE'])
 
 	def test_data_length(self):
-		self.assertEqual(wqt_timestamp_match.wq_from_file(self.data).shape, (977, 12))
+		self.assertEqual(self.instrument.wq_from_file(self.data).shape, (977, 12))
 
 
 class LoadSHP(unittest.TestCase):

@@ -35,6 +35,17 @@ class Instrument(object):
 	def __str__(self):
 		return self.name
 
+	def handle_gps(self, wq, transect_gps, dst_adjustment):
+		"""
+			Stub method for handling GPS. By default returns the input data. Can be overridden by
+			subclasses.
+		:param wq:
+		:param transect_gps:
+		:param dst_adjustment:
+		:return:
+		"""
+		return wq
+
 	@property
 	def load_fields(self):
 		return self.water_quality_header_map.keys()  # was originally a list comprehension, but changed criteria and simplified it
@@ -71,8 +82,52 @@ class HydroLabInstrument(Instrument):
 
 		self.datetime_format = '%Y-%m-%dt%I:%M:%S%p'
 
-	def handle(self, wq, transect_gps, dst_adjustment=None):
+	def handle_gps(self, wq, transect_gps, dst_adjustment=None):
 		return join_gps_by_time(wq, transect_gps, dst_adjustment)
+
+	# load a water quality file
+	def wq_from_file(self, water_quality_raw_data):
+		"""
+		:param water_quality_raw_data: raw data file containing water quality data
+		:return: water quality as pandas dataframe
+		"""
+		# load data from the csv starting at row 11, combine Date/Time columns using parse dates
+		if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
+			water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
+			encoding = "utf-8"
+		else:
+			encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
+
+		wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*', '2000000.00'], encoding=encoding)
+
+		# drop all columns that are blank since data in csv is separated by empty columns
+		wq = wq.dropna(axis=1, how="all")
+
+		# replace illegal fieldnames
+		wq = replaceIllegalFieldnames(wq)
+
+		units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
+		# drop first row which contains units with illegal characters
+		wq = wq.drop(wq.index[[0]])
+
+		# handles any unit scaling/converting we need to do for fields that aren't always in the same units
+		wq = check_and_convert_units(wq, units)
+
+		# rename depth field
+		wq = rename_depthfield(wq, ["DEPX", "DEP200", "DepthX"])
+
+		# add column with source filename
+		addsourcefield(wq, source_field, water_quality_raw_data)
+
+		# change Date_Time to be ISO8603 (ie no slashes in date)
+		try:
+			wq['Date_Time'] = pd.to_datetime(wq['Date_Time']) #, format='%m/%d/%Y %H:%M:%S')
+
+		except ValueError:
+			# still having it raise a new ValueError since that will stop execution, but provide this simpler message
+			raise ValueError("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
+
+		return wq
 
 
 class YSIInstrument(Instrument):
@@ -111,7 +166,7 @@ class YSIInstrument(Instrument):
 
 		self.datetime_format = '%Y-%m-%dt%H:%M:%S'  # actual off instrument is '%m/%d/%Yt%H:%M:%S', but gets changed (by pandas?)
 
-	def handle(self, wq, transect_gps=None, dst_adjustment=None, skip_rows=17, ):
+	def wq_from_file(self, water_quality_raw_data, skip_rows=17):
 		"""
 			The new YSI Sonde has a different format - it has a bunch of changes it needs in the file.
 			1. The first 17 rows need to be stripped off - they're not useful to us - check the header first to see if
@@ -140,7 +195,7 @@ class YSIInstrument(Instrument):
 		"""
 
 		# wq = convert_file_encoding(wq)  # the source data is in UCS-2 LE BOM, which Python sees as null bytes. Let's make it unicode instead
-		self.wq = wq
+		self.wq = water_quality_raw_data
 		self.detect_file_encoding()  # figure out what the file encoding is so we can open it correctly
 
 		# basic input cleaning
@@ -153,7 +208,12 @@ class YSIInstrument(Instrument):
 
 		reprojected_features = self.make_spatial_and_calculate_fields()
 
-		return wqtshp2pd(reprojected_features, date_field="lDate", time_field="lTime", instrument=self)
+		pandas_version = wqtshp2pd(reprojected_features, date_field="lDate", time_field="lTime", instrument=self)
+
+		# add column with source filename
+		addsourcefield(pandas_version, source_field, water_quality_raw_data)
+
+		return pandas_version
 
 	def detect_file_encoding(self):
 		"""
@@ -421,51 +481,6 @@ def rename_depthfield(wq_df, depth_synonyms):
 	return wq_df
 
 
-# load a water quality file
-def wq_from_file(water_quality_raw_data):
-	"""
-	:param water_quality_raw_data: raw data file containing water quality data
-	:return: water quality as pandas dataframe
-	"""
-	# load data from the csv starting at row 11, combine Date/Time columns using parse dates
-	if six.PY3:  # pandas chokes loading the documents if they aren't encoded as UTF-8 on Python 3. This creates a copy of the file that's converted to UTF-8.
-		water_quality_raw_data = convert_file_encoding(water_quality_raw_data)
-		encoding = "utf-8"
-	else:
-		encoding = "latin_1" # absolutely necessary. Without this, Python 2 assumes it's in ASCII and then our units line (like the degree symbol) is gibberish and can't be compared
-
-	wq = pd.read_csv(water_quality_raw_data, header=9, parse_dates=[[0, 1]], na_values=['#', '*', '2000000.00'], encoding=encoding)
-
-	# drop all columns that are blank since data in csv is separated by empty columns
-	wq = wq.dropna(axis=1, how="all")
-
-	# replace illegal fieldnames
-	wq = replaceIllegalFieldnames(wq)
-
-	units = make_units_index(wq.head(1))  # before we drop the units row, make a dictionary of the units for each field
-	# drop first row which contains units with illegal characters
-	wq = wq.drop(wq.index[[0]])
-
-	# handles any unit scaling/converting we need to do for fields that aren't always in the same units
-	wq = check_and_convert_units(wq, units)
-
-	# rename depth field
-	wq = rename_depthfield(wq, ["DEPX", "DEP200", "DepthX"])
-
-	# add column with source filename
-	addsourcefield(wq, source_field, water_quality_raw_data)
-
-	# change Date_Time to be ISO8603 (ie no slashes in date)
-	try:
-		wq['Date_Time'] = pd.to_datetime(wq['Date_Time']) #, format='%m/%d/%Y %H:%M:%S')
-
-	except ValueError:
-		# still having it raise a new ValueError since that will stop execution, but provide this simpler message
-		raise ValueError("Time is in a format that is not supported. Try using '%m/%d/%Y %H:%M:%S' .")
-
-	return wq
-
-
 def feature_class_to_pandas_data_frame(feature_class, field_list):
 	"""
 	Adapted from http://joelmccune.com/arcgis-to-pandas-data-frame/
@@ -644,7 +659,7 @@ def JoinMatchPercent(original, joined):
 	return percent_match
 
 
-def wq_append_fromlist(list_of_wq_files, raise_exc=True):
+def wq_append_fromlist(list_of_wq_files, raise_exc=True, instrument=hydrolab):
 	"""
 	Takes a list of water quality files and appends them to a single dataframe
 	:param list_of_wq_files: list of raw water quality files paths
@@ -653,7 +668,7 @@ def wq_append_fromlist(list_of_wq_files, raise_exc=True):
 	master_wq_df = pd.DataFrame()
 	for wq in list_of_wq_files:
 		try:
-			pwq = wq_from_file(wq)
+			pwq = instrument.wq_from_file(wq)
 			# append to master wq
 			master_wq_df = master_wq_df.append(pwq)
 
@@ -661,7 +676,8 @@ def wq_append_fromlist(list_of_wq_files, raise_exc=True):
 			if raise_exc:
 				raise
 			else:
-				print("Unable to process: {}".format(wq))
+				exception_text = traceback.format_exc()
+				print("Unable to process: {}. Exception raised was {}. Continuing".format(wq, exception_text))
 
 	return master_wq_df
 
@@ -950,13 +966,13 @@ def main(water_quality_files, transect_gps=None, output_feature=None, site_funct
 	"""
 
 	# water quality
-	wq = wq_append_fromlist(water_quality_files)
+	wq = wq_append_fromlist(water_quality_files, instrument=instrument)
 
 	if not instrument.has_gps:  # if the instrument doesn't have GPS data built in, then we need to attach it
 		if transect_gps == "" or transect_gps is None:
 			raise ValueError("Instrument \"{}\" doesn't have GPS data attached and separate transect_gps data not provided".format(instrument.name))
 
-	data_with_gps = instrument.handler_function(wq, transect_gps, dst_adjustment)
+	data_with_gps = instrument.handle_gps(wq, transect_gps, dst_adjustment)
 
 	wq_df2database(data_with_gps,
 				   field_map=instrument.water_quality_header_map,
