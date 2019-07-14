@@ -28,6 +28,8 @@ class BaseDBTest(unittest.TestCase):
 		self.session = classes.get_new_session()
 		self._make_site()
 
+		self.instrument = wqt_timestamp_match.hydrolab
+
 		self.pre_test_num_records = self.session.query(classes.WaterQuality.id).filter(classes.Site.code == self.site_code).count()
 
 	def _make_site(self):
@@ -161,7 +163,7 @@ class TestDBInsert(BaseDBTest):
 
 	def test_data_insert(self):
 		matched = wqt_timestamp_match.wq_from_file(self.wq)
-		wqt_timestamp_match.wq_df2database(matched, session=self.session)
+		wqt_timestamp_match.wq_df2database(matched, field_map=self.instrument.water_quality_header_map, session=self.session)
 
 		expected = len(matched)
 		added = len(self.session.new)
@@ -206,7 +208,9 @@ class LoadSHP(unittest.TestCase):
 
 	def setUp(self):
 		self.data = os.path.join(base_folder, "testfiles", "Arc_040413", "Arc_040413_GPS", "040413_PosnPnt.shp")
-		self.shpdf = wqt_timestamp_match.wqtshp2pd(self.data)
+
+		instrument = wqt_timestamp_match.hydrolab
+		self.shpdf = wqt_timestamp_match.wqtshp2pd(self.data, instrument=instrument)
 
 	def test_length(self):
 		self.assertEqual(self.shpdf.shape, (15976, 6))
@@ -232,8 +236,8 @@ class CheckDates(unittest.TestCase):
 	def setUp(self):
 		self.date = '2013-4-4'
 		self.time = '08:18:47am'
-		self.date_time = wqt_timestamp_match.TimestampFromDateTime(self.date, self.time)
-		pass
+		instrument = wqt_timestamp_match.hydrolab
+		self.date_time = wqt_timestamp_match.TimestampFromDateTime(self.date, self.time, format_string=instrument.datetime_format)
 
 	def test_ISO8601(self):
 		self.assertEqual(self.date_time.strftime("%Y-%m-%dT%H:%M:%S"), self.date_time.isoformat())
@@ -259,19 +263,19 @@ class CheckJoin(BaseDBTest):
 
 	def setUp(self):
 
+		instrument = wqt_timestamp_match.hydrolab
 		super(CheckJoin, self).setUp()
 
 		wq = wqt_timestamp_match.wq_append_fromlist([self.wq])
 
 		# shapefile for transect
-		pts = wqt_timestamp_match.wqtshp2pd(self.gps)
+		pts = wqt_timestamp_match.wqtshp2pd(self.gps, instrument=instrument)
 
 		# join using time stamps with exact match
 		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(wq, pts)
 		self.matches = wqt_timestamp_match.splitunmatched(self.joined_data)[0]
 
-		wqt_timestamp_match.wq_df2database(self.matches, session=self.session)
-
+		wqt_timestamp_match.wq_df2database(self.matches, field_map=self.instrument.water_quality_header_map, session=self.session)
 
 	def test_data_insert(self):
 
@@ -290,15 +294,17 @@ class CheckJoin(BaseDBTest):
 		#self.session.commit()
 		self.session.close()
 
+
 class CheckReprojection(BaseDBTest):
 
 	def setUp(self):
 		super(CheckReprojection, self).setUp()
 
+		instrument = wqt_timestamp_match.hydrolab
 		self.wq = wqt_timestamp_match.wq_append_fromlist([self.wq])
 
 		# shapefile for transect
-		self.pts = wqt_timestamp_match.wqtshp2pd(self.gps)
+		self.pts = wqt_timestamp_match.wqtshp2pd(self.gps, instrument=instrument)
 
 		# join using time stamps with exact match
 		self.joined_data = wqt_timestamp_match.JoinByTimeStamp(self.wq, self.pts)
@@ -335,9 +341,12 @@ class CheckReprojection(BaseDBTest):
 class TestYSI(unittest.TestCase):
 	def setUp(self):
 		self.test_file = os.path.join(base_folder, "testfiles", "new_sonde_samples", "ARC_011519_WQT", "ARC_011519_WQT_RawData", "190115-074028-_.csv")
+		self.test_file_compiled = r"C:\Users\dsx\Projects\arcproject\ARC_WQT_2019\ARC_011519_WQT\ARC_011519_BK1_WQT.csv"
 
 	def test_coordinate_cleaning(self):
-		wqt_timestamp_match.handle_ysi(self.test_file)
+		ysi = wqt_timestamp_match.ysi
+		ysi.handle(self.test_file)
+		ysi.handle(self.test_file_compiled, skip_rows=0)
 
 
 if __name__ == '__main__':

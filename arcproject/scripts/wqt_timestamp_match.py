@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import csv
 import codecs
 
+import chardet
 import arcpy
 import numpy as np
 import pandas as pd
@@ -36,7 +37,7 @@ class Instrument(object):
 
 	@property
 	def load_fields(self):
-		return [key for key in self.water_quality_header_map if self.water_quality_header_map[key] is not None]
+		return self.water_quality_header_map.keys()  # was originally a list comprehension, but changed criteria and simplified it
 
 
 class HydroLabInstrument(Instrument):
@@ -68,12 +69,13 @@ class HydroLabInstrument(Instrument):
 			"POINT_X": "x_coord",
 		}
 
+		self.datetime_format = '%Y-%m-%dt%I:%M:%S%p'
+
 	def handle(self, wq, transect_gps, dst_adjustment=None):
 		return join_gps_by_time(wq, transect_gps, dst_adjustment)
 
 
 class YSIInstrument(Instrument):
-
 	def __init__(self):
 		self.name = "YSI EXO2 Sonde"
 		self.has_gps = True  # does the instrument have GPS data on its own?
@@ -97,6 +99,8 @@ class YSIInstrument(Instrument):
 			"GPS_Date": None,
 			"POINT_Y": "y_coord",
 			"POINT_X": "x_coord",
+			"lDate": None,
+			"lTime": None,
 		}
 
 		# make a list of the fields we actually want to load - just the ones we've defined in the field map. Others
@@ -104,6 +108,8 @@ class YSIInstrument(Instrument):
 
 		self.new_latitude_field = "Lat_DD"
 		self.new_longitude_field = "Lon_DD"
+
+		self.datetime_format = '%Y-%m-%dt%H:%M:%S'  # actual off instrument is '%m/%d/%Yt%H:%M:%S', but gets changed (by pandas?)
 
 	def handle(self, wq, transect_gps=None, dst_adjustment=None, skip_rows=17, ):
 		"""
@@ -135,6 +141,8 @@ class YSIInstrument(Instrument):
 
 		# wq = convert_file_encoding(wq)  # the source data is in UCS-2 LE BOM, which Python sees as null bytes. Let's make it unicode instead
 		self.wq = wq
+		self.detect_file_encoding()  # figure out what the file encoding is so we can open it correctly
+
 		# basic input cleaning
 		self.fix_csv_header(skip_rows=skip_rows)
 
@@ -146,6 +154,22 @@ class YSIInstrument(Instrument):
 		reprojected_features = self.make_spatial_and_calculate_fields()
 
 		return wqtshp2pd(reprojected_features, date_field="lDate", time_field="lTime", instrument=self)
+
+	def detect_file_encoding(self):
+		"""
+			Detect the input file's encoding. The instrument's raw data files encode it one way (utf-16, mostly),
+			 but if it is compiled by arcproject people then exported from Excel, it comes out as another (utf-8).
+			 If we then read it in as one, when it's the other, we get gibberish, so we want to detect which it is,
+			 which is a dark art that the `chardet` package practices for us, then store that so we can open the file
+			 as that encoding.
+		:return:
+		"""
+		file_data = open(self.wq, 'r').read()  # read in the file data
+		self.detected_encoding = chardet.detect(file_data)['encoding']
+
+		if self.detected_encoding == "UTF-16":
+			self.detected_encoding = "utf_16_le"  # we'll use this encoding in this case - if it detects UTF-16 off the YSI
+													# then it's probably UCS-2 LE BOM, AKA UTF-16 LE BOM (sort of)
 
 	def make_spatial_and_calculate_fields(self):
 		table_view = "xy_table_view"
@@ -175,7 +199,7 @@ class YSIInstrument(Instrument):
 
 	def fix_csv_header(self, skip_rows):
 		with open(self.wq, 'r') as wq_data:
-			wq_data_converted = codecs.EncodedFile(wq_data, data_encoding='utf_8', file_encoding='utf_16_le')
+			wq_data_converted = codecs.EncodedFile(wq_data, data_encoding='utf_8', file_encoding=self.detected_encoding)
 			wq_rows = wq_data_converted.readlines()
 			cleaned_data = wq_rows[skip_rows:]  # strip off the first skip_rows rows because they mess things up
 
@@ -464,15 +488,17 @@ def feature_class_to_pandas_data_frame(feature_class, field_list):
 	)
 
 
-def TimestampFromDateTime(date, time):
+def TimestampFromDateTime(date, time, format_string='%Y-%m-%dt%I:%M:%S%p'):
 	"""
 	Returns python datetime object
-	:param date: a date in format of %Y-%m-%d
-	:param time: a time in format of %I:%M:%S%p
+	:param date: a date, by default, in format of %Y-%m-%d
+	:param time: a time, by default, in format of %I:%M:%S%p
+	:param format_string: the string to use to parse the time and the date. They will be concatenated with a "t"
+						in the middle
 	:return: datetime object
 	"""
 	dt = date + 't' + time
-	date_object = datetime.strptime(dt, '%Y-%m-%dt%I:%M:%S%p')
+	date_object = datetime.strptime(dt, format_string)
 	return date_object
 
 
@@ -527,10 +553,7 @@ def wqtshp2pd(feature_class, date_field="GPS_Date", time_field="GPS_Time", instr
 		# Data must be 1-dimensional
 		available_fields = [f.name for f in arcpy.ListFields("wqt_xy") if
 							f.type not in ["Geometry", "OID", "GUID", "GlobalID"]]  # ignores geo, ID fields
-		if not instrument:
-			load_fields = available_fields
-		else:
-			load_fields = list(set(instrument.load_fields).intersection(available_fields))  # only use the fields that are available and specified for loading
+		load_fields = list(set(instrument.load_fields).intersection(available_fields))  # only use the fields that are available and specified for loading by the instrument
 
 		# convert attribute table to pandas dataframe
 		df = feature_class_to_pandas_data_frame("wqt_xy", load_fields)
@@ -541,7 +564,7 @@ def wqtshp2pd(feature_class, date_field="GPS_Date", time_field="GPS_Time", instr
 		df[date_field] = df[date_field].dt.date.astype(str)  # ArcGis adds some artificial times
 
 		# combine GPS date and GPS time fields into a single column
-		df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[date_field], row[time_field]), axis=1)
+		df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[date_field], row[time_field], format_string=instrument.datetime_format), axis=1)
 
 		# drop duplicated rows in the data frame
 		#df = df.drop_duplicates(["Date_Time"], 'first')
@@ -559,7 +582,7 @@ def replaceIllegalFieldnames(df):
 	:param df: dataframe with bad fieldnames
 	:return: dataframe with replaced fieldnames
 	"""
-	df = df.rename(columns={'°C': 'degrees_C', 'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT', 'DEPX': 'DEP25'})  # TODO make this catch other potential errors
+	df = df.rename(columns={'°C': 'degrees_C', 'CHL.1': 'CHL_VOLTS', 'DO%': 'DO_PCT', 'DEPX': 'DEP25'})
 	return df
 
 
@@ -643,7 +666,7 @@ def wq_append_fromlist(list_of_wq_files, raise_exc=True):
 	return master_wq_df
 
 
-def gps_append_fromlist(list_gps_files):
+def gps_append_fromlist(list_gps_files, instrument=hydrolab):
 	"""
 	Merges multiple gps files into single geopandas dataframe
 	:param list_gps_files: list of paths for gps files
@@ -653,7 +676,7 @@ def gps_append_fromlist(list_gps_files):
 	for gps in list_gps_files:
 		try:
 			# shapefile for transect
-			pts = wqtshp2pd(gps)
+			pts = wqtshp2pd(gps, instrument=instrument)
 
 			# append to master wq
 			master_pts = master_pts.append(pts)
@@ -951,7 +974,7 @@ def main(water_quality_files, transect_gps=None, output_feature=None, site_funct
 		np2feature(match_np, output_feature, spatial_ref)
 
 
-def join_gps_by_time(wq, transect_gps, dst_adjustment):
+def join_gps_by_time(wq, transect_gps, dst_adjustment, instrument=hydrolab):
 	"""
 		This method isn't *strictly* for the hydrolab, it's more of a generic process for matching GPS data
 		from a separate device to the water quality data using the timestamp. But we only have one instrument
@@ -965,9 +988,9 @@ def join_gps_by_time(wq, transect_gps, dst_adjustment):
 
 	# shapefile for transect
 	if isinstance(transect_gps, list):  # checks if a list was passed to the parameter
-		pts = gps_append_fromlist(transect_gps)  # append all the individual gps files to singe dataframe
+		pts = gps_append_fromlist(transect_gps, instrument=instrument)  # append all the individual gps files to singe dataframe
 	else:
-		pts = wqtshp2pd(transect_gps)
+		pts = wqtshp2pd(transect_gps, instrument=instrument)
 
 	# DST adjustment
 	if dst_adjustment:
