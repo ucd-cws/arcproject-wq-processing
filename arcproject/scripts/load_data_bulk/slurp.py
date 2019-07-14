@@ -23,7 +23,7 @@ from arcproject.scripts import wq_gain
 
 class Slurper(object):
 
-	def __init__(self):
+	def __init__(self, instrument):
 		# default settings for slurper
 		self.exclude = ['StatePlaneCAII', 'SummaryFiles']  # folder to exclude from the pattern matching
 		self.skipext = None  # list of file extension to exclude from the pattern matching (like excel files)
@@ -36,6 +36,7 @@ class Slurper(object):
 		self.site_function_params = {"site_part": 2,
                                      "gain_part": 4}  # parsing the site codes and gains using underscores
 		self.add_new_sites = False  # adds unknown sites to the database
+		self.instrument = instrument
 
 	def find_files(self, directory, pattern='*', exclude=None, skipext=None):
 		"""
@@ -130,7 +131,11 @@ class Slurper(object):
 
 	def slurp_trans(self, base_path):
 
-		transect_gps = self.find_files(base_path, self.transect_gps_pattern, self.exclude)
+		if not self.instrument.has_gps:  # if the instrument doesn't have its own GPS, find the tracks
+			transect_gps = self.find_files(base_path, self.transect_gps_pattern, self.exclude)
+		else:
+			transect_gps = None
+
 		wq_files = self.find_files(base_path, self.transect_pattern, self.exclude, self.skipext)
 
 		#print(wq_files, transect_gps)
@@ -141,6 +146,5 @@ class Slurper(object):
 		wqt_timestamp_match.main(wq_files, transect_gps, output_feature=None,
 		                         site_function=wqt_timestamp_match.site_function_historic,
 		                         site_func_params=self.site_function_params,
-		                         dst_adjustment=self.dst)
-		pass
-
+		                         dst_adjustment=self.dst,
+								 instrument=self.instrument)
