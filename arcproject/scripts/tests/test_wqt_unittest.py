@@ -349,8 +349,8 @@ class TestYSI(unittest.TestCase):
 
 	def test_coordinate_cleaning(self):
 		ysi = wqt_timestamp_match.ysi
-		ysi.handle(self.test_file)
-		ysi.handle(self.test_file_compiled, skip_rows=0)
+		ysi.wq_from_file(self.test_file)  # this is the raw file, and it will have a few things different than the compiled file, particularly encoding
+		ysi.wq_from_file(self.test_file_compiled, skip_rows=0)  # compiled file, in UTF-8, from Excel
 
 
 if __name__ == '__main__':

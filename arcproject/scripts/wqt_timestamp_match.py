@@ -22,7 +22,7 @@ from arcproject.waterquality import classes
 
 # define constants
 source_field = "WQ_SOURCE"
-
+DEBUG = False
 
 class Instrument(object):
 	"""
@@ -45,6 +45,13 @@ class Instrument(object):
 		:return:
 		"""
 		return wq
+
+	def wq_from_file(self, water_quality_raw_data):
+		"""
+			This function processes a water quality file into a pandas data frame. Different for each instrument
+		:param water_quality_raw_data:
+		:return:
+		"""
 
 	@property
 	def load_fields(self):
@@ -163,10 +170,11 @@ class YSIInstrument(Instrument):
 
 		self.new_latitude_field = "Lat_DD"
 		self.new_longitude_field = "Lon_DD"
+		self.new_datetime_field = "dt_correction"
 
-		self.datetime_format = '%Y-%m-%dt%H:%M:%S'  # actual off instrument is '%m/%d/%Yt%H:%M:%S', but gets changed (by pandas?)
+		self.datetime_format = '%m/%d/%Yt%H:%M:%S'  # actual off instrument is '%m/%d/%Yt%H:%M:%S', but gets changed (by pandas?)
 
-	def wq_from_file(self, water_quality_raw_data, skip_rows=17):
+	def wq_from_file(self, water_quality_raw_data, skip_rows=0):
 		"""
 			The new YSI Sonde has a different format - it has a bunch of changes it needs in the file.
 			1. The first 17 rows need to be stripped off - they're not useful to us - check the header first to see if
@@ -196,6 +204,7 @@ class YSIInstrument(Instrument):
 
 		# wq = convert_file_encoding(wq)  # the source data is in UCS-2 LE BOM, which Python sees as null bytes. Let's make it unicode instead
 		self.wq = water_quality_raw_data
+		self.source_filename = os.path.split(water_quality_raw_data)[1]
 		self.detect_file_encoding()  # figure out what the file encoding is so we can open it correctly
 
 		# basic input cleaning
@@ -205,13 +214,11 @@ class YSIInstrument(Instrument):
 		# some corrections of our own.
 
 		self.correct_coordinates()
+		#self.dump_schema_ini()
 
 		reprojected_features = self.make_spatial_and_calculate_fields()
 
 		pandas_version = wqtshp2pd(reprojected_features, date_field="lDate", time_field="lTime", instrument=self)
-
-		# add column with source filename
-		addsourcefield(pandas_version, source_field, water_quality_raw_data)
 
 		return pandas_version
 
@@ -224,8 +231,9 @@ class YSIInstrument(Instrument):
 			 as that encoding.
 		:return:
 		"""
-		file_data = open(self.wq, 'r').read()  # read in the file data
-		self.detected_encoding = chardet.detect(file_data)['encoding']
+		with open(self.wq, 'r') as filehandle:  # read in the file data
+			file_data = filehandle.read()
+			self.detected_encoding = chardet.detect(file_data)['encoding']
 
 		if self.detected_encoding == "UTF-16":
 			self.detected_encoding = "utf_16_le"  # we'll use this encoding in this case - if it detects UTF-16 off the YSI
@@ -245,17 +253,69 @@ class YSIInstrument(Instrument):
 			try:
 				# we don't strictly need to do this, but it gives us an on-disk representation that we can calculate fields on
 				# too. Otherwise, if we skip it, reprojection will happen in wqtshp2pd
-				reprojected_features = reproject_features(xy_event_layer, projection_spatial_reference)
+				self.reprojected_features = reproject_features(xy_event_layer, projection_spatial_reference)
+				print("spatial data at {}".format(self.reprojected_features))
 			finally:
 				arcpy.Delete_management(xy_event_layer)  # clean up the layer in memory if something happens
 		finally:
 			arcpy.Delete_management("xy_table_view")
 
-		arcpy.AddField_management(reprojected_features, field_name="turbidity", field_type="DOUBLE")
+		arcpy.AddField_management(self.reprojected_features, field_name="turbidity", field_type="DOUBLE")
 		# change proprietary FNU to NTU based on scaling factor from Chris Jasper
-		arcpy.CalculateField_management(reprojected_features, field="turbidity", expression="!FNU! * 1.24",
+		arcpy.CalculateField_management(self.reprojected_features, field="turbidity", expression="!FNU! * 1.24",
 										expression_type="PYTHON")
-		return reprojected_features
+
+		self.make_date_time_strings("lDate_original", "lDate", index=0)
+		self.make_date_time_strings("lTime_original", "lTime", index=1)
+
+		return self.reprojected_features
+
+	def dump_schema_ini(self):
+		"""
+			Sometimes when loading the data into ArcGIS, it interprets
+			times as dates and then the whole pipeline blows up. Here we
+			add entries to a schema.ini file in order to force it to
+			read date and time fields as text, not as dates. If this
+			doesn't work, we'll need to load the CSV to pandas and process
+			times there prior to doing any reprojection.
+		:return:
+		"""
+		schema_folder, csv_file_name = os.path.split(self.cleaned_csv_file)
+		schema_path = os.path.join(schema_folder, "schema.ini")
+
+		with open(schema_path, 'a') as schema_file:
+			schema_file.write("\n[{}]\n".format(csv_file_name))
+			lines = ["Format=CSVDelimited\n",
+					 "ColNameHeader=True\n",
+					 "MaxScanRows=0\n",
+					 "lTime_original Text\n",
+					 "lDate_original Text\n",
+					 "lTime Text\n",
+					 "lDate Text\n",
+					 ]
+			schema_file.writelines(lines)
+
+	def make_date_time_strings(self, field, new_field, index):
+		"""
+			ArcGIS loads the date fields as type Date and also the *time* fields as type date,
+			which gums up Pandas later on.
+			Force them to strings in new fields by splitting our previously combined datetime field
+			on the letter "t" - this is a hacky workaround because we're rushed for time right now
+			and don't have the time to rework the whole datetime processing pipeline for the new
+			instrument.
+			A different option would be to skip loading into Arc and instead just do all
+			field calculations in Pandas.
+		:param field:
+		:param new_field:
+		:param index: the index to be used when splitting the datetime field back out
+		:return:
+		"""
+
+		arcpy.AddField_management(self.reprojected_features, new_field, "TEXT", field_length=20)
+		arcpy.CalculateField_management(self.reprojected_features,
+										field=new_field,
+										expression="!{}!.split('t')[{}]".format(self.new_datetime_field, index),
+										expression_type="PYTHON")
 
 	def fix_csv_header(self, skip_rows):
 		with open(self.wq, 'r') as wq_data:
@@ -263,14 +323,17 @@ class YSIInstrument(Instrument):
 			wq_rows = wq_data_converted.readlines()
 			cleaned_data = wq_rows[skip_rows:]  # strip off the first skip_rows rows because they mess things up
 
+			if "Date" not in cleaned_data[0]:
+				raise ValueError("Header on file {} is malformed or missing!".format(self.source_filename))
+
 			# then make the header characters legal
 			cleaned_data[0] = cleaned_data[0].replace("°C", "degrees_C")
 			cleaned_data[0] = cleaned_data[0].replace(" ", "_")
 			cleaned_data[0] = cleaned_data[0].replace("-", "_")
 			cleaned_data[0] = cleaned_data[0].replace("/", "_")
 			cleaned_data[0] = cleaned_data[0].replace("%", "pct")
-			cleaned_data[0] = cleaned_data[0].replace("Date", "lDate")
-			cleaned_data[0] = cleaned_data[0].replace("Time", "lTime")
+			cleaned_data[0] = cleaned_data[0].replace("Date", "lDate_original")
+			cleaned_data[0] = cleaned_data[0].replace("Time", "lTime_original")
 
 			output_temp = tempfile.mkstemp(prefix="arcproject_wq_", suffix=".csv")
 			self.cleaned_csv_file = output_temp[1]
@@ -290,9 +353,16 @@ class YSIInstrument(Instrument):
 			fieldnames = cleaned_rows.fieldnames
 			fieldnames.append(self.new_latitude_field)
 			fieldnames.append(self.new_longitude_field)
+			fieldnames.append(self.new_datetime_field)
+			fieldnames.append(source_field)
 			for record in cleaned_rows:
+				if record["Lat"] in (None, "") or record["Lon"] in (None, ""):  # skip records with no locations
+					#print("skipping record with lat/long of {}, {}".format(record["Lat"], record["Lon"]))
+					continue
 				record[self.new_latitude_field] = dms_to_dd(record["Lat"], force_negative=False)  # convert the latitude
 				record[self.new_longitude_field] = dms_to_dd(record["Lon"], force_negative=True)  # convert the longitude, force it to western hemisphere
+				record[self.new_datetime_field] = record["lDate_original"] + "t" + record["lTime_original"]
+				record[source_field] = self.source_filename
 				output_records.append(record)
 
 		with open(self.cleaned_csv_file, 'wb') as cleaned_data_csv:  # wb probably won't work under Python 3 and we'd want to just be explicit about line endings instead.
@@ -507,7 +577,7 @@ def TimestampFromDateTime(date, time, format_string='%Y-%m-%dt%I:%M:%S%p'):
 	"""
 	Returns python datetime object
 	:param date: a date, by default, in format of %Y-%m-%d
-	:param time: a time, by default, in format of %I:%M:%S%p
+	:param time: a time, by default, in format of %I:%M:%S%p for hydrolab
 	:param format_string: the string to use to parse the time and the date. They will be concatenated with a "t"
 						in the middle
 	:return: datetime object
@@ -576,7 +646,8 @@ def wqtshp2pd(feature_class, date_field="GPS_Date", time_field="GPS_Time", instr
 		addsourcefield(df, "GPS_SOURCE", feature_class)
 
 		# cast Date field to str instead of timestamp
-		df[date_field] = df[date_field].dt.date.astype(str)  # ArcGis adds some artificial times
+		if df[date_field].dtype is pd.Timestamp:  # only happens with Hydrolab data though, so only cast it to str if it's a timestamp now
+			df[date_field] = df[date_field].dt.date.astype(str)  # ArcGis adds some artificial times
 
 		# combine GPS date and GPS time fields into a single column
 		df['Date_Time'] = df.apply(lambda row: TimestampFromDateTime(row[date_field], row[time_field], format_string=instrument.datetime_format), axis=1)
@@ -659,7 +730,7 @@ def JoinMatchPercent(original, joined):
 	return percent_match
 
 
-def wq_append_fromlist(list_of_wq_files, raise_exc=True, instrument=hydrolab):
+def wq_append_fromlist(list_of_wq_files, raise_exc=DEBUG, instrument=hydrolab):
 	"""
 	Takes a list of water quality files and appends them to a single dataframe
 	:param list_of_wq_files: list of raw water quality files paths
@@ -667,6 +738,7 @@ def wq_append_fromlist(list_of_wq_files, raise_exc=True, instrument=hydrolab):
 	"""
 	master_wq_df = pd.DataFrame()
 	for wq in list_of_wq_files:
+		print("Processing {}".format(wq))
 		try:
 			pwq = instrument.wq_from_file(wq)
 			# append to master wq

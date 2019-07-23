@@ -1,11 +1,11 @@
 from __future__ import print_function
 
-__author__ = "ambell, nickrsan"
+__author__ = "nickrsan, ambell"
 
 try:
 	from arcproject import __version__ as version
 except ImportError:
-	version = '2019.5.20'
+	version = '2019.07.23'
 
 from setuptools import setup
 
@@ -23,6 +23,6 @@ if __name__ == "__main__":
 						## "pandas >= 0.16.1", "matplotlib", and "numpy >= 1.9.2" also needed, but cause issues on ArcGIS 10.4 install where it tries to upgrade numpy
 		author=__author__,
 		author_email="nrsantos@ucdavis.edu",
-		url='https://github.com/ucd-cws/amaptor',
+		url='https://github.com/ucd-cws/arcproject-wq-processing',
 		include_package_data=True,
 	)

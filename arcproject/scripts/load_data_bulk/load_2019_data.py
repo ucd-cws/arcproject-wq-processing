@@ -23,7 +23,7 @@ def load_2019():
 	print("Loading 2019 Data")
 	path = data
 	s = slurp.Slurper(instrument=wqt_timestamp_match.ysi)
-	rename_files(s)
+	#rename_files(s)
 	s.add_new_sites = True
 	s.dst = True
 	s.skipext = [".xlsx", ".xls", ".dbf", ".prj", ".shp", ".shx", ".lyr"]

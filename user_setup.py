@@ -7,12 +7,6 @@ import subprocess
 r_dependencies = ["RSQLite", "plyr", "gplots", "devtools", "ggplot2"]
 r_github_dependencies = ["ucd-cws/wq-heatplot"]
 
-devtools::install_github("r-lib/remotes", ref = "e56a41e1d0cad55cbe7d60b274b99ab7b7a76b5c")
-try:
-	import winreg
-except ImportError:
-	import _winreg as winreg
-
 
 def set_up_r_dependencies():
 	import launchR  # imported here because it will be installed before this is called, but won't be installed at load time in all cases
