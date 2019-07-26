@@ -27,7 +27,42 @@ from arcproject.scripts.mapping import generate_layer_for_month, WQMappingBase
 from arcproject.waterquality import classes
 
 
+def make_site_list(code_only=False):
+	"""
+		Generates a list of site codes or site codes and names (when code_only is False) for filters on dropdowns that use
+		site codes
+	:param code_only: when True, the output list will only include the code, not the code and name. When False, the output
+						will include be in the form "SiteCode - Site Name"
+	:return: List of string based codes
+	"""
+	session = classes.get_new_session()
+	try:
+		sites = session.query(classes.Site).distinct().all()
+		site_names = []
+
+		# add profile name to site list
+		for s in sites:
+			if code_only:
+				site_names.append(s.code)
+			else:
+				combine = s.code + ' - ' + str(s.name)
+				site_names.append(combine)
+
+		site_names.sort()
+
+	finally:
+		session.close()
+
+	return site_names
+
+
 def parameters_as_dict(f):
+	"""
+		A decorator for python toolbox function class methods that makes the parameters available by name instead
+		of by index order. Search usage of the decorator in this toolbox for more examples.
+	:param f:
+	:return:
+	"""
 	@wraps(f)
 	def wrapper(*args, **kwargs):
 		params = args[1]
@@ -55,9 +90,9 @@ class Toolbox(object):
 		self.alias = "ArcProject WQ Toolbox"
 		# List of tool classes associated with this toolbox
 		self.tools = [AddSite, AddGainSite, JoinTimestamp,
-		              GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
-		              GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs,
-		              RegressionPlot, CorrectChl, ExportHeatPlotData]
+					  GenerateWQLayer, GainToDB, GenerateMonth, ModifyWQSite, GenerateHeatPlot,
+					  GenerateSite, ModifySelectedSite, GenerateMap, DeleteMonth, LinearRef, RenameGrabs,
+					  RegressionPlot, CorrectChl, ExportHeatPlotData]
 
 
 class AddSite(object):
@@ -146,7 +181,12 @@ class AddGainSite(object):
 			parameterType="Optional",
 		)
 
+		site_names = make_site_list(code_only=True)
+		slough.filter.type = 'ValueList'
+		slough.filter.list = site_names
+
 		params = [abbr, slough]
+
 		return params
 
 	def isLicensed(self):
@@ -157,21 +197,8 @@ class AddGainSite(object):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
-		# fill in the sloughs with options already in the database
-		if parameters[0].valueAsText:
-			session = classes.get_new_session()
-			try:
-				q = session.query(classes.Site.code).distinct().all()
-				sites = []
-				# add profile name to site list
-				for site in q:
-					print(site[0])
-					sites.append(site[0])
-				parameters[1].filter.type = 'ValueList'
-				parameters[1].filter.list = sites
-			finally:
-				session.close()
-		return
+
+	# fill in the sloughs with options already in the database
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
@@ -271,10 +298,10 @@ class JoinTimestamp(object):
 
 		if parameters["instrument"].value == "YSI EXO2 Sonde":
 			parameters["shp_file"].enabled = False
-			parameters["shp_file"].parameterType="Optional"
+			parameters["shp_file"].parameterType = "Optional"
 		else:
 			parameters["shp_file"].enabled = True
-			parameters["shp_file"].parameterType="Required"
+			parameters["shp_file"].parameterType = "Required"
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
@@ -287,7 +314,7 @@ class JoinTimestamp(object):
 		wq_transect_list = parameters["wqt"].valueAsText.split(";")
 
 		pts = parameters["shp_file"].valueAsText  # we'll get the GPS data regardless of if we have it,
-												# and then filter whether the instrument requires it in main
+		# and then filter whether the instrument requires it in main
 
 		site_code = parameters["site_code"].valueAsText
 		if not site_code or site_code == "":
@@ -302,7 +329,8 @@ class JoinTimestamp(object):
 			output_path = None
 
 		# run wq_join_match
-		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function, instrument=instrument)
+		wqt_timestamp_match.main(wq_transect_list, pts, output_feature=output_path, site_function=site_function,
+								 instrument=instrument)
 
 
 class GainToDB(object):
@@ -361,7 +389,7 @@ class GainToDB(object):
 		# gain_part.filter.type = "ValueList"
 		# gain_part.filter.list = [1, 2, 3, 4, 5, 6]
 
-		params = [wqp, bool,]
+		params = [wqp, bool, ]
 		return params
 
 	def isLicensed(self):
@@ -403,9 +431,9 @@ class GainToDB(object):
 				base = os.path.splitext(basename)[0]  # rm extension if there is one
 				parts = base.split("_")  # split on underscore
 
-				#site = parts[int(parameters[2].value)-1]
+				# site = parts[int(parameters[2].value)-1]
 				site = parts[wqt_timestamp_match.site_function_params.get('site_part')]
-				#gain = parts[int(parameters[3].value)-1]
+				# gain = parts[int(parameters[3].value)-1]
 				gain = parts[wqt_timestamp_match.site_function_params.get('gain_part')]
 				vt[i][0] = str(filename)
 				vt[i][1] = site
@@ -437,15 +465,15 @@ class GainToDB(object):
 			wq_gain_file = str(vt[i][0])
 			basename = os.path.basename(str(wq_gain_file))
 			vt[i][0] = str(wq_gain_file)
-			site_id = vt[i][1] # site
-			gain_setting = vt[i][2] # gain
+			site_id = vt[i][1]  # site
+			gain_setting = vt[i][2]  # gain
 			arcpy.AddMessage("{} {} {}".format(basename, site_id, gain_setting))
 
 			try:
 				wq_gain.main(wq_gain_file, site_id, gain_setting)
 			except exc.IntegrityError as e:
 				arcpy.AddMessage("Unable to import gain file. Record for this gain file "
-				                 "already exists in the vertical_profiles table.")
+								 "already exists in the vertical_profiles table.")
 		return
 
 
@@ -516,7 +544,7 @@ class GenerateMonth(WQMappingBase):
 		self.description = "Generate a layer of all the water quality transects for a given month and year"
 		self.canRunInBackground = False
 		self.category = "Mapping"
-		
+
 		super(GenerateMonth, self).__init__()
 
 	def getParameterInfo(self):
@@ -600,24 +628,25 @@ class GenerateMap(WQMappingBase):
 			)
 
 		export_pdf = arcpy.Parameter(
-				displayName="Output Path for PDF",
-				name="output_pdf",
-				datatype="DEFile",
-				direction="Output",
-				parameterType="Optional",
-				category="Static Map Exports",
-			)
+			displayName="Output Path for PDF",
+			name="output_pdf",
+			datatype="DEFile",
+			direction="Output",
+			parameterType="Optional",
+			category="Static Map Exports",
+		)
 
 		export_png = arcpy.Parameter(
-				displayName="Output Path for PNG",
-				name="output_png",
-				datatype="DEFile",
-				direction="Output",
-				parameterType="Optional",
-				category="Static Map Exports",
-			)
+			displayName="Output Path for PNG",
+			name="output_png",
+			datatype="DEFile",
+			direction="Output",
+			parameterType="Optional",
+			category="Static Map Exports",
+		)
 
-		params = [self.year_to_generate, self.month_to_generate, self.select_wq_param, map_output, export_pdf, export_png]
+		params = [self.year_to_generate, self.month_to_generate, self.select_wq_param, map_output, export_pdf,
+				  export_png]
 
 		return params
 
@@ -654,20 +683,25 @@ class GenerateMap(WQMappingBase):
 			output_png_path = parameters[5].valueAsText
 			new_layout_name = "{} Layout".format(output_map_path)
 			if amaptor.PRO:
-				if "testing_project" in globals(): # this is a hook for our testing code to set a value in the module and have this use it instead of "CURRENT"
+				if "testing_project" in globals():  # this is a hook for our testing code to set a value in the module and have this use it instead of "CURRENT"
 					project = globals()["testing_project"]
 				else:
 					project = "CURRENT"
 				map_project = amaptor.Project(project)
-				new_map = map_project.new_map(name=output_map_path, template_map=template, template_df_name="ArcProject Map")
-				new_layout = map_project.new_layout(name=new_layout_name, template_layout=mapping.arcgis_pro_layout_template, template_name="base_template")
+				new_map = map_project.new_map(name=output_map_path, template_map=template,
+											  template_df_name="ArcProject Map")
+				new_layout = map_project.new_layout(name=new_layout_name,
+													template_layout=mapping.arcgis_pro_layout_template,
+													template_name="base_template")
 				new_layout.frames[0].map = new_map  # rewrite the data frame map to be the map object of the new map
 
-				output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer", gdb=map_project.primary_document.defaultGeodatabase)
+				output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer",
+																	   gdb=map_project.primary_document.defaultGeodatabase)
 			else:
 				shutil.copyfile(template, output_map_path)
 				map_project = amaptor.Project(output_map_path)
-				new_map = map_project.maps[0]  # it'll be the first map, because it's the only data frame in the template
+				new_map = map_project.maps[
+					0]  # it'll be the first map, because it's the only data frame in the template
 
 				output_location = geodatabase_tempfile.create_gdb_name(name_base="generated_month_layer")
 
@@ -678,7 +712,8 @@ class GenerateMap(WQMappingBase):
 			new_layer = new_map.find_layer(path=output_location)
 			new_layer.name = symbology_param.valueAsText
 			new_map.zoom_to_layer(layer=new_layer, set_layout="ALL")
-			new_map.replace_text("{wq_month}", "{} {}".format(parameters[1].valueAsText, parameters[0].valueAsText))  # Add the month and year to the title
+			new_map.replace_text("{wq_month}", "{} {}".format(parameters[1].valueAsText, parameters[
+				0].valueAsText))  # Add the month and year to the title
 			map_project.save()
 
 			if output_png_path and output_png_path != "":
@@ -687,11 +722,12 @@ class GenerateMap(WQMappingBase):
 				new_map.export_pdf(output_pdf_path)
 
 			if amaptor.PRO:
-				arcpy.AddMessage("Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(output_map_path, new_layout_name))
+				arcpy.AddMessage(
+					"Look for a new map named \"{}\" and a new layout named \"{}\" in your Project pane".format(
+						output_map_path, new_layout_name))
 
 		finally:
 			self.cleanup()  # clean up from tool setup
-
 
 
 class ModifyWQSite(object):
@@ -821,8 +857,8 @@ class GenerateHeatPlot(object):
 		)
 
 		wq_var.filter.type = 'ValueList'
-		wq_var.filter.list = ["temp","ph","sp_cond","salinity", "dissolved_oxygen","dissolved_oxygen_percent",
-            "dep_25", "par", "rpar","turbidity_sc","chl", "chl_corrected", "m_value"]
+		wq_var.filter.list = ["temp", "ph", "sp_cond", "salinity", "dissolved_oxygen", "dissolved_oxygen_percent",
+							  "dep_25", "par", "rpar", "turbidity_sc", "chl", "chl_corrected", "m_value"]
 
 		params = [code, wq_var, title, output_folder]
 		return params
@@ -830,7 +866,6 @@ class GenerateHeatPlot(object):
 	def isLicensed(self):
 		"""Set whether tool is licensed to execute."""
 		return True
-
 
 	def updateParameters(self, parameters):
 		"""Modify the values and properties of parameters before internal
@@ -856,7 +891,6 @@ class GenerateHeatPlot(object):
 		finally:
 			session.close()
 		return
-
 
 	@parameters_as_dict  # parameters_as_dict is our own custom decorator that gives us a dictionary with names for params instead of ordering them
 	def execute(self, parameters, messages):
@@ -893,7 +927,7 @@ class LinearRef(object):
 		"""Define the tool (tool name is the name of the class)."""
 		self.label = "Locate WQT Along Reference Route"
 		self.description = "Locate water quality points using linear referencing to update " \
-		                   "the m-value of selected records"
+						   "the m-value of selected records"
 		self.canRunInBackground = False
 		self.category = "Modify"
 
@@ -910,7 +944,6 @@ class LinearRef(object):
 
 		query.filter.type = "ValueList"
 		query.filter.list = ["ALL", "DATERANGE", "IDRANGE"]
-
 
 		over = arcpy.Parameter(
 			displayName="Overwrite existing M Values?",
@@ -953,7 +986,6 @@ class LinearRef(object):
 			direction="Input",
 			parameterType="Optional"
 		)
-
 
 		params = [query, over, date1, date2, id1, id2]
 		return params
@@ -999,8 +1031,8 @@ class LinearRef(object):
 		end_id = parameters[5].value
 
 		arcpy.AddMessage("PARAMS: type = {}, overwrite = {}, start date = {}, "
-		                 "end date = {}, start id = {}, end id = {}".format(query_type, over, start_date,
-		                                                                    end_date, start_id, end_id))
+						 "end date = {}, start id = {}, end id = {}".format(query_type, over, start_date,
+																			end_date, start_id, end_id))
 
 		if start_date is not None and end_date is not None:
 
@@ -1043,6 +1075,10 @@ class GenerateSite(object):
 			direction="Input"
 		)
 
+		site_names = make_site_list()
+		siteid.filter.type = 'ValueList'
+		siteid.filter.list = site_names
+
 		# shapefile for the transects GPS breadcrumbs
 		fc = arcpy.Parameter(
 			displayName="Output Feature Class",
@@ -1065,31 +1101,8 @@ class GenerateSite(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		# validate site name by pulling creating filter with names from table
-		# get list of sites from the database profile sites table
-		session = classes.get_new_session()
-		try:
-			sites = session.query(classes.Site).distinct().all()
-			site_names = []
-
-			# add profile name to site list
-			for s in sites:
-				combine = s.code + ' - ' + s.name
-				site_names.append(combine)
-
-			parameters[0].filter.type = 'ValueList'
-			site_names.sort()
-			parameters[0].filter.list = site_names
-
-		finally:
-			session.close()
-		return
-
-
-
-
-		sitecodename = parameters["code"].valueAsText
-		sitecode = sitecodename.split(" - ")[0]
+	# validate site name by pulling creating filter with names from table
+	# get list of sites from the database profile sites table
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
@@ -1120,14 +1133,6 @@ class ModifySelectedSite(object):
 
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
-		site = arcpy.Parameter(
-			displayName="New Site for Selected Features",
-			name="siteid",
-			datatype="GPString",
-			multiValue=False,
-			direction="Input"
-		)
-
 		wq = arcpy.Parameter(
 			displayName="Water Quality Layer with Selection",
 			name="shp_file",
@@ -1135,7 +1140,18 @@ class ModifySelectedSite(object):
 			direction="Input"
 		)
 
-		params = [wq, site,]
+		site = arcpy.Parameter(
+			displayName="New Site for Selected Features",
+			name="siteid",
+			datatype="GPString",
+			multiValue=False,
+			direction="Input"
+		)
+		site_names = make_site_list()
+		site.filter.type = 'ValueList'
+		site.filter.list = site_names
+
+		params = [wq, site, ]
 		return params
 
 	def isLicensed(self):
@@ -1147,24 +1163,8 @@ class ModifySelectedSite(object):
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
 
-		# validate site name by pulling creating filter with names from table
-		# get list of sites from the database profile sites table
-		session = classes.get_new_session()
-		try:
-			sites = session.query(classes.Site).distinct().all()
-			site_names = []
-
-			# add profile name to site list
-			for s in sites:
-				combine = s.code + ' - ' + s.name
-				site_names.append(combine)
-
-			parameters[1].filter.type = 'ValueList'
-			site_names.sort()
-			parameters[1].filter.list = site_names
-
-		finally:
-			session.close()
+	# validate site name by pulling creating filter with names from table
+	# get list of sites from the database profile sites table
 
 	def updateMessages(self, parameters):
 		"""Modify the messages created by internal validation for each tool
@@ -1175,7 +1175,6 @@ class ModifySelectedSite(object):
 		"""The source code of the tool."""
 		siteid_code = parameters[1].valueAsText
 		site = siteid_code.split(" - ")[0]
-
 
 		# selected features
 		feature = parameters[0].value
@@ -1242,7 +1241,6 @@ class DeleteMonth(object):
 		t = list(calendar.month_name)
 		t.pop(0)
 		month.filter.list = t
-
 
 		params = [year, month, ]
 		return params
@@ -1321,7 +1319,7 @@ class DeleteMonth(object):
 		try:
 			lower_bound = datetime.date(year_to_use, month_to_use, 1)
 			upper_bound = datetime.date(year_to_use, month_to_use,
-			                            int(calendar.monthrange(year_to_use, month_to_use)[1]))
+										int(calendar.monthrange(year_to_use, month_to_use)[1]))
 			arcpy.AddMessage("Deleting data for {} through {}".format(lower_bound, upper_bound))
 			q_wq = session.query(wq).filter(wq.date_time > lower_bound, wq.date_time < upper_bound)
 
@@ -1358,7 +1356,6 @@ class RenameGrabs(object):
 	def getParameterInfo(self):
 		"""Define parameter definitions"""
 
-
 		date_to_generate = arcpy.Parameter(
 			displayName="Date",
 			name="date_to_generate",
@@ -1375,7 +1372,8 @@ class RenameGrabs(object):
 			direction="Input"
 		)
 
-		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New'], ['GPString', 'Notes'], ['GPString','ID']]
+		wqp.columns = [['GPString', 'Type'], ['GPString', 'Current'], ['GPString', 'New'], ['GPString', 'Notes'],
+					   ['GPString', 'ID']]
 
 		params = [date_to_generate, wqp]
 		return params
@@ -1395,7 +1393,6 @@ class RenameGrabs(object):
 			lower = d.date()
 			upper = t.date()
 
-
 			session = classes.get_new_session()
 			try:
 				vt = []  # blank value table
@@ -1414,8 +1411,8 @@ class RenameGrabs(object):
 
 				# fill out the grab sample info
 				grab_abs = session.query(classes.GrabSample.profile_site_id, classes.GrabSample.lab_num,
-				                         classes.GrabSample.sample_id,
-				                         classes.GrabSample.site_id, classes.GrabSample.source, classes.GrabSample.id) \
+										 classes.GrabSample.sample_id,
+										 classes.GrabSample.site_id, classes.GrabSample.source, classes.GrabSample.id) \
 					.filter(classes.GrabSample.date.between(lower, upper)) \
 					.distinct().all()
 
@@ -1427,7 +1424,7 @@ class RenameGrabs(object):
 
 					vt.append(["GRAB", pro_abbrev, pro_abbrev, notes, profile[5]])
 
-				sorted_vt = sorted(vt, key = lambda x: x[1])
+				sorted_vt = sorted(vt, key=lambda x: x[1])
 				parameters[1].values = sorted_vt
 
 				# potential profile abbreviations
@@ -1534,8 +1531,8 @@ class RegressionPlot(object):
 			multiValue=False,
 			direction="Input")
 
-		#gain_setting.filter.type = 'ValueList'
-		#gain_setting.filter.list = ['0', '1', '10', '100']
+		# gain_setting.filter.type = 'ValueList'
+		# gain_setting.filter.list = ['0', '1', '10', '100']
 
 		depths = arcpy.Parameter(
 			displayName="All depths?",
@@ -1606,7 +1603,6 @@ class RegressionPlot(object):
 		else:
 			parameters[1].enabled = False
 
-
 		if parameters[0].value and parameters[1].altered:
 			# turn off params (clicking box when tool is running with crash arc)
 			parameters[2].enabled = True
@@ -1615,7 +1611,7 @@ class RegressionPlot(object):
 			parameters[2].enabled = False
 			parameters[3].enabled = False
 
-		if parameters[3].value is True: # add in conditional for other two params
+		if parameters[3].value is True:  # add in conditional for other two params
 
 			### DEFINE DATA PATHS ###
 			base_path = config.arcwqpro
@@ -1635,8 +1631,8 @@ class RegressionPlot(object):
 			try:
 				CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
 				subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, depths, "FALSE"],
-				                        creationflags=CREATE_NO_WINDOW,
-				                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
+										creationflags=CREATE_NO_WINDOW,
+										stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
 				webbrowser.open(output)
 
 			except subprocess.CalledProcessError as e:
@@ -1667,7 +1663,6 @@ class RegressionPlot(object):
 		else:
 			depths = "FALSE"
 
-
 		if parameters[5].value:
 			commit = "TRUE"
 		else:
@@ -1676,13 +1671,14 @@ class RegressionPlot(object):
 		if output is None:
 			output = os.path.join(base_path, "arcproject", "plots", "chl_regression_tool_preview.png")
 
-		arcpy.AddMessage("{}, {}, {}, {}, {}, {}, {},{}".format(rscript_path, chl_reg, "--args", date, gain, output, depths, commit))
+		arcpy.AddMessage(
+			"{}, {}, {}, {}, {}, {}, {},{}".format(rscript_path, chl_reg, "--args", date, gain, output, depths, commit))
 
 		try:
 			CREATE_NO_WINDOW = 0x08000000  # used to hide the console window so it stays in the background
 			subprocess.check_output([rscript_path, chl_reg, "--args", date, gain, output, depths, commit],
-			                        creationflags=CREATE_NO_WINDOW,
-			                        stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
+									creationflags=CREATE_NO_WINDOW,
+									stderr=subprocess.STDOUT)  # ampersand makes it run without a console window
 
 		except subprocess.CalledProcessError as e:
 			arcpy.AddError("Call to R returned exit code {}.\nR output the following while processing:\n{}".format(
@@ -1745,7 +1741,6 @@ class CorrectChl(object):
 			parameterType="Optional"
 		)
 
-
 		params = [query, date1, date2, id1, id2]
 		return params
 
@@ -1789,8 +1784,8 @@ class CorrectChl(object):
 		end_id = parameters[4].value
 
 		arcpy.AddMessage("PARAMS: type = {}, start date = {}, "
-		                 "end date = {}, start id = {}, end id = {}".format(query_type, start_date,
-		                                                                    end_date, start_id, end_id))
+						 "end date = {}, start id = {}, end id = {}".format(query_type, start_date,
+																			end_date, start_id, end_id))
 
 		if start_date is not None and end_date is not None:
 
@@ -1832,6 +1827,11 @@ class ExportHeatPlotData(object):
 			direction="Input"
 		)
 
+		# validate site name by pulling creating filter with names from table
+		# get list of sites from the database profile sites table
+		site_names = make_site_list()
+		code.filter.type = 'ValueList'
+		code.filter.list = site_names
 
 		output_csv = arcpy.Parameter(
 			displayName="Output CSV",
@@ -1848,32 +1848,10 @@ class ExportHeatPlotData(object):
 		"""Set whether tool is licensed to execute."""
 		return True
 
-
 	def updateParameters(self, parameters):
 		"""Modify the values and properties of parameters before internal
 		validation is performed.  This method is called whenever a parameter
 		has been changed."""
-
-		# validate site name by pulling creating filter with names from table
-		# get list of sites from the database profile sites table
-		session = classes.get_new_session()
-		try:
-			sites = session.query(classes.Site).distinct().all()
-			site_names = []
-
-			# add profile name to site list
-			for s in sites:
-				combine = s.code + ' - ' + s.name
-				site_names.append(combine)
-
-			parameters[0].filter.type = 'ValueList'
-			site_names.sort()
-			parameters[0].filter.list = site_names
-
-		finally:
-			session.close()
-		return
-
 
 	@parameters_as_dict
 	def execute(self, parameters, messages):
@@ -1885,13 +1863,12 @@ class ExportHeatPlotData(object):
 
 		arcpy.AddMessage("Saving WaterQuality for site {} as csv.\n{}".format(sitecodename, output_file))
 
-
 		outfile = open(output_file, 'wb')
 		outcsv = csv.writer(outfile)
 
 		session = classes.get_new_session()
 		try:
-			records = session.query(classes.WaterQuality).filter(classes.Site.code == sitecode).\
+			records = session.query(classes.WaterQuality).filter(classes.Site.code == sitecode). \
 				filter(classes.Site.id == classes.WaterQuality.site_id)
 			outcsv.writerow([column.name for column in classes.WaterQuality.__mapper__.columns])  # header as row 1
 			[outcsv.writerow([getattr(curr, column.name) for column in classes.WaterQuality.__mapper__.columns]) for

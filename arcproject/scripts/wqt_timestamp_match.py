@@ -272,7 +272,7 @@ class YSIInstrument(Instrument):
 
 	def dump_schema_ini(self):
 		"""
-			Sometimes when loading the data into ArcGIS, it interprets
+			NOT USED. Sometimes when loading the data into ArcGIS, it interprets
 			times as dates and then the whole pipeline blows up. Here we
 			add entries to a schema.ini file in order to force it to
 			read date and time fields as text, not as dates. If this
@@ -355,6 +355,7 @@ class YSIInstrument(Instrument):
 			fieldnames.append(self.new_longitude_field)
 			fieldnames.append(self.new_datetime_field)
 			fieldnames.append(source_field)
+
 			for record in cleaned_rows:
 				if record["Lat"] in (None, "") or record["Lon"] in (None, ""):  # skip records with no locations
 					#print("skipping record with lat/long of {}, {}".format(record["Lat"], record["Lon"]))
@@ -362,6 +363,7 @@ class YSIInstrument(Instrument):
 				record[self.new_latitude_field] = dms_to_dd(record["Lat"], force_negative=False)  # convert the latitude
 				record[self.new_longitude_field] = dms_to_dd(record["Lon"], force_negative=True)  # convert the longitude, force it to western hemisphere
 				record[self.new_datetime_field] = record["lDate_original"] + "t" + record["lTime_original"]
+
 				record[source_field] = self.source_filename
 				output_records.append(record)
 

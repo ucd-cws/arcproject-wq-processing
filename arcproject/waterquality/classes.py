@@ -229,7 +229,7 @@ class WaterQuality(Base):
 		Each instance of this class is an observation in the database
 	"""
 	__tablename__ = 'water_quality'
-	__table_args__ = (UniqueConstraint('date_time', name='_time_uc'),)
+	__table_args__ = (UniqueConstraint('date_time', name='_time_uc'),)  # new instrument occasionally has multiple observations in the same second, and it's unclear that we actually need this constraint.
 
 	id = Column(Integer, primary_key=True)
 	site_id = Column(Integer, ForeignKey('sites.id'))
